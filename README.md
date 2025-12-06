@@ -18,6 +18,22 @@ Switch freely between multiple AI providers: GLM, OpenAI, Gemini, OpenRouter, an
 **🔀 In-session switching**: With ccx, switch models without restarting
 **🎯 Perfect for**: Development, testing, or when you want model flexibility
 
+## Quick Start
+
+### macOS / Linux / WSL2
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/windysky/claude-glm-wrapper/main/install.sh)
+source ~/.zshrc  # or ~/.bashrc
+```
+
+### Windows (PowerShell)
+```powershell
+iwr -useb https://raw.githubusercontent.com/windysky/claude-glm-wrapper/main/install.ps1 | iex
+. $PROFILE
+```
+
+After installation, commands also work in `cmd.exe`/Anaconda prompt via auto-created `.cmd` shims.
+
 ## Features
 
 - 🚀 **Easy switching** between GLM and Claude models
@@ -37,13 +53,11 @@ Switch freely between multiple AI providers: GLM, OpenAI, Gemini, OpenRouter, an
 
 ### macOS / Linux / WSL2
 
-**One-Line Install:**
 ```bash
 bash <(curl -fsSL https://raw.githubusercontent.com/windysky/claude-glm-wrapper/main/install.sh)
 source ~/.zshrc  # or ~/.bashrc
 ```
 
-**Or Clone and Install:**
 ```bash
 git clone https://github.com/windysky/claude-glm-wrapper.git
 cd claude-glm-wrapper
@@ -55,13 +69,11 @@ source ~/.zshrc
 
 > ⚠️ **Do NOT use Git Bash or WSL** with `install.sh` on Windows. It creates files in virtual Unix paths that Windows cannot access. Always use PowerShell.
 
-**One-Line Install:**
 ```powershell
 iwr -useb https://raw.githubusercontent.com/windysky/claude-glm-wrapper/main/install.ps1 | iex
 . $PROFILE
 ```
 
-**Or Clone and Install:**
 ```powershell
 git clone https://github.com/windysky/claude-glm-wrapper.git
 cd claude-glm-wrapper
@@ -74,12 +86,7 @@ cd claude-glm-wrapper
 Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 ```
 
-### Windows (Anaconda prompt)
-```anaconda
-git clone https://github.com/windysky/claude-glm-wrapper.git
-cd claude-glm-wrapper
-powershell -NoLogo -ExecutionPolicy Bypass -File install.ps1
-```
+**Anaconda/cmd:** Run the PowerShell installer once (as above). It now creates `.cmd` shims in `AppData\Local\Microsoft\WindowsApps`, so `ccg46`, `ccg45`, `ccf`, and `ccx` work in `cmd.exe` and Anaconda prompts.
 
 ### What the Installer Does
 
