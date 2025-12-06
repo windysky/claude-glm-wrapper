@@ -18,22 +18,6 @@ Switch freely between multiple AI providers: GLM, OpenAI, Gemini, OpenRouter, an
 **🔀 In-session switching**: With ccx, switch models without restarting
 **🎯 Perfect for**: Development, testing, or when you want model flexibility
 
-## Quick Start
-
-### macOS / Linux / WSL2
-```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/windysky/claude-glm-wrapper/main/install.sh)
-source ~/.zshrc  # or ~/.bashrc
-```
-
-### Windows (PowerShell)
-```powershell
-iwr -useb https://raw.githubusercontent.com/windysky/claude-glm-wrapper/main/install.ps1 | iex
-. $PROFILE
-```
-
-After installation, commands also work in `cmd.exe`/Anaconda prompt via auto-created `.cmd` shims.
-
 ## Features
 
 - 🚀 **Easy switching** between GLM and Claude models
