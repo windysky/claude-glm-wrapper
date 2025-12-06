@@ -15,13 +15,13 @@
     "installer",
     "proxy"
   ],
-  "homepage": "https://github.com/JoeInnsp23/claude-glm-wrapper#readme",
+  "homepage": "https://github.com/windysky/claude-glm-wrapper#readme",
   "bugs": {
-    "url": "https://github.com/JoeInnsp23/claude-glm-wrapper/issues"
+    "url": "https://github.com/windysky/claude-glm-wrapper/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/JoeInnsp23/claude-glm-wrapper.git"
+    "url": "git+https://github.com/windysky/claude-glm-wrapper.git"
   },
   "license": "MIT",
   "author": "Joseph Stephenson-Mouzo",
