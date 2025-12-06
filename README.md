@@ -28,10 +28,12 @@ bash <(curl -fsSL https://raw.githubusercontent.com/windysky/claude-glm-wrapper/
 source ~/.zshrc  # or ~/.bashrc
 ```
 
-### Windows (PowerShell)
+### Windows (PowerShell only)
+
+> ⚠️ **Important**: On Windows, always use PowerShell with `install.ps1`. Do NOT use `bash install.sh` in Git Bash/WSL — it creates files in locations Windows cannot access.
 
 ```powershell
-# One-line install
+# One-line install (run in PowerShell, not Git Bash)
 iwr -useb https://raw.githubusercontent.com/windysky/claude-glm-wrapper/main/install.ps1 | iex
 . $PROFILE
 ```
@@ -80,7 +82,9 @@ bash install.sh
 source ~/.zshrc
 ```
 
-### Windows (PowerShell)
+### Windows (PowerShell only)
+
+> ⚠️ **Do NOT use Git Bash or WSL** with `install.sh` on Windows. It creates files in virtual Unix paths that Windows cannot access. Always use PowerShell.
 
 **One-Line Install:**
 ```powershell

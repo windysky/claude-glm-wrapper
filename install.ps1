@@ -378,6 +378,46 @@ function Install-Ccx {
         Write-Host "  WARNING: adapters directory not found. Proxy may not work." -ForegroundColor Yellow
     }
 
+    # Copy tsconfig.json for TypeScript module resolution
+    $tsconfigSource = Join-Path $scriptDir "tsconfig.json"
+    if (Test-Path $tsconfigSource) {
+        Copy-Item $tsconfigSource $ccxHome
+    }
+
+    # Create package.json with required dependencies
+    Write-Host "  Creating package.json with dependencies..."
+    $packageJson = @'
+{
+  "name": "claude-proxy",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "eventsource-parser": "^1.1.2",
+    "fastify": "^4.28.1",
+    "tsx": "^4.15.6"
+  }
+}
+'@
+    $packageJson | Out-File -FilePath (Join-Path $ccxHome "package.json") -Encoding utf8
+
+    # Install dependencies
+    Write-Host "  Installing proxy dependencies (this may take a moment)..."
+    $npmPath = Get-Command npm -ErrorAction SilentlyContinue
+    if ($npmPath) {
+        Push-Location $ccxHome
+        try {
+            $null = npm install --production --silent 2>&1
+            Write-Host "  OK: Dependencies installed" -ForegroundColor Green
+        } catch {
+            Write-Host "  WARNING: Failed to install dependencies. Run: cd $ccxHome; npm install" -ForegroundColor Yellow
+        }
+        Pop-Location
+    } else {
+        Write-Host "  WARNING: npm not found. Run: cd $ccxHome; npm install" -ForegroundColor Yellow
+    }
+
     # Create ccx wrapper script
     $ccxContent = @'
 param([switch]$Setup)
@@ -457,15 +497,36 @@ if (-not $env:ANTHROPIC_AUTH_TOKEN) {
     $env:ANTHROPIC_AUTH_TOKEN = "local-proxy-token"
 }
 
+# Ensure dependencies are installed
+$nodeModulesPath = Join-Path $ROOT_DIR "node_modules"
+if (-not (Test-Path $nodeModulesPath)) {
+    Write-Host "[ccx] Installing proxy dependencies..."
+    $packageJsonPath = Join-Path $ROOT_DIR "package.json"
+    if (Test-Path $packageJsonPath) {
+        Push-Location $ROOT_DIR
+        try {
+            $null = npm install --production --silent 2>&1
+        } catch {
+            Write-Host "ERROR: Failed to install dependencies. Run: cd $ROOT_DIR; npm install" -ForegroundColor Red
+            exit 1
+        }
+        Pop-Location
+    } else {
+        Write-Host "ERROR: Missing package.json in $ROOT_DIR. Please reinstall ccx." -ForegroundColor Red
+        exit 1
+    }
+}
+
 Write-Host "[ccx] Starting Claude Code with multi-provider proxy..."
 Write-Host "[ccx] Proxy will listen on: $($env:ANTHROPIC_BASE_URL)"
 
-# Start proxy
+# Start proxy using locally installed tsx
 $gatewayPath = Join-Path $ROOT_DIR "adapters\anthropic-gateway.ts"
+$tsxPath = Join-Path $ROOT_DIR "node_modules\.bin\tsx.cmd"
 $logPath = Join-Path $env:TEMP "claude-proxy.log"
 $errorLogPath = Join-Path $env:TEMP "claude-proxy-error.log"
 
-$proc = Start-Process "npx" -ArgumentList "-y","tsx",$gatewayPath -PassThru -WindowStyle Hidden -RedirectStandardOutput $logPath -RedirectStandardError $errorLogPath
+$proc = Start-Process $tsxPath -ArgumentList $gatewayPath -PassThru -WindowStyle Hidden -RedirectStandardOutput $logPath -RedirectStandardError $errorLogPath
 
 # Wait for health check
 Write-Host "[ccx] Waiting for proxy to start..."
