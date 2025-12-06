@@ -35,10 +35,10 @@ source ~/.zshrc  # or ~/.bashrc
 
 **All Platforms:**
 ```bash
-ccg              # Claude Code with GLM-4.6 (latest)
+ccg46            # Claude Code with GLM-4.6 (latest)
 ccg45            # Claude Code with GLM-4.5
 ccf              # Claude Code with GLM-4.5-Air (faster)
-cc               # Regular Claude Code
+ccd              # Regular Claude Code (default)
 ```
 
 That's it! 🎉
@@ -163,8 +163,8 @@ The installer creates these commands and aliases:
 
 | Alias | Full Command | What It Does | When to Use |
 |-------|--------------|--------------|-------------|
-| `cc` | `claude` | Regular Claude Code | Default - your normal Claude setup |
-| `ccg` | `claude-glm` | GLM-4.6 (latest) | Best quality GLM model |
+| `ccd` | `claude` | Regular Claude Code | Default - your normal Claude setup |
+| `ccg46` | `claude-glm` | GLM-4.6 (latest) | Best quality GLM model |
 | `ccg45` | `claude-glm-4.5` | GLM-4.5 | Previous version of GLM |
 | `ccf` | `claude-glm-fast` | GLM-4.5-Air (fast) | Quicker responses, lower cost |
 | `ccx` | `ccx` | Multi-provider proxy | Switch between providers in-session |
@@ -185,15 +185,15 @@ Switch models mid-session using `/model <provider>:<model-name>`. Perfect for co
 ### How It Works
 
 Each command starts a **separate Claude Code session** with different configurations:
-- `ccg`, `ccg45`, and `ccf` use Z.AI's API with your Z.AI key
-- `cc` uses Anthropic's API with your Anthropic key (default Claude setup)
+- `ccg46`, `ccg45`, and `ccf` use Z.AI's API with your Z.AI key
+- `ccd` uses Anthropic's API with your Anthropic key (default Claude setup)
 - Your configurations **never conflict** — they're stored in separate directories
 
 ### Basic Examples
 
 **Start a coding session with the latest GLM:**
 ```bash
-ccg
+ccg46
 # Opens Claude Code using GLM-4.6
 ```
 
@@ -211,14 +211,14 @@ ccf
 
 **Use regular Claude:**
 ```bash
-cc
+ccd
 # Opens Claude Code with Anthropic models (your default setup)
 ```
 
 **Pass arguments like normal:**
 ```bash
-ccg --help
-ccg "refactor this function"
+ccg46 --help
+ccg46 "refactor this function"
 ccf "quick question about Python"
 ```
 
@@ -227,12 +227,12 @@ ccf "quick question about Python"
 ### Workflow 1: Testing with GLM, Production with Claude
 ```bash
 # Develop and test with cost-effective GLM-4.6
-ccg
+ccg46
 # ... work on your code ...
 # exit
 
 # Switch to Claude for final review
-cc
+ccd
 # ... final review with Claude ...
 ```
 
@@ -242,7 +242,7 @@ cc
 ccf "how do I use async/await in Python?"
 
 # Complex refactoring with latest GLM
-ccg
+ccg46
 # ... longer coding session ...
 ```
 
@@ -250,11 +250,11 @@ ccg
 ```bash
 # Project 1: Use GLM to save costs
 cd ~/project1
-ccg
+ccg46
 
 # Project 2: Use Claude for critical work
 cd ~/project2
-cc
+ccd
 ```
 
 **Each session is independent** — your chat history stays separate!
@@ -368,7 +368,7 @@ ccx
 
 ### ccx vs Dedicated Wrappers
 
-| Feature | ccx | ccg/ccg45/ccf |
+| Feature | ccx | ccg46/ccg45/ccf |
 |---------|-----|---------------|
 | Switch models in-session | ✅ Yes | ❌ No |
 | Multiple providers | ✅ Yes | ❌ GLM only |
@@ -480,7 +480,7 @@ Claude Code reads these variables and uses them instead of the defaults. Simple!
 
 **Test it**: Run `which claude` — it should show a path.
 
-### ❌ "ccg: command not found" (or ccg45, ccf, cc)
+### ❌ "ccg46: command not found" (or ccg45, ccf, ccd)
 
 **Problem**: You didn't source your shell config after installation.
 
@@ -495,7 +495,7 @@ source ~/.zshrc  # or ~/.bashrc
 
 **Problem**: API key issues.
 
-**Solutions for ccg/ccf/ccg45**:
+**Solutions for ccg46/ccf/ccg45**:
 1. **Check your key**: Visit [z.ai/manage-apikey/apikey-list](https://z.ai/manage-apikey/apikey-list)
 2. **Verify credits**: Make sure your Z.AI account has available credits
 3. **Update the key**: Run `bash install.sh` and choose "Update API key only"
@@ -527,11 +527,11 @@ source ~/.zshrc  # or ~/.bashrc
 
 ### ❌ Wrong Model Being Used
 
-**Problem**: Using `ccg` but it's using the wrong API.
+**Problem**: Using `ccg46` but it's using the wrong API.
 
 **Solution**: Each command is independent. Make sure you:
 - Exit any running Claude Code session
-- Start fresh with the command you want (`ccg`, `ccg45`, `ccf`, or `cc`)
+- Start fresh with the command you want (`ccg46`, `ccg45`, `ccf`, or `ccd`)
 
 ### 🪟 Windows-Specific Issues
 
@@ -544,7 +544,7 @@ source ~/.zshrc  # or ~/.bashrc
 Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 ```
 
-**❌ "ccg: The term 'ccg' is not recognized"**
+**❌ "ccg46: The term 'ccg46' is not recognized"**
 
 **Problem**: PowerShell profile wasn't reloaded after installation.
 
@@ -563,7 +563,7 @@ Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 
 - **Open new terminal**: After installation, aliases work in new terminals automatically
 - **Check the greeting**: Each command prints what model it's using when it starts
-- **Test with**: `ccg --version` to verify the command works
+- **Test with**: `ccg46 --version` to verify the command works
 
 ## Uninstallation
 
@@ -587,8 +587,8 @@ rm -rf ~/.claude-glm-fast
 ```bash
 # Delete these lines:
 # Claude Code Model Switcher Aliases
-alias cc='claude'
-alias ccg='claude-glm'
+alias ccd='claude'
+alias ccg46='claude-glm'
 alias ccg45='claude-glm-4.5'
 alias ccf='claude-glm-fast'
 ```
@@ -616,8 +616,8 @@ Remove-Item -Recurse "$env:USERPROFILE\.claude-glm-fast"
 notepad $PROFILE
 # Delete these lines:
 # Claude Code Model Switcher Aliases
-Set-Alias cc claude
-Set-Alias ccg claude-glm
+Set-Alias ccd claude
+Set-Alias ccg46 claude-glm
 Set-Alias ccg45 claude-glm-4.5
 Set-Alias ccf claude-glm-fast
 ```
@@ -630,9 +630,9 @@ Then reload: `. $PROFILE`
 **A**: No! Your regular Claude Code setup is completely untouched. The wrappers use separate config directories.
 
 ### Q: Can I use both GLM and Claude in the same project?
-**A**: Yes! Just use `ccg` for GLM sessions and `cc` for Claude sessions. Each maintains its own chat history. Or use `ccx` to switch between providers in a single session.
+**A**: Yes! Just use `ccg46` for GLM sessions and `ccd` for Claude sessions. Each maintains its own chat history. Or use `ccx` to switch between providers in a single session.
 
-### Q: Which should I use: ccx or dedicated wrappers (ccg/ccf)?
+### Q: Which should I use: ccx or dedicated wrappers (ccg46/ccf)?
 **A**:
 - **Use ccx** if you want to switch between multiple providers (OpenAI, Gemini, OpenRouter, GLM, Anthropic) in the same session
 - **Use dedicated wrappers** if you want separate chat histories for different models/providers
@@ -640,10 +640,10 @@ Then reload: `. $PROFILE`
 ### Q: Which model should I use?
 **A**:
 - Use **`ccx`** for: Maximum flexibility, model comparison, leveraging different model strengths
-- Use **`ccg` (GLM-4.6)** for: Latest model, complex coding, refactoring, detailed explanations
+- Use **`ccg46` (GLM-4.6)** for: Latest model, complex coding, refactoring, detailed explanations
 - Use **`ccg45` (GLM-4.5)** for: Previous version, if you need consistency with older projects
 - Use **`ccf` (GLM-4.5-Air)** for: Quick questions, simple tasks, faster responses
-- Use **`cc` (Claude)** for: Your regular Anthropic Claude setup
+- Use **`ccd` (Claude)** for: Your regular Anthropic Claude setup
 
 ### Q: How do I switch models in ccx?
 **A**: Use the `/model` command with the format `<provider>:<model-name>`. For example:
@@ -661,7 +661,7 @@ Then reload: `. $PROFILE`
 **A**: Yes! Edit the wrapper scripts in `~/.local/bin/` and change the `ANTHROPIC_MODEL` variable to any model Z.AI supports.
 
 ### Q: What happens if I run out of Z.AI credits?
-**A**: The GLM commands will fail with an API error. Just switch to regular Claude using `cc` until you add more credits.
+**A**: The GLM commands will fail with an API error. Just switch to regular Claude using `ccd` until you add more credits.
 
 ## Contributing
 

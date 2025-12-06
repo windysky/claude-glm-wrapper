@@ -191,8 +191,8 @@ function Add-PowerShellAliases {
     # Remove old aliases if they exist
     $filteredContent = $profileContent | Where-Object {
         $_ -notmatch "# Claude Code Model Switcher Aliases" -and
-        $_ -notmatch "Set-Alias cc " -and
-        $_ -notmatch "Set-Alias ccg " -and
+        $_ -notmatch "Set-Alias ccd " -and
+        $_ -notmatch "Set-Alias ccg46 " -and
         $_ -notmatch "Set-Alias ccg45 " -and
         $_ -notmatch "Set-Alias ccf "
     }
@@ -201,8 +201,8 @@ function Add-PowerShellAliases {
     $aliases = @"
 
 # Claude Code Model Switcher Aliases
-Set-Alias cc claude
-Set-Alias ccg claude-glm
+Set-Alias ccd claude
+Set-Alias ccg46 claude-glm
 Set-Alias ccg45 claude-glm-4.5
 Set-Alias ccf claude-glm-fast
 "@
@@ -879,8 +879,8 @@ function Install-ClaudeGlm {
     }
     Write-Host ""
     Write-Host "Aliases:"
-    Write-Host "   cc    - claude (regular Claude)"
-    Write-Host "   ccg   - claude-glm (GLM-4.6)"
+    Write-Host "   ccd   - claude (regular Claude / default)"
+    Write-Host "   ccg46 - claude-glm (GLM-4.6)"
     Write-Host "   ccg45 - claude-glm-4.5 (GLM-4.5)"
     Write-Host "   ccf   - claude-glm-fast"
     if ($ccxInstalled) {

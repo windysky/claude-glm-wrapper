@@ -134,19 +134,19 @@ $sanitized_error
 *This error was automatically reported by the installer. Please add any additional context below.*
 "
 
-    # URL encode using Python (most compatible)
+    # URL encode using Python (most compatible) - using stdin to prevent command injection
     local encoded_body=""
     local encoded_title=""
 
     if command -v python3 &> /dev/null; then
-        encoded_body=$(python3 -c "import urllib.parse; print(urllib.parse.quote('''$issue_body'''))" 2>/dev/null)
-        encoded_title=$(python3 -c "import urllib.parse; print(urllib.parse.quote('Installation Error: Unix/Linux/macOS'))" 2>/dev/null)
+        encoded_body=$(printf '%s' "$issue_body" | python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.stdin.read()))" 2>/dev/null)
+        encoded_title=$(printf '%s' "Installation Error: Unix/Linux/macOS" | python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.stdin.read()))" 2>/dev/null)
     elif command -v python &> /dev/null; then
-        encoded_body=$(python -c "import urllib; print urllib.quote('''$issue_body''')" 2>/dev/null)
-        encoded_title=$(python -c "import urllib; print urllib.quote('Installation Error: Unix/Linux/macOS')" 2>/dev/null)
+        encoded_body=$(printf '%s' "$issue_body" | python -c "import urllib,sys; print urllib.quote(sys.stdin.read())" 2>/dev/null)
+        encoded_title=$(printf '%s' "Installation Error: Unix/Linux/macOS" | python -c "import urllib,sys; print urllib.quote(sys.stdin.read())" 2>/dev/null)
     else
         # Fallback: basic URL encoding with sed
-        encoded_body=$(echo "$issue_body" | sed 's/ /%20/g; s/\n/%0A/g')
+        encoded_body=$(printf '%s' "$issue_body" | sed 's/ /%20/g; s/\n/%0A/g')
         encoded_title="Installation%20Error%3A%20Unix%2FLinux%2FmacOS"
     fi
 
@@ -543,6 +543,41 @@ install_ccx() {
         echo "⚠️  Warning: adapters directory not found. Proxy may not work."
     fi
 
+    # Copy tsconfig.json for TypeScript module resolution
+    if [ -f "$script_dir/tsconfig.json" ]; then
+        cp "$script_dir/tsconfig.json" "$ccx_home/"
+    fi
+
+    # Create package.json with required dependencies for the proxy
+    echo "  Creating package.json with dependencies..."
+    cat > "$ccx_home/package.json" << 'PKGJSON'
+{
+  "name": "claude-proxy",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "eventsource-parser": "^1.1.2",
+    "fastify": "^4.28.1",
+    "tsx": "^4.15.6"
+  }
+}
+PKGJSON
+
+    # Install dependencies
+    echo "  Installing proxy dependencies (this may take a moment)..."
+    if command -v npm &> /dev/null; then
+        (cd "$ccx_home" && npm install --production --silent 2>/dev/null) || {
+            echo "⚠️  Warning: Failed to install dependencies. You may need to run:"
+            echo "     cd $ccx_home && npm install"
+        }
+        echo "  ✅ Dependencies installed"
+    else
+        echo "⚠️  Warning: npm not found. You need to install dependencies manually:"
+        echo "     cd $ccx_home && npm install"
+    fi
+
     # Create ccx wrapper script
     cat > "$wrapper_path" << 'CCXEOF'
 #!/usr/bin/env bash
@@ -551,6 +586,20 @@ set -euo pipefail
 ROOT_DIR="$HOME/.claude-proxy"
 ENV_FILE="$ROOT_DIR/.env"
 PORT="${CLAUDE_PROXY_PORT:-17870}"
+
+# Ensure dependencies are installed
+if [ ! -d "$ROOT_DIR/node_modules" ]; then
+    echo "[ccx] Installing proxy dependencies..."
+    if [ -f "$ROOT_DIR/package.json" ]; then
+        (cd "$ROOT_DIR" && npm install --production --silent 2>/dev/null) || {
+            echo "❌ Failed to install dependencies. Run: cd $ROOT_DIR && npm install"
+            exit 1
+        }
+    else
+        echo "❌ Missing package.json in $ROOT_DIR. Please reinstall ccx."
+        exit 1
+    fi
+fi
 
 # Check if --setup flag is provided
 if [ "${1:-}" = "--setup" ]; then
@@ -615,8 +664,8 @@ export ANTHROPIC_AUTH_TOKEN="${ANTHROPIC_AUTH_TOKEN:-local-proxy-token}"
 echo "[ccx] Starting Claude Code with multi-provider proxy..."
 echo "[ccx] Proxy will listen on: ${ANTHROPIC_BASE_URL}"
 
-# Start proxy in background
-npx -y tsx "${ROOT_DIR}/adapters/anthropic-gateway.ts" > /tmp/claude-proxy.log 2>&1 &
+# Start proxy in background using locally installed tsx
+"${ROOT_DIR}/node_modules/.bin/tsx" "${ROOT_DIR}/adapters/anthropic-gateway.ts" > /tmp/claude-proxy.log 2>&1 &
 PROXY_PID=$!
 
 cleanup() {
@@ -698,8 +747,8 @@ create_shell_aliases() {
     if grep -q "# Claude Code Model Switcher Aliases" "$rc_file" 2>/dev/null; then
         # Use temp file for compatibility
         grep -v "# Claude Code Model Switcher Aliases" "$rc_file" | \
-        grep -v "alias cc=" | \
-        grep -v "alias ccg=" | \
+        grep -v "alias ccd=" | \
+        grep -v "alias ccg46=" | \
         grep -v "alias ccg45=" | \
         grep -v "alias ccf=" > "$rc_file.tmp"
         mv "$rc_file.tmp" "$rc_file"
@@ -710,8 +759,8 @@ create_shell_aliases() {
         cat >> "$rc_file" << 'EOF'
 
 # Claude Code Model Switcher Aliases
-alias cc 'claude'
-alias ccg 'claude-glm'
+alias ccd 'claude'
+alias ccg46 'claude-glm'
 alias ccg45 'claude-glm-4.5'
 alias ccf 'claude-glm-fast'
 EOF
@@ -719,8 +768,8 @@ EOF
         cat >> "$rc_file" << 'EOF'
 
 # Claude Code Model Switcher Aliases
-alias cc='claude'
-alias ccg='claude-glm'
+alias ccd='claude'
+alias ccg46='claude-glm'
 alias ccg45='claude-glm-4.5'
 alias ccf='claude-glm-fast'
 EOF
@@ -868,8 +917,8 @@ main() {
     fi
     echo ""
     echo "Aliases:"
-    echo "   cc    - claude (regular Claude)"
-    echo "   ccg   - claude-glm (GLM-4.6)"
+    echo "   ccd   - claude (regular Claude / default)"
+    echo "   ccg46 - claude-glm (GLM-4.6)"
     echo "   ccg45 - claude-glm-4.5 (GLM-4.5)"
     echo "   ccf   - claude-glm-fast"
     if [ "$install_ccx_choice" != "n" ] && [ "$install_ccx_choice" != "N" ]; then
