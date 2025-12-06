@@ -35,7 +35,7 @@ Switch freely between multiple AI providers: GLM, OpenAI, Gemini, OpenRouter, an
 
 ## Installation
 
-### macOS / Linux
+### macOS / Linux / WSL2
 
 **One-Line Install:**
 ```bash
@@ -51,7 +51,7 @@ bash install.sh
 source ~/.zshrc
 ```
 
-### Windows (PowerShell only)
+### Windows (PowerShell)
 
 > ⚠️ **Do NOT use Git Bash or WSL** with `install.sh` on Windows. It creates files in virtual Unix paths that Windows cannot access. Always use PowerShell.
 
@@ -72,6 +72,13 @@ cd claude-glm-wrapper
 **Note:** If you get an execution policy error, run:
 ```powershell
 Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+```
+
+### Windows (Anaconda prompt)
+```anaconda
+git clone https://github.com/windysky/claude-glm-wrapper.git
+cd claude-glm-wrapper
+powershell -NoLogo -ExecutionPolicy Bypass -File install.ps1
 ```
 
 ### What the Installer Does

@@ -27,6 +27,7 @@ if ($env:CLAUDE_GLM_DEBUG -eq "1" -or $env:CLAUDE_GLM_DEBUG -eq "true") {
 
 # Configuration
 $UserBinDir = "$env:USERPROFILE\.local\bin"
+$CmdShimDir = Join-Path $env:USERPROFILE "AppData\Local\Microsoft\WindowsApps"
 $GlmConfigDir = "$env:USERPROFILE\.claude-glm"
 $Glm45ConfigDir = "$env:USERPROFILE\.claude-glm-45"
 $GlmFastConfigDir = "$env:USERPROFILE\.claude-glm-fast"
@@ -607,6 +608,40 @@ function ccx { & `"$UserBinDir\ccx.ps1`" @args }
     Add-Content $PROFILE $ccxFunction
 }
 
+# Create .cmd shims so commands also work in cmd/Anaconda
+function New-CmdShim {
+    param(
+        [string]$Name,
+        [string]$TargetScript
+    )
+
+    if (-not (Test-Path $CmdShimDir)) {
+        try {
+            New-Item -ItemType Directory -Path $CmdShimDir -Force | Out-Null
+        } catch {
+            Write-Host "WARNING: Could not create CMD shim directory at $CmdShimDir" -ForegroundColor Yellow
+            return
+        }
+    }
+
+    $shimPath = Join-Path $CmdShimDir "$Name.cmd"
+    $shimContent = "@echo off`r`npowershell -NoLogo -NoProfile -ExecutionPolicy Bypass -File `"$TargetScript`" %*`r`n"
+
+    try {
+        Set-Content -Path $shimPath -Value $shimContent -Encoding ascii
+        Write-Host "OK: Created CMD shim: $shimPath" -ForegroundColor Green
+    } catch {
+        Write-Host "WARNING: Failed to create CMD shim for $Name at $shimPath" -ForegroundColor Yellow
+    }
+}
+
+function Add-CmdShims {
+    # Ensure the main wrappers exist before creating shims
+    New-CmdShim -Name "ccg46" -TargetScript (Join-Path $UserBinDir "claude-glm.ps1")
+    New-CmdShim -Name "ccg45" -TargetScript (Join-Path $UserBinDir "claude-glm-4.5.ps1")
+    New-CmdShim -Name "ccf"   -TargetScript (Join-Path $UserBinDir "claude-glm-fast.ps1")
+}
+
 # Check Claude Code availability
 function Test-ClaudeInstallation {
     Write-Host "CHECKING: Claude Code installation..."
@@ -895,6 +930,7 @@ function Install-ClaudeGlm {
     New-ClaudeGlm45Wrapper
     New-ClaudeGlmFastWrapper
     Add-PowerShellAliases
+    Add-CmdShims
 
     # Ask about ccx installation
     Write-Host ""
@@ -912,6 +948,7 @@ function Install-ClaudeGlm {
     $ccxInstalled = $false
     if ($installCcxChoice -ne "n" -and $installCcxChoice -ne "N") {
         Install-Ccx
+        New-CmdShim -Name "ccx" -TargetScript (Join-Path $UserBinDir "ccx.ps1")
         Write-Host ""
         Write-Host "OK: ccx installed! Run 'ccx --setup' to configure API keys." -ForegroundColor Green
         $ccxInstalled = $true
