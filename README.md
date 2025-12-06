@@ -18,37 +18,6 @@ Switch freely between multiple AI providers: GLM, OpenAI, Gemini, OpenRouter, an
 **🔀 In-session switching**: With ccx, switch models without restarting
 **🎯 Perfect for**: Development, testing, or when you want model flexibility
 
-## Quick Start
-
-### macOS / Linux
-
-```bash
-# One-line install
-bash <(curl -fsSL https://raw.githubusercontent.com/windysky/claude-glm-wrapper/main/install.sh)
-source ~/.zshrc  # or ~/.bashrc
-```
-
-### Windows (PowerShell only)
-
-> ⚠️ **Important**: On Windows, always use PowerShell with `install.ps1`. Do NOT use `bash install.sh` in Git Bash/WSL — it creates files in locations Windows cannot access.
-
-```powershell
-# One-line install (run in PowerShell, not Git Bash)
-iwr -useb https://raw.githubusercontent.com/windysky/claude-glm-wrapper/main/install.ps1 | iex
-. $PROFILE
-```
-
-### Start Using GLM Models
-
-```bash
-ccg46            # Claude Code with GLM-4.6 (latest)
-ccg45            # Claude Code with GLM-4.5
-ccf              # Claude Code with GLM-4.5-Air (faster)
-ccd              # Regular Claude Code (default)
-```
-
-That's it!
-
 ## Features
 
 - 🚀 **Easy switching** between GLM and Claude models
@@ -114,6 +83,15 @@ Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 - Optionally installs ccx multi-provider proxy
 
 ## Usage
+
+### Start Using GLM Models
+
+```bash
+ccg46            # Claude Code with GLM-4.6 (latest)
+ccg45            # Claude Code with GLM-4.5
+ccf              # Claude Code with GLM-4.5-Air (faster)
+ccd              # Regular Claude Code (default)
+```
 
 ### Available Commands & Aliases
 
