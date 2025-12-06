@@ -51,8 +51,6 @@ source ~/.zshrc
 
 ### Windows (PowerShell)
 
-> ⚠️ **Do NOT use Git Bash or WSL** with `install.sh` on Windows. It creates files in virtual Unix paths that Windows cannot access. Always use PowerShell.
-
 ```powershell
 iwr -useb https://raw.githubusercontent.com/windysky/claude-glm-wrapper/main/install.ps1 | iex
 . $PROFILE
@@ -85,10 +83,11 @@ Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 ### Start Using GLM Models
 
 ```bash
+claude           # Regular Claude Code   
 ccg46            # Claude Code with GLM-4.6 (latest)
 ccg45            # Claude Code with GLM-4.5
 ccf              # Claude Code with GLM-4.5-Air (faster)
-ccd              # Regular Claude Code (default)
+ccx              # Multi-provider proxy
 ```
 
 ### Available Commands & Aliases
@@ -97,7 +96,7 @@ The installer creates these commands and aliases:
 
 | Alias | Full Command | What It Does | When to Use |
 |-------|--------------|--------------|-------------|
-| `ccd` | `claude` | Regular Claude Code | Default - your normal Claude setup |
+| `claude` | `claude` | Regular Claude Code | Your normal Claude setup |
 | `ccg46` | `claude-glm` | GLM-4.6 (latest) | Best quality GLM model |
 | `ccg45` | `claude-glm-4.5` | GLM-4.5 | Previous version of GLM |
 | `ccf` | `claude-glm-fast` | GLM-4.5-Air (fast) | Quicker responses, lower cost |
@@ -181,7 +180,7 @@ This fork includes the following modifications:
 
 - **Bug Fix**: ccx proxy now properly installs npm dependencies (`fastify`, `dotenv`, `eventsource-parser`, `tsx`)
 - **Security Fix**: Fixed command injection vulnerability in error reporting
-- **Alias Renaming**: `cc` → `ccd`, `ccg` → `ccg46` for clarity
+- **Alias Renaming**: `ccg` → `ccg46` for clarity
 
 ---
 
