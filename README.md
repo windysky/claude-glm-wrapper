@@ -8,20 +8,20 @@
 
 Use [Z.AI's GLM models](https://z.ai) with [Claude Code](https://www.anthropic.com/claude-code) — **without losing your existing Claude setup!**
 
-Switch freely between multiple AI providers: GLM, OpenAI, Gemini, OpenRouter, and Anthropic Claude.
+Switch between GLM and Anthropic Claude models without losing your existing setup.
 
 ## Why This Wrapper?
 
 **💰 Cost-effective**: Access to multiple providers with competitive pricing
 **🔄 Risk-free**: Your existing Claude Code setup remains completely untouched
-**⚡ Multiple options**: Two modes - dedicated wrappers or multi-provider proxy
-**🔀 In-session switching**: With ccx, switch models without restarting
+**⚡ Multiple options**: Dedicated wrappers for different models
+<!-- **🔀 In-session switching**: With ccx, switch models without restarting -->
 **🎯 Perfect for**: Development, testing, or when you want model flexibility
 
 ## Features
 
 - 🚀 **Easy switching** between GLM and Claude models
-- ⚡ **Multiple GLM models**: GLM-4.6 (latest), GLM-4.5, and GLM-4.5-Air (fast)
+- ⚡ **Multiple GLM models**: GLM-4.7 (latest), GLM-4.6, GLM-4.5, and GLM-4.5-Air (fast)
 - 🔒 **No sudo/admin required**: Installs to user's home directory
 - 🖥️ **Cross-platform**: Works on Windows, macOS, and Linux
 - 📁 **Isolated configs**: Each model uses its own config directory — no conflicts!
@@ -31,7 +31,7 @@ Switch freely between multiple AI providers: GLM, OpenAI, Gemini, OpenRouter, an
 
 1. **Claude Code**: Install from [anthropic.com/claude-code](https://www.anthropic.com/claude-code)
 2. **Z.AI API Key**: Get your free key from [z.ai/manage-apikey/apikey-list](https://z.ai/manage-apikey/apikey-list)
-3. **Node.js** (v18+): Required for ccx multi-provider proxy - [nodejs.org](https://nodejs.org/)
+<!-- 3. **Node.js** (v18+): Required for ccx multi-provider proxy - [nodejs.org](https://nodejs.org/) -->
 
 ## Installation
 
@@ -68,7 +68,7 @@ cd claude-glm-wrapper
 Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 ```
 
-**Anaconda/cmd:** Run the PowerShell installer once (as above). It now creates `.cmd` shims in `AppData\Local\Microsoft\WindowsApps`, so `ccg46`, `ccg45`, `ccf`, and `ccx` work in `cmd.exe` and Anaconda prompts.
+**Anaconda/cmd:** Run the PowerShell installer once (as above). It now creates `.cmd` shims in `AppData\Local\Microsoft\WindowsApps`, so `ccg47`, `ccg46`, `ccg45`, and `ccf` work in `cmd.exe` and Anaconda prompts.
 
 ### What the Installer Does
 
@@ -76,7 +76,7 @@ Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 - Asks for your Z.AI API key
 - Creates wrapper scripts in `~/.local/bin/`
 - Adds convenient aliases to your shell profile
-- Optionally installs ccx multi-provider proxy
+<!-- - Optionally installs ccx multi-provider proxy -->
 
 ## Usage
 
@@ -84,10 +84,11 @@ Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 
 ```bash
 claude           # Regular Claude Code   
-ccg46            # Claude Code with GLM-4.6 (latest)
+ccg47            # Claude Code with GLM-4.7 (latest)
+ccg46            # Claude Code with GLM-4.6
 ccg45            # Claude Code with GLM-4.5
 ccf              # Claude Code with GLM-4.5-Air (faster)
-ccx              # Multi-provider proxy
+# ccx            # Multi-provider proxy (disabled for this release)
 ```
 
 ### Available Commands & Aliases
@@ -97,34 +98,43 @@ The installer creates these commands and aliases:
 | Alias | Full Command | What It Does | When to Use |
 |-------|--------------|--------------|-------------|
 | `claude` | `claude` | Regular Claude Code | Your normal Claude setup |
-| `ccg46` | `claude-glm` | GLM-4.6 (latest) | Best quality GLM model |
+| `ccg47` | `claude-glm` | GLM-4.7 (latest) | Best quality GLM model |
+| `ccg46` | `claude-glm-4.6` | GLM-4.6 | Previous version of GLM |
 | `ccg45` | `claude-glm-4.5` | GLM-4.5 | Previous version of GLM |
 | `ccf` | `claude-glm-fast` | GLM-4.5-Air (fast) | Quicker responses, lower cost |
-| `ccx` | `ccx` | Multi-provider proxy | Switch between providers in-session |
+<!-- | `ccx` | `ccx` | Multi-provider proxy | Switch between providers in-session | -->
 
 **💡 Tip**: Use the short aliases! They're faster to type and easier to remember.
 
+<!--
 **🆕 New: ccx Multi-Provider Proxy**
 
 The `ccx` command starts a local proxy that lets you switch between multiple AI providers in a single session:
 - **OpenAI**: GPT-4o, GPT-4o-mini, and more
 - **OpenRouter**: Access to hundreds of models
 - **Google Gemini**: Gemini 1.5 Pro and Flash
-- **Z.AI GLM**: GLM-4.6, GLM-4.5, GLM-4.5-Air
+- **Z.AI GLM**: GLM-4.7, GLM-4.6, GLM-4.5, GLM-4.5-Air
 - **Anthropic**: Claude 3.5 Sonnet, etc.
 
 Switch models mid-session using `/model <provider>:<model-name>`. Perfect for comparing responses or using the right model for each task!
+-->
 
 ### How It Works
 
 Each command starts a **separate Claude Code session** with different configurations:
-- `ccg46`, `ccg45`, and `ccf` use Z.AI's API with your Z.AI key
+- `ccg47`, `ccg46`, `ccg45`, and `ccf` use Z.AI's API with your Z.AI key
 - `ccd` uses Anthropic's API with your Anthropic key (default Claude setup)
 - Your configurations **never conflict** — they're stored in separate directories
 
 ### Basic Examples
 
 **Start a coding session with the latest GLM:**
+```bash
+ccg47
+# Opens Claude Code using GLM-4.7
+```
+
+**Use GLM-4.6:**
 ```bash
 ccg46
 # Opens Claude Code using GLM-4.6
@@ -150,8 +160,8 @@ ccd
 
 **Pass arguments like normal:**
 ```bash
-ccg46 --help
-ccg46 "refactor this function"
+ccg47 --help
+ccg47 "refactor this function"
 ccf "quick question about Python"
 ```
 
@@ -166,7 +176,7 @@ For detailed documentation on workflows, configuration, troubleshooting, and mor
 | Topic | Link |
 |-------|------|
 | Common Workflows | [Workflows](https://github.com/JoeInnsp23/claude-glm-wrapper#common-workflows) |
-| Using ccx (Multi-Provider Proxy) | [ccx Guide](https://github.com/JoeInnsp23/claude-glm-wrapper#using-ccx-multi-provider-proxy) |
+<!-- | Using ccx (Multi-Provider Proxy) | [ccx Guide](https://github.com/JoeInnsp23/claude-glm-wrapper#using-ccx-multi-provider-proxy) | -->
 | Configuration Details | [Configuration](https://github.com/JoeInnsp23/claude-glm-wrapper#configuration-details) |
 | Troubleshooting | [Troubleshooting](https://github.com/JoeInnsp23/claude-glm-wrapper#troubleshooting) |
 | Uninstallation | [Uninstall](https://github.com/JoeInnsp23/claude-glm-wrapper#uninstallation) |
@@ -178,7 +188,7 @@ For detailed documentation on workflows, configuration, troubleshooting, and mor
 
 This fork includes the following modifications:
 
-- **Bug Fix**: ccx proxy now properly installs npm dependencies (`fastify`, `dotenv`, `eventsource-parser`, `tsx`)
+<!-- - **Bug Fix**: ccx proxy now properly installs npm dependencies (`fastify`, `dotenv`, `eventsource-parser`, `tsx`) -->
 - **Security Fix**: Fixed command injection vulnerability in error reporting
 - **Alias Renaming**: `ccg` → `ccg46` for clarity
 
