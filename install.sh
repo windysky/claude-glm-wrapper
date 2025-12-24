@@ -330,6 +330,18 @@ setup_user_bin() {
         echo "⚠️  IMPORTANT: You will need to run this command after installation:"
         echo "   source $rc_file"
         echo ""
+
+        # Update PATH for this installer session too
+        export PATH="$PATH:$USER_BIN_DIR"
+    fi
+}
+
+verify_user_bin_path() {
+    if [[ ":$PATH:" != *":$USER_BIN_DIR:"* ]]; then
+        local rc_file=$(detect_shell_rc)
+        echo "⚠️  $USER_BIN_DIR is not in PATH for this session."
+        echo "   Run: source $rc_file"
+        echo ""
     fi
 }
 
@@ -874,6 +886,7 @@ main() {
     
     # Setup user bin directory
     setup_user_bin
+    verify_user_bin_path
 
     # Clean up old installations from different locations
     cleanup_old_wrappers
@@ -932,7 +945,6 @@ main() {
     create_claude_glm_fast_wrapper
     create_shell_aliases
 
-    : << 'CCX_DISABLED'
     # Ask about ccx installation
     echo ""
     echo "📦 Multi-Provider Proxy (ccx)"
@@ -949,9 +961,8 @@ main() {
     if [ "$install_ccx_choice" != "n" ] && [ "$install_ccx_choice" != "N" ]; then
         install_ccx
         echo ""
-        echo "✅ ccx installed! Run 'ccx --setup' to configure API keys."
+        echo "✅ ccx installed! Run '~/.local/bin/ccx --setup' to configure API keys."
     fi
-CCX_DISABLED
 
     # Final instructions
     local rc_file=$(detect_shell_rc)
@@ -974,6 +985,9 @@ CCX_DISABLED
     echo "   claude-glm-4.6  - GLM-4.6"
     echo "   claude-glm-4.5  - GLM-4.5"
     echo "   claude-glm-fast - GLM-4.5-Air (fast)"
+    if [ "$install_ccx_choice" != "n" ] && [ "$install_ccx_choice" != "N" ]; then
+        echo "   ccx             - Multi-provider proxy (switch models in-session)"
+    fi
     echo ""
     echo "Aliases:"
     echo "   ccd   - claude (regular Claude / default)"
@@ -981,6 +995,9 @@ CCX_DISABLED
     echo "   ccg46 - claude-glm-4.6 (GLM-4.6)"
     echo "   ccg45 - claude-glm-4.5 (GLM-4.5)"
     echo "   ccf   - claude-glm-fast"
+    if [ "$install_ccx_choice" != "n" ] && [ "$install_ccx_choice" != "N" ]; then
+        echo "   ccx   - Multi-provider proxy"
+    fi
     echo ""
     
     if [ "$ZAI_API_KEY" = "YOUR_ZAI_API_KEY_HERE" ]; then

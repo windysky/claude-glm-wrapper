@@ -68,8 +68,26 @@ export ANTHROPIC_AUTH_TOKEN="${ANTHROPIC_AUTH_TOKEN:-local-proxy-token}"
 echo "[ccx] Starting Claude Code with multi-provider proxy..."
 echo "[ccx] Proxy will listen on: ${ANTHROPIC_BASE_URL}"
 
+# Ensure dependencies are installed
+if [ ! -x "${ROOT_DIR}/node_modules/.bin/tsx" ]; then
+    echo "[ccx] Installing proxy dependencies..."
+    if [ -f "${ROOT_DIR}/package.json" ]; then
+        if ! command -v npm >/dev/null 2>&1; then
+            echo "❌ npm not found. Install Node.js to use ccx."
+            exit 1
+        fi
+        (cd "$ROOT_DIR" && npm install --silent 2>/dev/null) || {
+            echo "❌ Failed to install dependencies. Run: cd $ROOT_DIR && npm install"
+            exit 1
+        }
+    else
+        echo "❌ Missing package.json in $ROOT_DIR. Please reinstall."
+        exit 1
+    fi
+fi
+
 # Start proxy in background
-npx -y tsx "${ROOT_DIR}/adapters/anthropic-gateway.ts" > /tmp/claude-proxy.log 2>&1 &
+"${ROOT_DIR}/node_modules/.bin/tsx" "${ROOT_DIR}/adapters/anthropic-gateway.ts" > /tmp/claude-proxy.log 2>&1 &
 PROXY_PID=$!
 
 cleanup() {

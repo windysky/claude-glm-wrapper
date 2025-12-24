@@ -83,10 +83,35 @@ Write-Host "[ccx] Proxy will listen on: $($env:ANTHROPIC_BASE_URL)"
 
 # Start proxy
 $gatewayPath = Join-Path $ROOT_DIR "adapters\anthropic-gateway.ts"
+$tsxPath = Join-Path $ROOT_DIR "node_modules\.bin\tsx.cmd"
 $logPath = Join-Path $env:TEMP "claude-proxy.log"
 $errorLogPath = Join-Path $env:TEMP "claude-proxy-error.log"
 
-$proc = Start-Process "npx" -ArgumentList "-y","tsx",$gatewayPath -PassThru -WindowStyle Hidden -RedirectStandardOutput $logPath -RedirectStandardError $errorLogPath
+# Ensure dependencies are installed
+if (-not (Test-Path $tsxPath)) {
+    Write-Host "[ccx] Installing proxy dependencies..."
+    $packageJsonPath = Join-Path $ROOT_DIR "package.json"
+    if (Test-Path $packageJsonPath) {
+        if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
+            Write-Host "ERROR: npm not found. Install Node.js to use ccx." -ForegroundColor Red
+            exit 1
+        }
+        Push-Location $ROOT_DIR
+        try {
+            $null = npm install --silent 2>&1
+        } catch {
+            Write-Host "ERROR: Failed to install dependencies. Run: cd $ROOT_DIR; npm install" -ForegroundColor Red
+            Pop-Location
+            exit 1
+        }
+        Pop-Location
+    } else {
+        Write-Host "ERROR: Missing package.json in $ROOT_DIR. Please reinstall." -ForegroundColor Red
+        exit 1
+    }
+}
+
+$proc = Start-Process $tsxPath -ArgumentList $gatewayPath -PassThru -WindowStyle Hidden -RedirectStandardOutput $logPath -RedirectStandardError $errorLogPath
 
 # Wait for health check
 Write-Host "[ccx] Waiting for proxy to start..."

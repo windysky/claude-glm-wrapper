@@ -166,6 +166,13 @@ function Setup-UserBin {
     }
 }
 
+function Test-UserBinInPath {
+    if ($env:PATH -notlike "*$UserBinDir*") {
+        Write-Host "WARNING: $UserBinDir is not in PATH for this session."
+        Write-Host "   Restart PowerShell or run: `$env:PATH += ';$UserBinDir'"
+        Write-Host ""
+    }
+}
 # Add aliases to PowerShell profile
 function Add-PowerShellAliases {
     # Ensure profile exists
@@ -920,6 +927,7 @@ function Install-ClaudeGlm {
     # Setup user bin directory
     Write-DebugLog "Setting up user bin directory..."
     Setup-UserBin
+    Test-UserBinInPath
 
     # Clean up old installations from different locations
     Write-DebugLog "Checking for old installations..."
@@ -984,7 +992,6 @@ function Install-ClaudeGlm {
     Add-PowerShellAliases
     Add-CmdShims
 
-    <#
     # Ask about ccx installation
     Write-Host ""
     Write-Host "MULTI-PROVIDER: Multi-Provider Proxy (ccx)"
@@ -1003,10 +1010,9 @@ function Install-ClaudeGlm {
         Install-Ccx
         New-CmdShim -Name "ccx" -TargetScript (Join-Path $UserBinDir "ccx.ps1")
         Write-Host ""
-        Write-Host "OK: ccx installed! Run 'ccx --setup' to configure API keys." -ForegroundColor Green
+        Write-Host "OK: ccx installed! Run '$UserBinDir\ccx.ps1 --setup' to configure API keys." -ForegroundColor Green
         $ccxInstalled = $true
     }
-    #>
 
     # Final instructions
     Write-Host ""
@@ -1027,6 +1033,9 @@ function Install-ClaudeGlm {
     Write-Host "   claude-glm-4.6  - GLM-4.6"
     Write-Host "   claude-glm-4.5  - GLM-4.5"
     Write-Host "   claude-glm-fast - GLM-4.5-Air (fast)"
+    if ($ccxInstalled) {
+        Write-Host "   ccx             - Multi-provider proxy (switch models in-session)"
+    }
     Write-Host ""
     Write-Host "Aliases:"
     Write-Host "   ccd   - claude (regular Claude / default)"
@@ -1034,6 +1043,9 @@ function Install-ClaudeGlm {
     Write-Host "   ccg46 - claude-glm-4.6 (GLM-4.6)"
     Write-Host "   ccg45 - claude-glm-4.5 (GLM-4.5)"
     Write-Host "   ccf   - claude-glm-fast"
+    if ($ccxInstalled) {
+        Write-Host "   ccx   - Multi-provider proxy"
+    }
     Write-Host ""
 
     if ($ZaiApiKey -eq "YOUR_ZAI_API_KEY_HERE") {
