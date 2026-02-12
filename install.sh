@@ -42,9 +42,8 @@ fi
 
 # Configuration
 USER_BIN_DIR="$HOME/.local/bin"
-GLM_CONFIG_DIR="$HOME/.claude-glm"
-GLM_46_CONFIG_DIR="$HOME/.claude-glm-46"
-GLM_45_CONFIG_DIR="$HOME/.claude-glm-45"
+GLM_47_CONFIG_DIR="$HOME/.claude-glm-47"
+GLM_5_CONFIG_DIR="$HOME/.claude-glm-5"
 GLM_FAST_CONFIG_DIR="$HOME/.claude-glm-fast"
 ZAI_API_KEY="YOUR_ZAI_API_KEY_HERE"
 
@@ -79,7 +78,7 @@ report_error() {
     fi
     echo ""
 
-    # Ask if user wants to report the error
+    # Ask if user wants to report error
     echo "Would you like to report this error to GitHub?"
     echo "This will open your browser with a pre-filled issue report."
     read -p "Report error? (y/n): " report_choice
@@ -181,7 +180,7 @@ $sanitized_error
 
     # Add instructions and wait for user
     if [ "$browser_opened" = true ]; then
-        echo "Please review the error report in your browser and submit the issue."
+        echo "Please review error report in your browser and submit the issue."
         echo "After submitting (or if you choose not to), return here."
     fi
 
@@ -273,18 +272,55 @@ cleanup_old_wrappers() {
         echo "✅ Cleanup complete!"
     else
         echo ""
-        echo "⚠️  Skipping cleanup. Old wrappers may interfere with the new installation."
+        echo "⚠️  Skipping cleanup. Old wrappers may interfere with new installation."
         echo "   You may want to manually remove them later."
     fi
 
     echo ""
 }
 
+detect_existing_zai_api_key() {
+    local candidate=""
+    local wrapper_files=(
+        "$USER_BIN_DIR/claude-glm-5"
+        "$USER_BIN_DIR/claude-glm-4.7"
+        "$USER_BIN_DIR/claude-glm-fast"
+    )
+
+    for f in "${wrapper_files[@]}"; do
+        if [ -f "$f" ]; then
+            candidate=$(sed -n 's/^export ANTHROPIC_AUTH_TOKEN="\([^"]*\)".*/\1/p' "$f" | head -n 1)
+            if [ -n "$candidate" ] && [ "$candidate" != "YOUR_ZAI_API_KEY_HERE" ]; then
+                printf '%s' "$candidate"
+                return 0
+            fi
+        fi
+    done
+
+    local settings_files=(
+        "$GLM_5_CONFIG_DIR/settings.json"
+        "$GLM_47_CONFIG_DIR/settings.json"
+        "$GLM_FAST_CONFIG_DIR/settings.json"
+    )
+
+    for f in "${settings_files[@]}"; do
+        if [ -f "$f" ]; then
+            candidate=$(sed -n 's/.*"ANTHROPIC_AUTH_TOKEN"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$f" | head -n 1)
+            if [ -n "$candidate" ] && [ "$candidate" != "YOUR_ZAI_API_KEY_HERE" ]; then
+                printf '%s' "$candidate"
+                return 0
+            fi
+        fi
+    done
+
+    return 1
+}
+
 # Detect shell and rc file
 detect_shell_rc() {
     local shell_name=$(basename "$SHELL")
     local rc_file=""
-    
+
     case "$shell_name" in
         bash)
             rc_file="$HOME/.bashrc"
@@ -304,7 +340,7 @@ detect_shell_rc() {
             rc_file="$HOME/.profile"
             ;;
     esac
-    
+
     echo "$rc_file"
 }
 
@@ -312,20 +348,20 @@ detect_shell_rc() {
 setup_user_bin() {
     # Create user bin directory
     mkdir -p "$USER_BIN_DIR"
-    
+
     local rc_file=$(detect_shell_rc)
-    
+
     # Check if PATH includes user bin
     if [[ ":$PATH:" != *":$USER_BIN_DIR:"* ]]; then
         echo "📝 Adding $USER_BIN_DIR to PATH in $rc_file"
-        
+
         # Add to PATH based on shell type
         if [[ "$rc_file" == *".cshrc" ]]; then
             echo "setenv PATH \$PATH:$USER_BIN_DIR" >> "$rc_file"
         else
             echo "export PATH=\"\$PATH:$USER_BIN_DIR\"" >> "$rc_file"
         fi
-        
+
         echo ""
         echo "⚠️  IMPORTANT: You will need to run this command after installation:"
         echo "   source $rc_file"
@@ -345,22 +381,22 @@ verify_user_bin_path() {
     fi
 }
 
-# Create the standard GLM-4.7 wrapper
-create_claude_glm_wrapper() {
-    local wrapper_path="$USER_BIN_DIR/claude-glm"
-    
+# Create GLM-4.7 wrapper
+create_claude_glm_47_wrapper() {
+    local wrapper_path="$USER_BIN_DIR/claude-glm-4.7"
+
     cat > "$wrapper_path" << EOF
 #!/bin/bash
-# Claude-GLM - Claude Code with Z.AI GLM-4.7 (Standard Model)
+# Claude-GLM-4.7 - Claude Code with Z.AI GLM-4.7 (Standard Model)
 
 # Set Z.AI environment variables
 export ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic"
 export ANTHROPIC_AUTH_TOKEN="$ZAI_API_KEY"
 export ANTHROPIC_MODEL="glm-4.7"
-export ANTHROPIC_SMALL_FAST_MODEL="glm-4.5-air"
+export ANTHROPIC_SMALL_FAST_MODEL="glm-4.7-flashx"
 
 # Use custom config directory to avoid conflicts
-export CLAUDE_HOME="\$HOME/.claude-glm"
+export CLAUDE_HOME="\$HOME/.claude-glm-47"
 
 # Create config directory if it doesn't exist
 mkdir -p "\$CLAUDE_HOME"
@@ -372,7 +408,7 @@ cat > "\$CLAUDE_HOME/settings.json" << SETTINGS
     "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
     "ANTHROPIC_AUTH_TOKEN": "$ZAI_API_KEY",
     "ANTHROPIC_MODEL": "glm-4.7",
-    "ANTHROPIC_SMALL_FAST_MODEL": "glm-4.5-air"
+    "ANTHROPIC_SMALL_FAST_MODEL": "glm-4.7-flashx"
   }
 }
 SETTINGS
@@ -389,30 +425,30 @@ if ! command -v claude &> /dev/null; then
     exit 1
 fi
 
-# Run the actual claude command
+# Run actual claude command
 claude "\$@"
 EOF
-    
+
     chmod +x "$wrapper_path"
-    echo "✅ Installed claude-glm at $wrapper_path"
+    echo "✅ Installed claude-glm-4.7 at $wrapper_path"
 }
 
-# Create the GLM-4.6 wrapper
-create_claude_glm_46_wrapper() {
-    local wrapper_path="$USER_BIN_DIR/claude-glm-4.6"
+# Create GLM-5 wrapper
+create_claude_glm_5_wrapper() {
+    local wrapper_path="$USER_BIN_DIR/claude-glm-5"
 
     cat > "$wrapper_path" << EOF
 #!/bin/bash
-# Claude-GLM-4.6 - Claude Code with Z.AI GLM-4.6
+# Claude-GLM-5 - Claude Code with Z.AI GLM-5 (Latest Model)
 
 # Set Z.AI environment variables
 export ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic"
 export ANTHROPIC_AUTH_TOKEN="$ZAI_API_KEY"
-export ANTHROPIC_MODEL="glm-4.6"
-export ANTHROPIC_SMALL_FAST_MODEL="glm-4.5-air"
+export ANTHROPIC_MODEL="glm-5"
+export ANTHROPIC_SMALL_FAST_MODEL="glm-4.7-flashx"
 
 # Use custom config directory to avoid conflicts
-export CLAUDE_HOME="\$HOME/.claude-glm-46"
+export CLAUDE_HOME="\$HOME/.claude-glm-5"
 
 # Create config directory if it doesn't exist
 mkdir -p "\$CLAUDE_HOME"
@@ -423,14 +459,14 @@ cat > "\$CLAUDE_HOME/settings.json" << SETTINGS
   "env": {
     "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
     "ANTHROPIC_AUTH_TOKEN": "$ZAI_API_KEY",
-    "ANTHROPIC_MODEL": "glm-4.6",
-    "ANTHROPIC_SMALL_FAST_MODEL": "glm-4.5-air"
+    "ANTHROPIC_MODEL": "glm-5",
+    "ANTHROPIC_SMALL_FAST_MODEL": "glm-4.7-flashx"
   }
 }
 SETTINGS
 
 # Launch Claude Code with custom config
-echo "🚀 Starting Claude Code with GLM-4.6..."
+echo "🚀 Starting Claude Code with GLM-5 (Latest Model)..."
 echo "📁 Config directory: \$CLAUDE_HOME"
 echo ""
 
@@ -441,79 +477,27 @@ if ! command -v claude &> /dev/null; then
     exit 1
 fi
 
-# Run the actual claude command
+# Run actual claude command
 claude "\$@"
 EOF
 
     chmod +x "$wrapper_path"
-    echo "✅ Installed claude-glm-4.6 at $wrapper_path"
+    echo "✅ Installed claude-glm-5 at $wrapper_path"
 }
 
-# Create the GLM-4.5 wrapper
-create_claude_glm_45_wrapper() {
-    local wrapper_path="$USER_BIN_DIR/claude-glm-4.5"
-
-    cat > "$wrapper_path" << EOF
-#!/bin/bash
-# Claude-GLM-4.5 - Claude Code with Z.AI GLM-4.5
-
-# Set Z.AI environment variables
-export ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic"
-export ANTHROPIC_AUTH_TOKEN="$ZAI_API_KEY"
-export ANTHROPIC_MODEL="glm-4.5"
-export ANTHROPIC_SMALL_FAST_MODEL="glm-4.5-air"
-
-# Use custom config directory to avoid conflicts
-export CLAUDE_HOME="\$HOME/.claude-glm-45"
-
-# Create config directory if it doesn't exist
-mkdir -p "\$CLAUDE_HOME"
-
-# Create/update settings file with GLM configuration
-cat > "\$CLAUDE_HOME/settings.json" << SETTINGS
-{
-  "env": {
-    "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
-    "ANTHROPIC_AUTH_TOKEN": "$ZAI_API_KEY",
-    "ANTHROPIC_MODEL": "glm-4.5",
-    "ANTHROPIC_SMALL_FAST_MODEL": "glm-4.5-air"
-  }
-}
-SETTINGS
-
-# Launch Claude Code with custom config
-echo "🚀 Starting Claude Code with GLM-4.5..."
-echo "📁 Config directory: \$CLAUDE_HOME"
-echo ""
-
-# Check if claude exists
-if ! command -v claude &> /dev/null; then
-    echo "❌ Error: 'claude' command not found!"
-    echo "Please ensure Claude Code is installed and in your PATH"
-    exit 1
-fi
-
-# Run the actual claude command
-claude "\$@"
-EOF
-
-    chmod +x "$wrapper_path"
-    echo "✅ Installed claude-glm-4.5 at $wrapper_path"
-}
-
-# Create the fast GLM-4.5-Air wrapper
+# Create fast GLM-4.7-flashx wrapper
 create_claude_glm_fast_wrapper() {
     local wrapper_path="$USER_BIN_DIR/claude-glm-fast"
-    
+
     cat > "$wrapper_path" << EOF
 #!/bin/bash
-# Claude-GLM-Fast - Claude Code with Z.AI GLM-4.5-Air (Fast Model)
+# Claude-GLM-Fast - Claude Code with Z.AI GLM-4.7-flashx (Fast Model)
 
 # Set Z.AI environment variables
 export ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic"
 export ANTHROPIC_AUTH_TOKEN="$ZAI_API_KEY"
-export ANTHROPIC_MODEL="glm-4.5-air"
-export ANTHROPIC_SMALL_FAST_MODEL="glm-4.5-air"
+export ANTHROPIC_MODEL="glm-4.7-flashx"
+export ANTHROPIC_SMALL_FAST_MODEL="glm-4.7-flashx"
 
 # Use custom config directory to avoid conflicts
 export CLAUDE_HOME="\$HOME/.claude-glm-fast"
@@ -527,14 +511,14 @@ cat > "\$CLAUDE_HOME/settings.json" << SETTINGS
   "env": {
     "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
     "ANTHROPIC_AUTH_TOKEN": "$ZAI_API_KEY",
-    "ANTHROPIC_MODEL": "glm-4.5-air",
-    "ANTHROPIC_SMALL_FAST_MODEL": "glm-4.5-air"
+    "ANTHROPIC_MODEL": "glm-4.7-flashx",
+    "ANTHROPIC_SMALL_FAST_MODEL": "glm-4.7-flashx"
   }
 }
 SETTINGS
 
 # Launch Claude Code with custom config
-echo "⚡ Starting Claude Code with GLM-4.5-Air (Fast Model)..."
+echo "⚡ Starting Claude Code with GLM-4.7-flashx (Fast Model)..."
 echo "📁 Config directory: \$CLAUDE_HOME"
 echo ""
 
@@ -545,18 +529,18 @@ if ! command -v claude &> /dev/null; then
     exit 1
 fi
 
-# Run the actual claude command
+# Run actual claude command
 claude "\$@"
 EOF
-    
+
     chmod +x "$wrapper_path"
     echo "✅ Installed claude-glm-fast at $wrapper_path"
 }
 
-# Create the Anthropic wrapper
+# Create Anthropic wrapper
 create_claude_anthropic_wrapper() {
     local wrapper_path="$USER_BIN_DIR/claude-anthropic"
-    
+
     cat > "$wrapper_path" << 'EOF'
 #!/bin/bash
 # Claude-Anthropic - Claude Code with original Anthropic models
@@ -580,276 +564,109 @@ if ! command -v claude &> /dev/null; then
     exit 1
 fi
 
-# Run the actual claude command
+# Run actual claude command
 claude "$@"
 EOF
-    
+
     chmod +x "$wrapper_path"
     echo "✅ Installed claude-anthropic at $wrapper_path"
-}
-
-# Install ccx multi-provider proxy
-install_ccx() {
-    echo "🔧 Installing ccx (multi-provider proxy)..."
-
-    local ccx_home="$HOME/.claude-proxy"
-    local wrapper_path="$USER_BIN_DIR/ccx"
-
-    # Create ccx home directory
-    mkdir -p "$ccx_home"
-
-    # Copy adapters directory from the npm package
-    local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-    if [ -d "$script_dir/adapters" ]; then
-        echo "  Copying adapters to $ccx_home/adapters..."
-        cp -r "$script_dir/adapters" "$ccx_home/"
-    else
-        echo "⚠️  Warning: adapters directory not found. Proxy may not work."
-    fi
-
-    # Copy tsconfig.json for TypeScript module resolution
-    if [ -f "$script_dir/tsconfig.json" ]; then
-        cp "$script_dir/tsconfig.json" "$ccx_home/"
-    fi
-
-    # Create package.json with required dependencies for the proxy
-    echo "  Creating package.json with dependencies..."
-    cat > "$ccx_home/package.json" << 'PKGJSON'
-{
-  "name": "claude-proxy",
-  "version": "1.0.0",
-  "private": true,
-  "type": "module",
-  "dependencies": {
-    "dotenv": "^16.4.5",
-    "eventsource-parser": "^1.1.2",
-    "fastify": "^4.28.1",
-    "tsx": "^4.15.6"
-  }
-}
-PKGJSON
-
-    # Install dependencies
-    echo "  Installing proxy dependencies (this may take a moment)..."
-    if command -v npm &> /dev/null; then
-        (cd "$ccx_home" && npm install --production --silent 2>/dev/null) || {
-            echo "⚠️  Warning: Failed to install dependencies. You may need to run:"
-            echo "     cd $ccx_home && npm install"
-        }
-        echo "  ✅ Dependencies installed"
-    else
-        echo "⚠️  Warning: npm not found. You need to install dependencies manually:"
-        echo "     cd $ccx_home && npm install"
-    fi
-
-    # Create ccx wrapper script
-    cat > "$wrapper_path" << 'CCXEOF'
-#!/usr/bin/env bash
-set -euo pipefail
-
-ROOT_DIR="$HOME/.claude-proxy"
-ENV_FILE="$ROOT_DIR/.env"
-PORT="${CLAUDE_PROXY_PORT:-17870}"
-
-# Ensure dependencies are installed
-if [ ! -d "$ROOT_DIR/node_modules" ]; then
-    echo "[ccx] Installing proxy dependencies..."
-    if [ -f "$ROOT_DIR/package.json" ]; then
-        (cd "$ROOT_DIR" && npm install --production --silent 2>/dev/null) || {
-            echo "❌ Failed to install dependencies. Run: cd $ROOT_DIR && npm install"
-            exit 1
-        }
-    else
-        echo "❌ Missing package.json in $ROOT_DIR. Please reinstall ccx."
-        exit 1
-    fi
-fi
-
-# Check if --setup flag is provided
-if [ "${1:-}" = "--setup" ]; then
-    echo "Setting up ~/.claude-proxy/.env..."
-    mkdir -p "$ROOT_DIR"
-
-    if [ -f "$ENV_FILE" ]; then
-        echo "Existing .env found. Edit it manually at: $ENV_FILE"
-        exit 0
-    fi
-
-    cat > "$ENV_FILE" << 'EOF'
-# Claude Proxy Configuration
-# Edit this file to add your API keys
-
-# OpenAI (optional)
-OPENAI_API_KEY=
-OPENAI_BASE_URL=https://api.openai.com/v1
-
-# OpenRouter (optional)
-OPENROUTER_API_KEY=
-OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
-OPENROUTER_REFERER=
-OPENROUTER_TITLE=Claude Code via ccx
-
-# Gemini (optional)
-GEMINI_API_KEY=
-GEMINI_BASE_URL=https://generativelanguage.googleapis.com/v1beta
-
-# Z.AI GLM (optional - for glm: routing)
-GLM_UPSTREAM_URL=https://api.z.ai/api/anthropic
-ZAI_API_KEY=
-
-# Anthropic (optional - for anthropic: routing)
-ANTHROPIC_UPSTREAM_URL=https://api.anthropic.com
-ANTHROPIC_API_KEY=
-ANTHROPIC_VERSION=2023-06-01
-
-# Proxy settings
-CLAUDE_PROXY_PORT=17870
-EOF
-
-    echo "✅ Created $ENV_FILE"
-    echo ""
-    echo "Edit it to add your API keys, then run: ccx"
-    echo ""
-    echo "Example:"
-    echo "  nano $ENV_FILE"
-    exit 0
-fi
-
-# Source the .env file if it exists
-if [ -f "$ENV_FILE" ]; then
-    set -a
-    source "$ENV_FILE"
-    set +a
-fi
-
-export ANTHROPIC_BASE_URL="http://127.0.0.1:${PORT}"
-export ANTHROPIC_AUTH_TOKEN="${ANTHROPIC_AUTH_TOKEN:-local-proxy-token}"
-
-echo "[ccx] Starting Claude Code with multi-provider proxy..."
-echo "[ccx] Proxy will listen on: ${ANTHROPIC_BASE_URL}"
-
-# Start proxy in background using locally installed tsx
-"${ROOT_DIR}/node_modules/.bin/tsx" "${ROOT_DIR}/adapters/anthropic-gateway.ts" > /tmp/claude-proxy.log 2>&1 &
-PROXY_PID=$!
-
-cleanup() {
-    echo ""
-    echo "[ccx] Shutting down proxy..."
-    kill ${PROXY_PID} 2>/dev/null || true
-}
-trap cleanup EXIT INT TERM
-
-# Wait for proxy to be ready (health check)
-echo "[ccx] Waiting for proxy to start..."
-for i in {1..30}; do
-    if curl -sf "http://127.0.0.1:${PORT}/healthz" >/dev/null 2>&1; then
-        echo "[ccx] Proxy ready!"
-        break
-    fi
-    if [ $i -eq 30 ]; then
-        echo "❌ Proxy failed to start. Check /tmp/claude-proxy.log"
-        cat /tmp/claude-proxy.log
-        exit 1
-    fi
-    sleep 0.5
-done
-
-echo ""
-echo "🎯 Available model prefixes:"
-echo "  openai:<model>      - OpenAI models (gpt-4o, gpt-4o-mini, etc.)"
-echo "  openrouter:<model>  - OpenRouter models"
-echo "  gemini:<model>      - Google Gemini models"
-echo "  glm:<model>         - Z.AI GLM models (glm-4.7, glm-4.6, etc.)"
-echo "  anthropic:<model>   - Anthropic Claude models"
-echo ""
-echo "💡 Switch models in-session with: /model <prefix>:<model-name>"
-echo ""
-
-# Hand off to Claude Code
-exec claude "$@"
-CCXEOF
-
-    chmod +x "$wrapper_path"
-    echo "✅ Installed ccx at $wrapper_path"
-
-    # Add ccx alias to shell config
-    add_ccx_alias
-}
-
-# Add ccx alias to shell configuration
-add_ccx_alias() {
-    local rc_file=$(detect_shell_rc)
-
-    if [ -z "$rc_file" ] || [ ! -f "$rc_file" ]; then
-        echo "⚠️  Could not detect shell rc file, skipping ccx alias"
-        return
-    fi
-
-    # Check if alias already exists
-    if grep -q "alias ccx=" "$rc_file" 2>/dev/null; then
-        return
-    fi
-
-    # Add ccx alias
-    if [[ "$rc_file" == *".cshrc" ]]; then
-        echo "alias ccx 'ccx'" >> "$rc_file"
-    else
-        echo "alias ccx='ccx'" >> "$rc_file"
-    fi
 }
 
 # Create shell aliases
 create_shell_aliases() {
     local rc_file=$(detect_shell_rc)
-    
-    if [ -z "$rc_file" ] || [ ! -f "$rc_file" ]; then
+
+    if [ -z "$rc_file" ]; then
         echo "⚠️  Could not detect shell rc file, skipping aliases"
         return
     fi
-    
-    # Remove old aliases if they exist
-    if grep -q "# Claude Code Model Switcher Aliases" "$rc_file" 2>/dev/null; then
-        # Use temp file for compatibility
-        grep -v "# Claude Code Model Switcher Aliases" "$rc_file" | \
-        grep -v "alias ccd=" | \
-        grep -v "alias ccg47=" | \
-        grep -v "alias ccg46=" | \
-        grep -v "alias ccg45=" | \
-        grep -v "alias ccf=" > "$rc_file.tmp"
-        mv "$rc_file.tmp" "$rc_file"
-    fi
-    
-    # Add aliases based on shell type
-    if [[ "$rc_file" == *".cshrc" ]]; then
-        cat >> "$rc_file" << 'EOF'
+
+    remove_aliases_from_rc() {
+        local target_rc="$1"
+
+        if [ -z "$target_rc" ] || [ ! -f "$target_rc" ]; then
+            return
+        fi
+
+        # Remove old aliases if they exist
+        if grep -q "# Claude Code Model Switcher Aliases" "$target_rc" 2>/dev/null; then
+            # Use temp file for compatibility
+            grep -v "# Claude Code Model Switcher Aliases" "$target_rc" | \
+            grep -v "alias ccd=" | \
+            grep -v "alias ccg47=" | \
+            grep -v "alias ccg46=" | \
+            grep -v "alias ccg45=" | \
+            grep -v "alias ccg5=" | \
+            grep -v "alias ccg47D=" | \
+            grep -v "alias ccg47Dd=" | \
+            grep -v "alias ccg5D=" | \
+            grep -v "alias ccg5Dd=" | \
+            grep -v "alias ccf=" | \
+            grep -v "alias ccx=" > "$target_rc.tmp"
+            mv "$target_rc.tmp" "$target_rc"
+        fi
+    }
+
+    add_aliases_to_rc() {
+        local target_rc="$1"
+        local shell_style="$2"
+
+        if [ -z "$target_rc" ]; then
+            return
+        fi
+
+        if [ ! -f "$target_rc" ]; then
+            touch "$target_rc" 2>/dev/null || return
+        fi
+
+        remove_aliases_from_rc "$target_rc"
+
+        if [ "$shell_style" = "csh" ]; then
+            cat >> "$target_rc" << 'EOF'
 
 # Claude Code Model Switcher Aliases
 alias ccd 'claude'
-alias ccg47 'claude-glm'
-alias ccg46 'claude-glm-4.6'
-alias ccg45 'claude-glm-4.5'
+alias ccg47 'claude-glm-4.7'
+alias ccg5 'claude-glm-5'
+alias ccg47D 'ccg47 --dangerously-skip-permissions'
+alias ccg47Dd 'ccg47 --dangerously-skip-permissions -d'
+alias ccg5D 'ccg5 --dangerously-skip-permissions'
+alias ccg5Dd 'ccg5 --dangerously-skip-permissions -d'
 alias ccf 'claude-glm-fast'
 EOF
-    else
-        cat >> "$rc_file" << 'EOF'
+        else
+            cat >> "$target_rc" << 'EOF'
 
 # Claude Code Model Switcher Aliases
 alias ccd='claude'
-alias ccg47='claude-glm'
-alias ccg46='claude-glm-4.6'
-alias ccg45='claude-glm-4.5'
+alias ccg47='claude-glm-4.7'
+alias ccg5='claude-glm-5'
+alias ccg47D='ccg47 --dangerously-skip-permissions'
+alias ccg47Dd='ccg47 --dangerously-skip-permissions -d'
+alias ccg5D='ccg5 --dangerously-skip-permissions'
+alias ccg5Dd='ccg5 --dangerously-skip-permissions -d'
 alias ccf='claude-glm-fast'
 EOF
+        fi
+    }
+
+    if [[ "$rc_file" == *".cshrc" ]]; then
+        add_aliases_to_rc "$rc_file" "csh"
+    else
+        add_aliases_to_rc "$rc_file" "bash"
     fi
-    
+
+    if [ "$HOME/.bashrc" != "$rc_file" ]; then
+        add_aliases_to_rc "$HOME/.bashrc" "bash"
+    fi
+
     echo "✅ Added aliases to $rc_file"
 }
 
 # Check Claude Code availability
 check_claude_installation() {
     echo "🔍 Checking Claude Code installation..."
-    
+
     if command -v claude &> /dev/null; then
         echo "✅ Claude Code found at: $(which claude)"
         return 0
@@ -880,10 +697,10 @@ main() {
     echo "  • Installs to: $USER_BIN_DIR"
     echo "  • Works on Unix/Linux servers"
     echo ""
-    
+
     # Check Claude Code
     check_claude_installation
-    
+
     # Setup user bin directory
     setup_user_bin
     verify_user_bin_path
@@ -891,29 +708,51 @@ main() {
     # Clean up old installations from different locations
     cleanup_old_wrappers
 
+    rm -f "$USER_BIN_DIR/ccx" 2>/dev/null || true
+
     # Check if already installed
-    if [ -f "$USER_BIN_DIR/claude-glm" ] || [ -f "$USER_BIN_DIR/claude-glm-fast" ]; then
+    if [ -f "$USER_BIN_DIR/claude-glm-5" ] || [ -f "$USER_BIN_DIR/claude-glm-4.7" ] || [ -f "$USER_BIN_DIR/claude-glm-fast" ]; then
         echo ""
         echo "✅ Existing installation detected!"
         echo "1) Update API key only"
-        echo "2) Reinstall everything"
-        echo "3) Cancel"
-        read -p "Choice (1-3): " update_choice
-        
+        echo "2) Reset wrappers/aliases using existing API key"
+        echo "3) Reinstall everything"
+        echo "4) Cancel"
+        read -p "Choice (1-4): " update_choice
+
         case "$update_choice" in
             1)
                 read -p "Enter your Z.AI API key: " input_key
                 if [ -n "$input_key" ]; then
                     ZAI_API_KEY="$input_key"
-                    create_claude_glm_wrapper
-                    create_claude_glm_46_wrapper
-                    create_claude_glm_45_wrapper
+                    create_claude_glm_47_wrapper
+                    create_claude_glm_5_wrapper
                     create_claude_glm_fast_wrapper
+                    create_shell_aliases
                     echo "✅ API key updated!"
                     exit 0
                 fi
                 ;;
             2)
+                local existing_key
+                existing_key=$(detect_existing_zai_api_key 2>/dev/null || true)
+                if [ -z "$existing_key" ]; then
+                    read -p "Enter your Z.AI API key: " input_key
+                    if [ -z "$input_key" ]; then
+                        exit 0
+                    fi
+                    existing_key="$input_key"
+                fi
+
+                ZAI_API_KEY="$existing_key"
+                create_claude_glm_47_wrapper
+                create_claude_glm_5_wrapper
+                create_claude_glm_fast_wrapper
+                create_shell_aliases
+                echo "✅ Reset complete!"
+                exit 0
+                ;;
+            3)
                 echo "Reinstalling..."
                 ;;
             *)
@@ -921,48 +760,27 @@ main() {
                 ;;
         esac
     fi
-    
+
     # Get API key
     echo ""
     echo "Enter your Z.AI API key (from https://z.ai/manage-apikey/apikey-list)"
     read -p "API Key: " input_key
-    
+
     if [ -n "$input_key" ]; then
         ZAI_API_KEY="$input_key"
         echo "✅ API key received (${#input_key} characters)"
     else
         echo "⚠️  No API key provided. Add it manually later to:"
-        echo "   $USER_BIN_DIR/claude-glm"
-        echo "   $USER_BIN_DIR/claude-glm-4.6"
-        echo "   $USER_BIN_DIR/claude-glm-4.5"
+        echo "   $USER_BIN_DIR/claude-glm-4.7"
+        echo "   $USER_BIN_DIR/claude-glm-5"
         echo "   $USER_BIN_DIR/claude-glm-fast"
     fi
-    
+
     # Create wrappers
-    create_claude_glm_wrapper
-    create_claude_glm_46_wrapper
-    create_claude_glm_45_wrapper
+    create_claude_glm_47_wrapper
+    create_claude_glm_5_wrapper
     create_claude_glm_fast_wrapper
     create_shell_aliases
-
-    # Ask about ccx installation
-    echo ""
-    echo "📦 Multi-Provider Proxy (ccx)"
-    echo "================================"
-    echo "ccx allows you to switch between multiple AI providers in a single session:"
-    echo "  • OpenAI (GPT-4, GPT-4o, etc.)"
-    echo "  • OpenRouter (access to many models)"
-    echo "  • Google Gemini"
-    echo "  • Z.AI GLM models"
-    echo "  • Anthropic Claude"
-    echo ""
-    read -p "Install ccx? (Y/n): " install_ccx_choice
-
-    if [ "$install_ccx_choice" != "n" ] && [ "$install_ccx_choice" != "N" ]; then
-        install_ccx
-        echo ""
-        echo "✅ ccx installed! Run '~/.local/bin/ccx --setup' to configure API keys."
-    fi
 
     # Final instructions
     local rc_file=$(detect_shell_rc)
@@ -981,36 +799,27 @@ main() {
     echo "📝 After sourcing, you can use:"
     echo ""
     echo "Commands:"
-    echo "   claude-glm      - GLM-4.7 (latest)"
-    echo "   claude-glm-4.6  - GLM-4.6"
-    echo "   claude-glm-4.5  - GLM-4.5"
-    echo "   claude-glm-fast - GLM-4.5-Air (fast)"
-    if [ "$install_ccx_choice" != "n" ] && [ "$install_ccx_choice" != "N" ]; then
-        echo "   ccx             - Multi-provider proxy (switch models in-session)"
-    fi
+    echo "   claude-glm-4.7  - GLM-4.7"
+    echo "   claude-glm-5     - GLM-5 (latest)"
+    echo "   claude-glm-fast   - GLM-4.7-flashx (fast)"
     echo ""
     echo "Aliases:"
     echo "   ccd   - claude (regular Claude / default)"
-    echo "   ccg47 - claude-glm (GLM-4.7)"
-    echo "   ccg46 - claude-glm-4.6 (GLM-4.6)"
-    echo "   ccg45 - claude-glm-4.5 (GLM-4.5)"
+    echo "   ccg47 - claude-glm-4.7 (GLM-4.7)"
+    echo "   ccg5  - claude-glm-5 (GLM-5)"
     echo "   ccf   - claude-glm-fast"
-    if [ "$install_ccx_choice" != "n" ] && [ "$install_ccx_choice" != "N" ]; then
-        echo "   ccx   - Multi-provider proxy"
-    fi
     echo ""
-    
+
     if [ "$ZAI_API_KEY" = "YOUR_ZAI_API_KEY_HERE" ]; then
         echo "⚠️  Don't forget to add your API key to:"
-        echo "   $USER_BIN_DIR/claude-glm"
-        echo "   $USER_BIN_DIR/claude-glm-4.6"
-        echo "   $USER_BIN_DIR/claude-glm-4.5"
+        echo "   $USER_BIN_DIR/claude-glm-4.7"
+        echo "   $USER_BIN_DIR/claude-glm-5"
         echo "   $USER_BIN_DIR/claude-glm-fast"
     fi
 
     echo ""
     echo "📁 Installation location: $USER_BIN_DIR"
-    echo "📁 Config directories: ~/.claude-glm, ~/.claude-glm-46, ~/.claude-glm-45, ~/.claude-glm-fast"
+    echo "📁 Config directories: ~/.claude-glm-47, ~/.claude-glm-5, ~/.claude-glm-fast"
 }
 
 # Error handler
@@ -1019,7 +828,7 @@ handle_error() {
     local line_number=$1
     local bash_command="$2"
 
-    # Capture the error details
+    # Capture error details
     local error_msg="Command failed with exit code $exit_code"
     if [ -n "$bash_command" ]; then
         error_msg="$error_msg: $bash_command"

@@ -28,9 +28,8 @@ if ($env:CLAUDE_GLM_DEBUG -eq "1" -or $env:CLAUDE_GLM_DEBUG -eq "true") {
 # Configuration
 $UserBinDir = "$env:USERPROFILE\.local\bin"
 $CmdShimDir = Join-Path $env:USERPROFILE "AppData\Local\Microsoft\WindowsApps"
-$GlmConfigDir = "$env:USERPROFILE\.claude-glm"
-$Glm46ConfigDir = "$env:USERPROFILE\.claude-glm-46"
-$Glm45ConfigDir = "$env:USERPROFILE\.claude-glm-45"
+$Glm47ConfigDir = "$env:USERPROFILE\.claude-glm-47"
+$Glm5ConfigDir = "$env:USERPROFILE\.claude-glm-5"
 $GlmFastConfigDir = "$env:USERPROFILE\.claude-glm-fast"
 $ZaiApiKey = "YOUR_ZAI_API_KEY_HERE"
 
@@ -201,10 +200,19 @@ function Add-PowerShellAliases {
     $filteredContent = $profileContent | Where-Object {
         $_ -notmatch "# Claude Code Model Switcher Aliases" -and
         $_ -notmatch "Set-Alias ccd " -and
+        $_ -notmatch "Set-Alias ccg5 " -and
         $_ -notmatch "Set-Alias ccg47 " -and
         $_ -notmatch "Set-Alias ccg46 " -and
         $_ -notmatch "Set-Alias ccg45 " -and
         $_ -notmatch "Set-Alias ccf "
+        -and $_ -notmatch "# ccx multi-provider proxy function" 
+        -and $_ -notmatch "^\s*function\s+ccx\b" 
+        -and $_ -notmatch "\\ccx\.ps1" 
+        -and $_ -notmatch "# Claude Code Danger Skip Aliases"
+        -and $_ -notmatch "^\s*function\s+ccg47D\b"
+        -and $_ -notmatch "^\s*function\s+ccg47Dd\b"
+        -and $_ -notmatch "^\s*function\s+ccg5D\b"
+        -and $_ -notmatch "^\s*function\s+ccg5Dd\b"
     }
 
     # Add new aliases
@@ -212,10 +220,15 @@ function Add-PowerShellAliases {
 
 # Claude Code Model Switcher Aliases
 Set-Alias ccd claude
-Set-Alias ccg47 claude-glm
-Set-Alias ccg46 claude-glm-4.6
-Set-Alias ccg45 claude-glm-4.5
+Set-Alias ccg5 claude-glm
+Set-Alias ccg47 claude-glm-4.7
 Set-Alias ccf claude-glm-fast
+
+# Claude Code Danger Skip Aliases
+function ccg47D { ccg47 --dangerously-skip-permissions @args }
+function ccg47Dd { ccg47 --dangerously-skip-permissions -d @args }
+function ccg5D { ccg5 --dangerously-skip-permissions @args }
+function ccg5Dd { ccg5 --dangerously-skip-permissions -d @args }
 "@
 
     $newContent = $filteredContent + $aliases
@@ -224,22 +237,99 @@ Set-Alias ccf claude-glm-fast
     Write-Host "OK: Added aliases to PowerShell profile: $PROFILE"
 }
 
-# Create the GLM-4.7 wrapper
+function Remove-CcxArtifacts {
+    $ccxWrapper = Join-Path $UserBinDir "ccx.ps1"
+    if (Test-Path $ccxWrapper) {
+        try {
+            Remove-Item -Path $ccxWrapper -Force -ErrorAction Stop
+            Write-DebugLog "Removed legacy ccx wrapper: $ccxWrapper"
+        } catch {
+            Write-DebugLog "Could not remove legacy ccx wrapper: $ccxWrapper : $_"
+        }
+    }
+
+    $ccxShim = Join-Path $CmdShimDir "ccx.cmd"
+    if (Test-Path $ccxShim) {
+        try {
+            Remove-Item -Path $ccxShim -Force -ErrorAction Stop
+            Write-DebugLog "Removed legacy ccx CMD shim: $ccxShim"
+        } catch {
+            Write-DebugLog "Could not remove legacy ccx CMD shim: $ccxShim : $_"
+        }
+    }
+}
+
+function Remove-DangerSkipArtifacts {
+    $deprecatedShims = @("ccg5D", "ccg5Dd", "ccg47D", "ccg47Dd")
+    foreach ($name in $deprecatedShims) {
+        $shimPath = Join-Path $CmdShimDir "$name.cmd"
+        if (Test-Path $shimPath) {
+            try {
+                Remove-Item -Path $shimPath -Force -ErrorAction Stop
+                Write-DebugLog "Removed deprecated CMD shim: $shimPath"
+            } catch {
+                Write-DebugLog "Could not remove deprecated CMD shim: $shimPath : $_"
+            }
+        }
+    }
+}
+
+function Get-ExistingZaiApiKey {
+    $wrapperPaths = @(
+        (Join-Path $UserBinDir "claude-glm.ps1"),
+        (Join-Path $UserBinDir "claude-glm-4.7.ps1"),
+        (Join-Path $UserBinDir "claude-glm-fast.ps1")
+    )
+
+    foreach ($path in $wrapperPaths) {
+        if (Test-Path $path) {
+            $content = Get-Content $path -Raw -ErrorAction SilentlyContinue
+            if ($content -match 'ANTHROPIC_AUTH_TOKEN\s*=\s*"([^"]+)"') {
+                $key = $matches[1]
+                if ($key -and $key -ne "YOUR_ZAI_API_KEY_HERE") {
+                    return $key
+                }
+            }
+        }
+    }
+
+    $settingsPaths = @(
+        (Join-Path $Glm5ConfigDir "settings.json"),
+        (Join-Path $Glm47ConfigDir "settings.json"),
+        (Join-Path $GlmFastConfigDir "settings.json")
+    )
+
+    foreach ($path in $settingsPaths) {
+        if (Test-Path $path) {
+            $content = Get-Content $path -Raw -ErrorAction SilentlyContinue
+            if ($content -match '"ANTHROPIC_AUTH_TOKEN"\s*:\s*"([^"]+)"') {
+                $key = $matches[1]
+                if ($key -and $key -ne "YOUR_ZAI_API_KEY_HERE") {
+                    return $key
+                }
+            }
+        }
+    }
+
+    return $null
+}
+
+# Create the GLM-5 wrapper (latest)
 function New-ClaudeGlmWrapper {
     $wrapperPath = Join-Path $UserBinDir "claude-glm.ps1"
 
     # Build wrapper content using array and join to avoid nested here-strings
     $wrapperContent = @(
-        '# Claude-GLM - Claude Code with Z.AI GLM-4.7 (Standard Model)',
+        '# Claude-GLM - Claude Code with Z.AI GLM-5 (Latest Model)',
         '',
         '# Set Z.AI environment variables',
         '$env:ANTHROPIC_BASE_URL = "https://api.z.ai/api/anthropic"',
         "`$env:ANTHROPIC_AUTH_TOKEN = `"$ZaiApiKey`"",
-        '$env:ANTHROPIC_MODEL = "glm-4.7"',
-        '$env:ANTHROPIC_SMALL_FAST_MODEL = "glm-4.5-air"',
+        '$env:ANTHROPIC_MODEL = "glm-5"',
+        '$env:ANTHROPIC_SMALL_FAST_MODEL = "glm-4.7-flashx"',
         '',
         '# Use custom config directory to avoid conflicts',
-        "`$env:CLAUDE_HOME = `"$GlmConfigDir`"",
+        "`$env:CLAUDE_HOME = `"$Glm5ConfigDir`"",
         '',
         '# Create config directory if it doesn''t exist',
         'if (-not (Test-Path $env:CLAUDE_HOME)) {',
@@ -247,7 +337,53 @@ function New-ClaudeGlmWrapper {
         '}',
         '',
         '# Create/update settings file with GLM configuration',
-        '$settingsJson = "{`"env`":{`"ANTHROPIC_BASE_URL`":`"https://api.z.ai/api/anthropic`",`"ANTHROPIC_AUTH_TOKEN`":`"' + $ZaiApiKey + '`",`"ANTHROPIC_MODEL`":`"glm-4.7`",`"ANTHROPIC_SMALL_FAST_MODEL`":`"glm-4.5-air`"}}"',
+        '$settingsJson = "{`"env`":{`"ANTHROPIC_BASE_URL`":`"https://api.z.ai/api/anthropic`",`"ANTHROPIC_AUTH_TOKEN`":`"' + $ZaiApiKey + '`",`"ANTHROPIC_MODEL`":`"glm-5`",`"ANTHROPIC_SMALL_FAST_MODEL`":`"glm-4.7-flashx`"}}"',
+        'Set-Content -Path (Join-Path $env:CLAUDE_HOME "settings.json") -Value $settingsJson',
+        '',
+        '# Launch Claude Code with custom config',
+        'Write-Host "LAUNCH: Starting Claude Code with GLM-5 (Latest Model)..."',
+        'Write-Host "CONFIG: Config directory: $env:CLAUDE_HOME"',
+        'Write-Host ""',
+        '',
+        '# Check if claude exists',
+        'if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {',
+        '    Write-Host "ERROR: ''claude'' command not found!"',
+        '    Write-Host "Please ensure Claude Code is installed and in your PATH"',
+        '    exit 1',
+        '}',
+        '',
+        '# Run the actual claude command',
+        '& claude $args'
+    ) -join "`n"
+
+    Set-Content -Path $wrapperPath -Value $wrapperContent
+    Write-Host "OK: Installed claude-glm at $wrapperPath" -ForegroundColor Green
+}
+
+# Create the GLM-4.7 wrapper
+function New-ClaudeGlm47Wrapper {
+    $wrapperPath = Join-Path $UserBinDir "claude-glm-4.7.ps1"
+
+    # Build wrapper content using array and join to avoid nested here-strings
+    $wrapperContent = @(
+        '# Claude-GLM-4.7 - Claude Code with Z.AI GLM-4.7 (Standard Model)',
+        '',
+        '# Set Z.AI environment variables',
+        '$env:ANTHROPIC_BASE_URL = "https://api.z.ai/api/anthropic"',
+        "`$env:ANTHROPIC_AUTH_TOKEN = `"$ZaiApiKey`"",
+        '$env:ANTHROPIC_MODEL = "glm-4.7"',
+        '$env:ANTHROPIC_SMALL_FAST_MODEL = "glm-4.7-flashx"',
+        '',
+        '# Use custom config directory to avoid conflicts',
+        "`$env:CLAUDE_HOME = `"$Glm47ConfigDir`"",
+        '',
+        '# Create config directory if it doesn''t exist',
+        'if (-not (Test-Path $env:CLAUDE_HOME)) {',
+        '    New-Item -ItemType Directory -Path $env:CLAUDE_HOME -Force | Out-Null',
+        '}',
+        '',
+        '# Create/update settings file with GLM configuration',
+        '$settingsJson = "{`"env`":{`"ANTHROPIC_BASE_URL`":`"https://api.z.ai/api/anthropic`",`"ANTHROPIC_AUTH_TOKEN`":`"' + $ZaiApiKey + '`",`"ANTHROPIC_MODEL`":`"glm-4.7`",`"ANTHROPIC_SMALL_FAST_MODEL`":`"glm-4.7-flashx`"}}"',
         'Set-Content -Path (Join-Path $env:CLAUDE_HOME "settings.json") -Value $settingsJson',
         '',
         '# Launch Claude Code with custom config',
@@ -267,113 +403,22 @@ function New-ClaudeGlmWrapper {
     ) -join "`n"
 
     Set-Content -Path $wrapperPath -Value $wrapperContent
-    Write-Host "OK: Installed claude-glm at $wrapperPath" -ForegroundColor Green
+    Write-Host "OK: Installed claude-glm-4.7 at $wrapperPath" -ForegroundColor Green
 }
 
-# Create the GLM-4.6 wrapper
-function New-ClaudeGlm46Wrapper {
-    $wrapperPath = Join-Path $UserBinDir "claude-glm-4.6.ps1"
-
-    # Build wrapper content using array and join to avoid nested here-strings
-    $wrapperContent = @(
-        '# Claude-GLM-4.6 - Claude Code with Z.AI GLM-4.6',
-        '',
-        '# Set Z.AI environment variables',
-        '$env:ANTHROPIC_BASE_URL = "https://api.z.ai/api/anthropic"',
-        "`$env:ANTHROPIC_AUTH_TOKEN = `"$ZaiApiKey`"",
-        '$env:ANTHROPIC_MODEL = "glm-4.6"',
-        '$env:ANTHROPIC_SMALL_FAST_MODEL = "glm-4.5-air"',
-        '',
-        '# Use custom config directory to avoid conflicts',
-        "`$env:CLAUDE_HOME = `"$Glm46ConfigDir`"",
-        '',
-        '# Create config directory if it doesn''t exist',
-        'if (-not (Test-Path $env:CLAUDE_HOME)) {',
-        '    New-Item -ItemType Directory -Path $env:CLAUDE_HOME -Force | Out-Null',
-        '}',
-        '',
-        '# Create/update settings file with GLM configuration',
-        '$settingsJson = "{`"env`":{`"ANTHROPIC_BASE_URL`":`"https://api.z.ai/api/anthropic`",`"ANTHROPIC_AUTH_TOKEN`":`"' + $ZaiApiKey + '`",`"ANTHROPIC_MODEL`":`"glm-4.6`",`"ANTHROPIC_SMALL_FAST_MODEL`":`"glm-4.5-air`"}}"',
-        'Set-Content -Path (Join-Path $env:CLAUDE_HOME "settings.json") -Value $settingsJson',
-        '',
-        '# Launch Claude Code with custom config',
-        'Write-Host "LAUNCH: Starting Claude Code with GLM-4.6..."',
-        'Write-Host "CONFIG: Config directory: $env:CLAUDE_HOME"',
-        'Write-Host ""',
-        '',
-        '# Check if claude exists',
-        'if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {',
-        '    Write-Host "ERROR: ''claude'' command not found!"',
-        '    Write-Host "Please ensure Claude Code is installed and in your PATH"',
-        '    exit 1',
-        '}',
-        '',
-        '# Run the actual claude command',
-        '& claude $args'
-    ) -join "`n"
-
-    Set-Content -Path $wrapperPath -Value $wrapperContent
-    Write-Host "OK: Installed claude-glm-4.6 at $wrapperPath" -ForegroundColor Green
-}
-# Create the GLM-4.5 wrapper
-function New-ClaudeGlm45Wrapper {
-    $wrapperPath = Join-Path $UserBinDir "claude-glm-4.5.ps1"
-
-    # Build wrapper content using array and join to avoid nested here-strings
-    $wrapperContent = @(
-        '# Claude-GLM-4.5 - Claude Code with Z.AI GLM-4.5',
-        '',
-        '# Set Z.AI environment variables',
-        '$env:ANTHROPIC_BASE_URL = "https://api.z.ai/api/anthropic"',
-        "`$env:ANTHROPIC_AUTH_TOKEN = `"$ZaiApiKey`"",
-        '$env:ANTHROPIC_MODEL = "glm-4.5"',
-        '$env:ANTHROPIC_SMALL_FAST_MODEL = "glm-4.5-air"',
-        '',
-        '# Use custom config directory to avoid conflicts',
-        "`$env:CLAUDE_HOME = `"$Glm45ConfigDir`"",
-        '',
-        '# Create config directory if it doesn''t exist',
-        'if (-not (Test-Path $env:CLAUDE_HOME)) {',
-        '    New-Item -ItemType Directory -Path $env:CLAUDE_HOME -Force | Out-Null',
-        '}',
-        '',
-        '# Create/update settings file with GLM configuration',
-        '$settingsJson = "{`"env`":{`"ANTHROPIC_BASE_URL`":`"https://api.z.ai/api/anthropic`",`"ANTHROPIC_AUTH_TOKEN`":`"' + $ZaiApiKey + '`",`"ANTHROPIC_MODEL`":`"glm-4.5`",`"ANTHROPIC_SMALL_FAST_MODEL`":`"glm-4.5-air`"}}"',
-        'Set-Content -Path (Join-Path $env:CLAUDE_HOME "settings.json") -Value $settingsJson',
-        '',
-        '# Launch Claude Code with custom config',
-        'Write-Host "LAUNCH: Starting Claude Code with GLM-4.5..."',
-        'Write-Host "CONFIG: Config directory: $env:CLAUDE_HOME"',
-        'Write-Host ""',
-        '',
-        '# Check if claude exists',
-        'if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {',
-        '    Write-Host "ERROR: ''claude'' command not found!"',
-        '    Write-Host "Please ensure Claude Code is installed and in your PATH"',
-        '    exit 1',
-        '}',
-        '',
-        '# Run the actual claude command',
-        '& claude $args'
-    ) -join "`n"
-
-    Set-Content -Path $wrapperPath -Value $wrapperContent
-    Write-Host "OK: Installed claude-glm-4.5 at $wrapperPath" -ForegroundColor Green
-}
-
-# Create the fast GLM-4.5-Air wrapper
+# Create the fast GLM-4.7-flashx wrapper
 function New-ClaudeGlmFastWrapper {
     $wrapperPath = Join-Path $UserBinDir "claude-glm-fast.ps1"
 
     # Build wrapper content using array and join to avoid nested here-strings
     $wrapperContent = @(
-        '# Claude-GLM-Fast - Claude Code with Z.AI GLM-4.5-Air (Fast Model)',
+        '# Claude-GLM-Fast - Claude Code with Z.AI GLM-4.7-flashx (Fast Model)',
         '',
         '# Set Z.AI environment variables',
         '$env:ANTHROPIC_BASE_URL = "https://api.z.ai/api/anthropic"',
         "`$env:ANTHROPIC_AUTH_TOKEN = `"$ZaiApiKey`"",
-        '$env:ANTHROPIC_MODEL = "glm-4.5-air"',
-        '$env:ANTHROPIC_SMALL_FAST_MODEL = "glm-4.5-air"',
+        '$env:ANTHROPIC_MODEL = "glm-4.7-flashx"',
+        '$env:ANTHROPIC_SMALL_FAST_MODEL = "glm-4.7-flashx"',
         '',
         '# Use custom config directory to avoid conflicts',
         "`$env:CLAUDE_HOME = `"$GlmFastConfigDir`"",
@@ -383,12 +428,12 @@ function New-ClaudeGlmFastWrapper {
         '    New-Item -ItemType Directory -Path $env:CLAUDE_HOME -Force | Out-Null',
         '}',
         '',
-        '# Create/update settings file with GLM-Air configuration',
-        '$settingsJson = "{`"env`":{`"ANTHROPIC_BASE_URL`":`"https://api.z.ai/api/anthropic`",`"ANTHROPIC_AUTH_TOKEN`":`"' + $ZaiApiKey + '`",`"ANTHROPIC_MODEL`":`"glm-4.5-air`",`"ANTHROPIC_SMALL_FAST_MODEL`":`"glm-4.5-air`"}}"',
+        '# Create/update settings file with GLM configuration',
+        '$settingsJson = "{`"env`":{`"ANTHROPIC_BASE_URL`":`"https://api.z.ai/api/anthropic`",`"ANTHROPIC_AUTH_TOKEN`":`"' + $ZaiApiKey + '`",`"ANTHROPIC_MODEL`":`"glm-4.7-flashx`",`"ANTHROPIC_SMALL_FAST_MODEL`":`"glm-4.7-flashx`"}}"',
         'Set-Content -Path (Join-Path $env:CLAUDE_HOME "settings.json") -Value $settingsJson',
         '',
         '# Launch Claude Code with custom config',
-        'Write-Host "FAST: Starting Claude Code with GLM-4.5-Air (Fast Model)..."',
+        'Write-Host "FAST: Starting Claude Code with GLM-4.7-flashx (Fast Model)..."',
         'Write-Host "CONFIG: Config directory: $env:CLAUDE_HOME"',
         'Write-Host ""',
         '',
@@ -407,267 +452,44 @@ function New-ClaudeGlmFastWrapper {
     Write-Host "OK: Installed claude-glm-fast at $wrapperPath" -ForegroundColor Green
 }
 
-# Install ccx multi-provider proxy
-function Install-Ccx {
-    Write-Host "INSTALL: Installing ccx (multi-provider proxy)..." -ForegroundColor Cyan
+# Remove deprecated GLM wrappers and command shims
+function Remove-DeprecatedGlmArtifacts {
+    $deprecatedWrappers = @(
+        (Join-Path $UserBinDir "claude-glm-4.6.ps1"),
+        (Join-Path $UserBinDir "claude-glm-4.5.ps1")
+    )
 
-    $ccxHome = Join-Path $env:USERPROFILE ".claude-proxy"
-    $wrapperPath = Join-Path $UserBinDir "ccx.ps1"
-
-    # Create ccx home directory
-    if (-not (Test-Path $ccxHome)) {
-        New-Item -ItemType Directory -Path $ccxHome -Force | Out-Null
-    }
-
-    # Copy adapters directory from the npm package
-    $scriptDir = Split-Path -Parent $PSCommandPath
-
-    if (Test-Path (Join-Path $scriptDir "adapters")) {
-        Write-Host "  Copying adapters to $ccxHome\adapters..."
-        $adaptersSource = Join-Path $scriptDir "adapters"
-        $adaptersTarget = Join-Path $ccxHome "adapters"
-        if (Test-Path $adaptersTarget) {
-            Remove-Item -Recurse -Force $adaptersTarget
-        }
-        Copy-Item -Recurse $adaptersSource $adaptersTarget
-    } else {
-        Write-Host "  WARNING: adapters directory not found. Proxy may not work." -ForegroundColor Yellow
-    }
-
-    # Copy tsconfig.json for TypeScript module resolution
-    $tsconfigSource = Join-Path $scriptDir "tsconfig.json"
-    if (Test-Path $tsconfigSource) {
-        Copy-Item $tsconfigSource $ccxHome
-    }
-
-    # Create package.json with required dependencies
-    Write-Host "  Creating package.json with dependencies..."
-    $packageJson = @'
-{
-  "name": "claude-proxy",
-  "version": "1.0.0",
-  "private": true,
-  "type": "module",
-  "dependencies": {
-    "dotenv": "^16.4.5",
-    "eventsource-parser": "^1.1.2",
-    "fastify": "^4.28.1",
-    "tsx": "^4.15.6"
-  }
-}
-'@
-    $packageJson | Out-File -FilePath (Join-Path $ccxHome "package.json") -Encoding utf8
-
-    # Install dependencies
-    Write-Host "  Installing proxy dependencies (this may take a moment)..."
-    $npmPath = Get-Command npm -ErrorAction SilentlyContinue
-    if ($npmPath) {
-        Push-Location $ccxHome
-        try {
-            $null = npm install --production --silent 2>&1
-            Write-Host "  OK: Dependencies installed" -ForegroundColor Green
-        } catch {
-            Write-Host "  WARNING: Failed to install dependencies. Run: cd $ccxHome; npm install" -ForegroundColor Yellow
-        }
-        Pop-Location
-    } else {
-        Write-Host "  WARNING: npm not found. Run: cd $ccxHome; npm install" -ForegroundColor Yellow
-    }
-
-    # Create ccx wrapper script
-    $ccxContent = @'
-param([switch]$Setup)
-
-$ErrorActionPreference = "Stop"
-
-$ROOT_DIR = Join-Path $env:USERPROFILE ".claude-proxy"
-$ENV_FILE = Join-Path $ROOT_DIR ".env"
-$PORT = if ($env:CLAUDE_PROXY_PORT) { $env:CLAUDE_PROXY_PORT } else { 17870 }
-
-if ($Setup) {
-    Write-Host "Setting up ~/.claude-proxy/.env..."
-    if (-not (Test-Path $ROOT_DIR)) {
-        New-Item -ItemType Directory -Path $ROOT_DIR | Out-Null
-    }
-
-    if (Test-Path $ENV_FILE) {
-        Write-Host "Existing .env found. Edit it manually at: $ENV_FILE"
-        exit 0
-    }
-
-    @"
-# Claude Proxy Configuration
-# Edit this file to add your API keys
-
-# OpenAI (optional)
-OPENAI_API_KEY=
-OPENAI_BASE_URL=https://api.openai.com/v1
-
-# OpenRouter (optional)
-OPENROUTER_API_KEY=
-OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
-OPENROUTER_REFERER=
-OPENROUTER_TITLE=Claude Code via ccx
-
-# Gemini (optional)
-GEMINI_API_KEY=
-GEMINI_BASE_URL=https://generativelanguage.googleapis.com/v1beta
-
-# Z.AI GLM (optional)
-GLM_UPSTREAM_URL=https://api.z.ai/api/anthropic
-ZAI_API_KEY=
-
-# Anthropic (optional)
-ANTHROPIC_UPSTREAM_URL=https://api.anthropic.com
-ANTHROPIC_API_KEY=
-ANTHROPIC_VERSION=2023-06-01
-
-# Proxy settings
-CLAUDE_PROXY_PORT=17870
-"@ | Out-File -FilePath $ENV_FILE -Encoding utf8
-
-    Write-Host "OK: Created $ENV_FILE"
-    Write-Host ""
-    Write-Host "Edit it to add your API keys, then run: ccx"
-    Write-Host ""
-    Write-Host "Example:"
-    Write-Host "  notepad $ENV_FILE"
-    exit 0
-}
-
-# Load .env file
-if (Test-Path $ENV_FILE) {
-    Get-Content $ENV_FILE | ForEach-Object {
-        if ($_ -match '^\s*([^#][^=]+)=(.*)$') {
-            $name = $matches[1].Trim()
-            $value = $matches[2].Trim()
-            if ($value) {
-                [Environment]::SetEnvironmentVariable($name, $value, "Process")
+    foreach ($wrapper in $deprecatedWrappers) {
+        if (Test-Path $wrapper) {
+            try {
+                Remove-Item -Path $wrapper -Force -ErrorAction Stop
+                Write-DebugLog "Removed deprecated wrapper: $wrapper"
+            } catch {
+                Write-DebugLog "Could not remove deprecated wrapper: $wrapper : $_"
             }
         }
     }
-}
 
-$env:ANTHROPIC_BASE_URL = "http://127.0.0.1:$PORT"
-if (-not $env:ANTHROPIC_AUTH_TOKEN) {
-    $env:ANTHROPIC_AUTH_TOKEN = "local-proxy-token"
-}
-
-# Ensure dependencies are installed
-$nodeModulesPath = Join-Path $ROOT_DIR "node_modules"
-if (-not (Test-Path $nodeModulesPath)) {
-    Write-Host "[ccx] Installing proxy dependencies..."
-    $packageJsonPath = Join-Path $ROOT_DIR "package.json"
-    if (Test-Path $packageJsonPath) {
-        Push-Location $ROOT_DIR
-        try {
-            $null = npm install --production --silent 2>&1
-        } catch {
-            Write-Host "ERROR: Failed to install dependencies. Run: cd $ROOT_DIR; npm install" -ForegroundColor Red
-            exit 1
+    $deprecatedShims = @("ccg46", "ccg45")
+    foreach ($name in $deprecatedShims) {
+        $shimPath = Join-Path $CmdShimDir "$name.cmd"
+        if (Test-Path $shimPath) {
+            try {
+                Remove-Item -Path $shimPath -Force -ErrorAction Stop
+                Write-DebugLog "Removed deprecated CMD shim: $shimPath"
+            } catch {
+                Write-DebugLog "Could not remove deprecated CMD shim: $shimPath : $_"
+            }
         }
-        Pop-Location
-    } else {
-        Write-Host "ERROR: Missing package.json in $ROOT_DIR. Please reinstall ccx." -ForegroundColor Red
-        exit 1
     }
-}
-
-Write-Host "[ccx] Starting Claude Code with multi-provider proxy..."
-Write-Host "[ccx] Proxy will listen on: $($env:ANTHROPIC_BASE_URL)"
-
-# Start proxy using locally installed tsx
-$gatewayPath = Join-Path $ROOT_DIR "adapters\anthropic-gateway.ts"
-$tsxPath = Join-Path $ROOT_DIR "node_modules\.bin\tsx.cmd"
-$logPath = Join-Path $env:TEMP "claude-proxy.log"
-$errorLogPath = Join-Path $env:TEMP "claude-proxy-error.log"
-
-$proc = Start-Process $tsxPath -ArgumentList $gatewayPath -PassThru -WindowStyle Hidden -RedirectStandardOutput $logPath -RedirectStandardError $errorLogPath
-
-# Wait for health check
-Write-Host "[ccx] Waiting for proxy to start..."
-$ready = $false
-for ($i = 0; $i -lt 30; $i++) {
-    try {
-        $response = Invoke-WebRequest -Uri "http://127.0.0.1:$PORT/healthz" -UseBasicParsing -TimeoutSec 1 -ErrorAction Stop
-        if ($response.StatusCode -eq 200) {
-            Write-Host "[ccx] Proxy ready!"
-            $ready = $true
-            break
-        }
-    } catch {
-        Start-Sleep -Milliseconds 500
-    }
-}
-
-if (-not $ready) {
-    Write-Host "ERROR: Proxy failed to start. Check logs:" -ForegroundColor Red
-    Write-Host "  $logPath"
-    Write-Host "  $errorLogPath"
-    if (Test-Path $errorLogPath) {
-        Get-Content $errorLogPath
-    }
-    if ($proc -and -not $proc.HasExited) { $proc.Kill() }
-    exit 1
-}
-
-Write-Host ""
-Write-Host "MODELS: Available model prefixes:"
-Write-Host "  openai:<model>      - OpenAI models (gpt-4o, gpt-4o-mini, etc.)"
-Write-Host "  openrouter:<model>  - OpenRouter models"
-Write-Host "  gemini:<model>      - Google Gemini models"
-Write-Host "  glm:<model>         - Z.AI GLM models (glm-4.7, glm-4.6, etc.)"
-Write-Host "  anthropic:<model>   - Anthropic Claude models"
-Write-Host ""
-Write-Host "TIP: Switch models in-session with: /model <prefix>:<model-name>"
-Write-Host ""
-
-try {
-    & claude @args
-} finally {
-    Write-Host ""
-    Write-Host "[ccx] Shutting down proxy..."
-    if ($proc -and -not $proc.HasExited) {
-        $proc.Kill()
-    }
-}
-'@
-
-    Set-Content -Path $wrapperPath -Value $ccxContent
-    Write-Host "OK: Installed ccx at $wrapperPath" -ForegroundColor Green
-
-    # Add ccx function to PowerShell profile
-    Add-CcxFunction
-}
-
-# Add ccx function to PowerShell profile
-function Add-CcxFunction {
-    if (-not (Test-Path -LiteralPath $PROFILE)) {
-        New-Item -ItemType File -Path $PROFILE -Force | Out-Null
-    }
-
-    $content = Get-Content $PROFILE -Raw -ErrorAction SilentlyContinue
-
-    # Check if function already exists
-    if ($content -match "function ccx") {
-        return
-    }
-
-    # Add ccx function
-    $ccxFunction = @"
-
-# ccx multi-provider proxy function
-function ccx { & `"$UserBinDir\ccx.ps1`" @args }
-"@
-
-    Add-Content $PROFILE $ccxFunction
 }
 
 # Create .cmd shims so commands also work in cmd/Anaconda
 function New-CmdShim {
     param(
         [string]$Name,
-        [string]$TargetScript
+        [string]$TargetScript,
+        [string]$ExtraArgs = ""
     )
 
     if (-not (Test-Path $CmdShimDir)) {
@@ -680,7 +502,12 @@ function New-CmdShim {
     }
 
     $shimPath = Join-Path $CmdShimDir "$Name.cmd"
-    $shimContent = "@echo off`r`npowershell -NoLogo -NoProfile -ExecutionPolicy Bypass -File `"$TargetScript`" %*`r`n"
+
+    $shimContent = if ([string]::IsNullOrWhiteSpace($ExtraArgs)) {
+        "@echo off`r`npowershell -NoLogo -NoProfile -ExecutionPolicy Bypass -File `"$TargetScript`" %*`r`n"
+    } else {
+        "@echo off`r`npowershell -NoLogo -NoProfile -ExecutionPolicy Bypass -File `"$TargetScript`" $ExtraArgs %*`r`n"
+    }
 
     try {
         Set-Content -Path $shimPath -Value $shimContent -Encoding ascii
@@ -691,11 +518,17 @@ function New-CmdShim {
 }
 
 function Add-CmdShims {
+    Remove-DeprecatedGlmArtifacts
+    Remove-DangerSkipArtifacts
     # Ensure the main wrappers exist before creating shims
-    New-CmdShim -Name "ccg47" -TargetScript (Join-Path $UserBinDir "claude-glm.ps1")
-    New-CmdShim -Name "ccg46" -TargetScript (Join-Path $UserBinDir "claude-glm-4.6.ps1")
-    New-CmdShim -Name "ccg45" -TargetScript (Join-Path $UserBinDir "claude-glm-4.5.ps1")
+    New-CmdShim -Name "ccg5"  -TargetScript (Join-Path $UserBinDir "claude-glm.ps1")
+    New-CmdShim -Name "ccg47" -TargetScript (Join-Path $UserBinDir "claude-glm-4.7.ps1")
     New-CmdShim -Name "ccf"   -TargetScript (Join-Path $UserBinDir "claude-glm-fast.ps1")
+
+    New-CmdShim -Name "ccg5D"   -TargetScript (Join-Path $UserBinDir "claude-glm.ps1")     -ExtraArgs "--dangerously-skip-permissions"
+    New-CmdShim -Name "ccg5Dd"  -TargetScript (Join-Path $UserBinDir "claude-glm.ps1")     -ExtraArgs "--dangerously-skip-permissions -d"
+    New-CmdShim -Name "ccg47D"  -TargetScript (Join-Path $UserBinDir "claude-glm-4.7.ps1") -ExtraArgs "--dangerously-skip-permissions"
+    New-CmdShim -Name "ccg47Dd" -TargetScript (Join-Path $UserBinDir "claude-glm-4.7.ps1") -ExtraArgs "--dangerously-skip-permissions -d"
 }
 
 # Check Claude Code availability
@@ -932,18 +765,22 @@ function Install-ClaudeGlm {
     # Clean up old installations from different locations
     Write-DebugLog "Checking for old installations..."
     Remove-OldWrappers
+    Remove-CcxArtifacts
+    Remove-DangerSkipArtifacts
 
     # Check if already installed
     $glmWrapper = Join-Path $UserBinDir "claude-glm.ps1"
+    $glm47Wrapper = Join-Path $UserBinDir "claude-glm-4.7.ps1"
     $glmFastWrapper = Join-Path $UserBinDir "claude-glm-fast.ps1"
 
-    if ((Test-Path $glmWrapper) -or (Test-Path $glmFastWrapper)) {
+    if ((Test-Path $glmWrapper) -or (Test-Path $glm47Wrapper) -or (Test-Path $glmFastWrapper)) {
         Write-Host ""
         Write-Host "OK: Existing installation detected!"
         Write-Host "1. Update API key only"
-        Write-Host "2. Reinstall everything"
-        Write-Host "3. Cancel"
-        $choice = Read-Host "Choice (1-3)"
+        Write-Host "2. Reset wrappers/aliases using existing API key"
+        Write-Host "3. Reinstall everything"
+        Write-Host "4. Cancel"
+        $choice = Read-Host "Choice (1-4)"
 
         switch ($choice) {
             "1" {
@@ -951,14 +788,34 @@ function Install-ClaudeGlm {
                 if ($inputKey) {
                     $script:ZaiApiKey = $inputKey
                     New-ClaudeGlmWrapper
-                    New-ClaudeGlm46Wrapper
-                    New-ClaudeGlm45Wrapper
+                    New-ClaudeGlm47Wrapper
                     New-ClaudeGlmFastWrapper
+                    Add-PowerShellAliases
+                    Add-CmdShims
                     Write-Host "OK: API key updated!"
                     exit 0
                 }
             }
             "2" {
+                $existingKey = Get-ExistingZaiApiKey
+                if (-not $existingKey) {
+                    $inputKey = Read-Host "Enter your Z.AI API key"
+                    if (-not $inputKey) {
+                        exit 0
+                    }
+                    $existingKey = $inputKey
+                }
+
+                $script:ZaiApiKey = $existingKey
+                New-ClaudeGlmWrapper
+                New-ClaudeGlm47Wrapper
+                New-ClaudeGlmFastWrapper
+                Add-PowerShellAliases
+                Add-CmdShims
+                Write-Host "OK: Reset complete!"
+                exit 0
+            }
+            "3" {
                 Write-Host "Reinstalling..."
             }
             default {
@@ -979,40 +836,16 @@ function Install-ClaudeGlm {
     } else {
         Write-Host "WARNING: No API key provided. Add it manually later to:"
         Write-Host "   $UserBinDir\claude-glm.ps1"
-        Write-Host "   $UserBinDir\claude-glm-4.6.ps1"
-        Write-Host "   $UserBinDir\claude-glm-4.5.ps1"
+        Write-Host "   $UserBinDir\claude-glm-4.7.ps1"
         Write-Host "   $UserBinDir\claude-glm-fast.ps1"
     }
 
     # Create wrappers
     New-ClaudeGlmWrapper
-    New-ClaudeGlm46Wrapper
-    New-ClaudeGlm45Wrapper
+    New-ClaudeGlm47Wrapper
     New-ClaudeGlmFastWrapper
     Add-PowerShellAliases
     Add-CmdShims
-
-    # Ask about ccx installation
-    Write-Host ""
-    Write-Host "MULTI-PROVIDER: Multi-Provider Proxy (ccx)"
-    Write-Host "================================"
-    Write-Host "ccx allows you to switch between multiple AI providers in a single session:"
-    Write-Host "  • OpenAI (GPT-4, GPT-4o, etc.)"
-    Write-Host "  • OpenRouter (access to many models)"
-    Write-Host "  • Google Gemini"
-    Write-Host "  • Z.AI GLM models"
-    Write-Host "  • Anthropic Claude"
-    Write-Host ""
-    $installCcxChoice = Read-Host "Install ccx? (Y/n)"
-
-    $ccxInstalled = $false
-    if ($installCcxChoice -ne "n" -and $installCcxChoice -ne "N") {
-        Install-Ccx
-        New-CmdShim -Name "ccx" -TargetScript (Join-Path $UserBinDir "ccx.ps1")
-        Write-Host ""
-        Write-Host "OK: ccx installed! Run '$UserBinDir\ccx.ps1 --setup' to configure API keys." -ForegroundColor Green
-        $ccxInstalled = $true
-    }
 
     # Final instructions
     Write-Host ""
@@ -1029,36 +862,27 @@ function Install-ClaudeGlm {
     Write-Host "INFO: After reloading, you can use:"
     Write-Host ""
     Write-Host "Commands:"
-    Write-Host "   claude-glm      - GLM-4.7 (latest)"
-    Write-Host "   claude-glm-4.6  - GLM-4.6"
-    Write-Host "   claude-glm-4.5  - GLM-4.5"
-    Write-Host "   claude-glm-fast - GLM-4.5-Air (fast)"
-    if ($ccxInstalled) {
-        Write-Host "   ccx             - Multi-provider proxy (switch models in-session)"
-    }
+    Write-Host "   claude-glm      - GLM-5 (latest)"
+    Write-Host "   claude-glm-4.7  - GLM-4.7"
+    Write-Host "   claude-glm-fast - GLM-4.7-flashx (fast)"
     Write-Host ""
     Write-Host "Aliases:"
     Write-Host "   ccd   - claude (regular Claude / default)"
-    Write-Host "   ccg47 - claude-glm (GLM-4.7)"
-    Write-Host "   ccg46 - claude-glm-4.6 (GLM-4.6)"
-    Write-Host "   ccg45 - claude-glm-4.5 (GLM-4.5)"
+    Write-Host "   ccg5  - claude-glm (GLM-5)"
+    Write-Host "   ccg47 - claude-glm-4.7 (GLM-4.7)"
     Write-Host "   ccf   - claude-glm-fast"
-    if ($ccxInstalled) {
-        Write-Host "   ccx   - Multi-provider proxy"
-    }
     Write-Host ""
 
     if ($ZaiApiKey -eq "YOUR_ZAI_API_KEY_HERE") {
         Write-Host "WARNING: Do not forget to add your API key to:"
         Write-Host "   $UserBinDir\claude-glm.ps1"
-        Write-Host "   $UserBinDir\claude-glm-4.6.ps1"
-        Write-Host "   $UserBinDir\claude-glm-4.5.ps1"
+        Write-Host "   $UserBinDir\claude-glm-4.7.ps1"
         Write-Host "   $UserBinDir\claude-glm-fast.ps1"
     }
 
     Write-Host ""
     Write-Host "LOCATION: Installation location: $UserBinDir"
-    Write-Host "LOCATION: Config directories: $GlmConfigDir, $Glm46ConfigDir, $Glm45ConfigDir, $GlmFastConfigDir"
+    Write-Host "LOCATION: Config directories: $Glm47ConfigDir, $Glm5ConfigDir, $GlmFastConfigDir"
 }
 
 # Test error functionality if requested
