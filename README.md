@@ -18,7 +18,7 @@ Use [Z.AI's GLM models](https://z.ai) with [Claude Code](https://www.anthropic.c
 ## Features
 
 - 🚀 **Easy switching** between GLM and Claude models
-- ⚡ **Multiple GLM models**: GLM-5 (latest), GLM-4.7, and GLM-4.7-flashx (fast)
+- ⚡ **Multiple GLM models**: GLM-5 (latest), GLM-4.7, GLM-4.5, and GLM-4.7-flashx (fast)
 - 🔒 **No sudo/admin required**: Installs to user's home directory
 - 🖥️ **Cross-platform**: Works on Windows, macOS, and Linux
 - 📁 **Isolated configs**: Each model uses its own config directory — no conflicts!
@@ -64,7 +64,7 @@ cd claude-glm-wrapper
 Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 ```
 
-**Anaconda/cmd:** Run the PowerShell installer once (as above). It now creates `.cmd` shims in `AppData\Local\Microsoft\WindowsApps`, so `ccg5`, `ccg47`, and `ccf` work in `cmd.exe` and Anaconda prompts.
+**Anaconda/cmd:** Run the PowerShell installer once (as above). It now creates `.cmd` shims in `AppData\Local\Microsoft\WindowsApps`, so `ccg5`, `ccg47`, `ccg45`, and `ccf` work in `cmd.exe` and Anaconda prompts.
 
 ### What the Installer Does
 
@@ -79,9 +79,10 @@ Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 ### Start Using GLM Models
 
 ```bash
-claude           # Regular Claude Code   
+claude           # Regular Claude Code
 ccg5             # Claude Code with GLM-5 (latest)
 ccg47            # Claude Code with GLM-4.7
+ccg45            # Claude Code with GLM-4.5
 ccf              # Claude Code with GLM-4.7-flashx (faster)
 ```
 
@@ -92,8 +93,10 @@ The installer creates these commands and aliases:
 | Alias | Full Command | What It Does | When to Use |
 |-------|--------------|--------------|-------------|
 | `claude` | `claude` | Regular Claude Code | Your normal Claude setup |
+| `ccdD` | `claude --dangerously-skip-permissions` | Claude (skip permissions) | Auto-approve all tool calls |
 | `ccg5` | `claude-glm-5` | GLM-5 (latest) | Best quality GLM model |
-| `ccg47` | `claude-glm-4.7` | GLM-4.7 | Previous stable version |
+| `ccg47` | `claude-glm-4.7` | GLM-4.7 | Stable GLM version |
+| `ccg45` | `claude-glm-4.5` | GLM-4.5 | Previous GLM version |
 | `ccf` | `claude-glm-fast` | GLM-4.7-flashx (fast) | Quicker responses, lower cost |
 
 **💡 Tip**: Use the short aliases! They're faster to type and easier to remember.
@@ -101,7 +104,7 @@ The installer creates these commands and aliases:
 ### How It Works
 
 Each command starts a **separate Claude Code session** with different configurations:
-- `ccg5`, `ccg47`, and `ccf` use Z.AI's API with your Z.AI key
+- `ccg5`, `ccg47`, `ccg45`, and `ccf` use Z.AI's API with your Z.AI key
 - `ccd` uses Anthropic's API with your Anthropic key (default Claude setup)
 - Your configurations **never conflict** — they're stored in separate directories
 
@@ -161,8 +164,9 @@ For detailed documentation on workflows, configuration, troubleshooting, and mor
 This fork includes the following modifications:
 
 - **Security Fix**: Fixed command injection vulnerability in error reporting
-- **Alias Update**: `ccg5` for GLM-5, `ccg47` for GLM-4.7
+- **Alias Update**: `ccg5` for GLM-5, `ccg47` for GLM-4.7, `ccg45` for GLM-4.5
 - **Model Update**: GLM-5 is now the default (`ccg5`)
+- **Danger-skip aliases**: `ccdD`, `claudeD`, and per-model `D`/`Dd` variants
 
 ---
 

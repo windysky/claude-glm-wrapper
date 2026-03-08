@@ -194,3 +194,38 @@ Session 2026-02-11 21:59 CST
   - Completed: reset-with-existing-key installer option
 - Verification performed (if any)
   - `bash -n install.sh` (pass)
+
+Session 2026-03-08
+- Coding CLI used: Claude Code
+- Phase(s) worked on
+  - Restore GLM-4.5 support and expand danger-skip aliases
+- Concrete changes implemented
+  - Added `create_claude_glm_45_wrapper()` function (bash) and `New-ClaudeGlm45Wrapper` (PowerShell)
+  - Added GLM-4.5 config dir `~/.claude-glm-45/` (Windows: `%USERPROFILE%\.claude-glm-45`)
+  - Added 7 new aliases across both installers:
+    - `ccdD='claude --dangerously-skip-permissions'`
+    - `ccdDd='claude --dangerously-skip-permissions -d'`
+    - `claudeD='claude --dangerously-skip-permissions'`
+    - `claudeDd='claudeD -d'`
+    - `ccg45='claude-glm-4.5'`
+    - `ccg45D='ccg45 --dangerously-skip-permissions'`
+    - `ccg45Dd='ccg45 --dangerously-skip-permissions -d'`
+  - Updated alias cleanup in both installers to handle all new aliases
+  - Removed GLM-4.5 from deprecated artifact removal in PowerShell installer
+  - Added `ccg45`, `ccg45D`, `ccg45Dd` CMD shims for Windows
+  - Updated README with new model and alias documentation
+  - Bumped version from 2.0.0 to 2.1.0
+- Files/modules/functions touched
+  - Modified: `install.sh`, `install.ps1`, `package.json`, `README.md`, `PROJECT_HANDOFF.md`, `PROJECT_LOG.md`
+- Key technical decisions and rationale
+  - GLM-4.5 restored per user request despite previous Phase 2 removal
+  - `claudeD`/`ccdD` aliases provide danger-skip for plain Claude (non-GLM) usage
+- Problems encountered and resolutions
+  - None
+- Items explicitly completed, resolved, or superseded in this session
+  - Completed: GLM-4.5 wrapper restoration
+  - Completed: Claude danger-skip aliases (ccdD, ccdDd, claudeD, claudeDd)
+  - Completed: GLM-4.5 danger-skip aliases (ccg45D, ccg45Dd)
+  - Superseded: Phase 2 removal of GLM-4.5 commands
+- Verification performed (if any)
+  - `bash -n install.sh` (pass)

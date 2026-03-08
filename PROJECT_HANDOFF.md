@@ -2,9 +2,9 @@
 
 ## 1. Project Overview
 - Purpose: Local wrapper/installer scripts to run Claude Code against Z.AI GLM models via per-model `CLAUDE_HOME` directories.
-- Scope: Cross-platform install scripts + docs for `ccg5` (GLM-5), `ccg47` (GLM-4.7), and `ccf` (GLM-4.7-flashx).
-- Last updated: 2026-02-11 21:59 CST
-- Last coding CLI used (informational): OpenCode
+- Scope: Cross-platform install scripts + docs for `ccg5` (GLM-5), `ccg47` (GLM-4.7), `ccg45` (GLM-4.5), and `ccf` (GLM-4.7-flashx).
+- Last updated: 2026-03-08
+- Last coding CLI used (informational): Claude Code
 
 ## 2. Current State
 - GLM-5 wrapper (`ccg5`): Completed
@@ -21,6 +21,8 @@
   - Completed in Session 2026-02-11 21:54 CST
 - Installer update option to reset using existing API key: Completed
   - Completed in Session 2026-02-11 21:59 CST
+- Restore GLM-4.5 wrapper + add Claude/model danger-skip aliases: Completed
+  - Completed in Session 2026-03-08
 
 ## 3. Execution Plan Status
 - Phase 1: Add GLM-5 / adjust GLM-4.7 directories and mappings
@@ -41,6 +43,9 @@
 - Phase 6: Add reset-with-existing-key option
   - Status: Completed
   - Last updated: 2026-02-11 21:59 CST
+- Phase 7: Restore GLM-4.5 + expand danger-skip aliases
+  - Status: Completed
+  - Last updated: 2026-03-08
 
 ## 4. Outstanding Work
 - None.
@@ -61,6 +66,7 @@
   - Grep for `ccx` / `claude-proxy` across key files => no matches in `README.md`, `install.sh`, `install.ps1`, `package.json`, `bin/*` (2026-02-11 21:45 CST)
   - `bash -n install.sh` => OK (2026-02-11 21:54 CST)
   - `bash -n install.sh` => OK (2026-02-11 21:59 CST)
+  - `bash -n install.sh` => OK (2026-03-08)
 - Not yet verified:
   - PowerShell script execution on Windows (reason: not run in this environment)
 
