@@ -3,7 +3,7 @@
 ## 1. Project Overview
 - Purpose: Local wrapper/installer scripts to run Claude Code against Z.AI GLM models via per-model `CLAUDE_HOME` directories.
 - Scope: Cross-platform install scripts + docs for `ccg5` (GLM-5), `ccg47` (GLM-4.7), `ccg45` (GLM-4.5), and `ccf` (GLM-4.7-flashx).
-- Last updated: 2026-03-08
+- Last updated: 2026-03-08 13:33 CDT
 - Last coding CLI used (informational): Claude Code
 
 ## 2. Current State
@@ -22,7 +22,7 @@
 - Installer update option to reset using existing API key: Completed
   - Completed in Session 2026-02-11 21:59 CST
 - Restore GLM-4.5 wrapper + add Claude/model danger-skip aliases: Completed
-  - Completed in Session 2026-03-08
+  - Completed in Session 2026-03-08 13:33 CDT
 
 ## 3. Execution Plan Status
 - Phase 1: Add GLM-5 / adjust GLM-4.7 directories and mappings
@@ -45,7 +45,7 @@
   - Last updated: 2026-02-11 21:59 CST
 - Phase 7: Restore GLM-4.5 + expand danger-skip aliases
   - Status: Completed
-  - Last updated: 2026-03-08
+  - Last updated: 2026-03-08 13:33 CDT
 
 ## 4. Outstanding Work
 - None.
@@ -66,16 +66,15 @@
   - Grep for `ccx` / `claude-proxy` across key files => no matches in `README.md`, `install.sh`, `install.ps1`, `package.json`, `bin/*` (2026-02-11 21:45 CST)
   - `bash -n install.sh` => OK (2026-02-11 21:54 CST)
   - `bash -n install.sh` => OK (2026-02-11 21:59 CST)
-  - `bash -n install.sh` => OK (2026-03-08)
+  - `bash -n install.sh` => OK (2026-03-08 13:33 CDT)
 - Not yet verified:
   - PowerShell script execution on Windows (reason: not run in this environment)
 
 ## 7. Restart Instructions
 - Starting point:
-  1. Review current diff: `git diff` and `git status`.
-  2. Ensure no unintended references remain to deleted proxy code (already grepped in-session).
-  3. If desired, run Windows-side smoke test: execute `install.ps1` in PowerShell and confirm aliases/shims `ccg5`, `ccg47`, `ccf` work.
+  1. Tree is clean. All changes committed and pushed to `main` as `02cbff5`.
+  2. Untracked MoAI-ADK files remain: `.mcp.json`, `.moai/`, `CLAUDE.md` (not project deliverables).
 - Recommended next actions:
-  1. If you want a clean tree, decide what to do with untracked local files: `.mcp.json`, `.moai/`, `CLAUDE.md`.
-  2. Create a git commit capturing the GLM-5 + ccx removal changes.
-- Last updated: 2026-02-11 21:45 CST
+  1. Optionally run Windows-side smoke test: execute `install.ps1` in PowerShell and confirm all aliases/shims (`ccg5`, `ccg47`, `ccg45`, `ccf`, `ccdD`, etc.) work.
+  2. Decide whether to add MoAI-ADK files to `.gitignore` or leave as-is.
+- Last updated: 2026-03-08 13:33 CDT
