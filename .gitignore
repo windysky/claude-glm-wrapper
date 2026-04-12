@@ -224,3 +224,6 @@ personal-*
 DEVELOPMENT.md
 PR_DESCRIPTION.md
 package-lock.json
+
+.moai/
+.agency/
