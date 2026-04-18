@@ -267,3 +267,48 @@ Session 2026-04-17 18:10 CDT
 - Verification performed (if any)
   - `bash -n install.sh` (pass)
   - Grep sanity: install.sh has 12 new alias lines (6 per shell block) + 4 cleanup patterns + 2 new wrapper functions; install.ps1 has 2 Set-Alias + 4 profile functions, 2 wrapper functions, 6 new `.cmd` shims.
+
+Session 2026-04-17 20:05 CDT
+- Coding CLI used: Claude Code
+- Phase(s) worked on
+  - Phase 9: Add GLM-4.5V (ccg45v), GLM-4.5-Air (ccg45air), GLM-5-Turbo (ccg5t); swap SMALL_FAST model to glm-4.5-air; repoint ccf away from the unavailable glm-4.7-flashx; ship smoke_test_models.sh
+- Motivation
+  - User reported conflicting Z.ai plan documentation (one list said coding plan included GLM-5/4.7/4.6/4.5V/4.5/4.5-Air; website said all plans support GLM-5.1/GLM-5-Turbo/GLM-4.7/GLM-4.5-Air). Z.ai does not publish a definitive model list per plan, so an empirical smoke test was needed before expanding wrappers further.
+- Concrete changes implemented
+  - Added `smoke_test_models.sh` (repo-root, executable, read-only). Auto-detects Z.ai API key from wrappers/settings, probes 9 candidate model IDs via https://api.z.ai/api/anthropic/v1/messages, prints PASS/FAIL per model. Supports --key, --models overrides.
+  - Empirically confirmed model availability on user's key: PASS for glm-5.1, glm-5, glm-5-turbo, glm-4.7, glm-4.6, glm-4.5, glm-4.5v, glm-4.5-air. FAIL for glm-4.7-flashx (HTTP 429 "Insufficient balance or no resource package" - model ID valid but not included in coding-plan quota).
+  - Bash wrappers added: `create_claude_glm_45v_wrapper` (glm-4.5v, ~/.claude-glm-45v), `create_claude_glm_45air_wrapper` (glm-4.5-air, ~/.claude-glm-45-air), `create_claude_glm_5t_wrapper` (glm-5-turbo, ~/.claude-glm-5-turbo).
+  - PowerShell wrappers added: `New-ClaudeGlm45vWrapper`, `New-ClaudeGlm45airWrapper`, `New-ClaudeGlm5tWrapper`.
+  - Bash aliases added (both csh and bash/zsh blocks): ccg45v/D/Dd, ccg45air/D/Dd, ccg5t/D/Dd.
+  - PowerShell Set-Alias + profile functions added: ccg45v, ccg45air, ccg5t plus D/Dd variants for all three.
+  - Windows .cmd shims added: ccg45v/D/Dd, ccg45air/D/Dd, ccg5t/D/Dd (9 new shims).
+  - ANTHROPIC_SMALL_FAST_MODEL swapped from glm-4.7-flashx to glm-4.5-air in ALL wrappers (sh: 12 occurrences, ps1: 12 occurrences via replace_all).
+  - ccf (claude-glm-fast) internal ANTHROPIC_MODEL changed from glm-4.7-flashx to glm-4.5-air. Wrapper filename preserved to avoid breaking muscle memory; becomes a shortcut alias for ccg45air.
+  - Updated cleanup/grep-v blocks, detection lists, API-key search, upgrade call sites, help/summary echoes across both install.sh and install.ps1.
+  - Updated README.md (feature list, quick-start, alias table with new entries + availability note, fork changes section).
+  - Bumped version 2.2.0 -> 2.3.0 in package.json.
+- Files/modules/functions touched
+  - Modified: `install.sh`, `install.ps1`, `README.md`, `package.json`, `PROJECT_HANDOFF.md`, `PROJECT_LOG.md`
+  - Created: `smoke_test_models.sh`
+- Key technical decisions and rationale
+  - Empirical-first: wrote smoke test before finalizing Phase 9 so every wrapper in the final commit maps to a model the user can actually reach on their plan.
+  - `glm-4.7-flashx` kept neither as wrapper nor as small/fast model because it 429s on the coding plan. Plain glm-4.5-air is the plan-valid "cheap/fast" model.
+  - Naming: ccg45v (lowercase v), ccg45air (no hyphen) chosen to stay consistent with existing ccgNN lowercase convention. Config dirs ~/.claude-glm-45v and ~/.claude-glm-45-air.
+  - ccf retained (not removed) for backwards compatibility; now functionally identical to ccg45air.
+  - ccg5 retains glm-5 (not repointed to glm-5.1) preserving determinism.
+  - smoke_test_models.sh: reads key same way as install.sh for consistency; uses 16 max_tokens to keep cost trivial; no writes anywhere; optional jq for nicer error parsing.
+- Problems encountered and resolutions
+  - Mid-session clarifications from user about which models are actually available. Resolved by writing smoke test and running it against the live API to get ground truth.
+- Items explicitly completed, resolved, or superseded in this session
+  - Completed: GLM-4.5V (ccg45v) wrapper with D/Dd variants
+  - Completed: GLM-4.5-Air (ccg45air) wrapper with D/Dd variants
+  - Completed: GLM-5-Turbo (ccg5t) wrapper with D/Dd variants
+  - Completed: SMALL_FAST_MODEL switch to glm-4.5-air across all wrappers
+  - Completed: ccf repointed to glm-4.5-air (same model as ccg45air)
+  - Completed: smoke_test_models.sh (empirical model availability probe)
+  - Superseded: ANTHROPIC_SMALL_FAST_MODEL=glm-4.7-flashx (now glm-4.5-air across all 9 wrappers)
+  - Superseded: ccf -> glm-4.7-flashx (now ccf -> glm-4.5-air)
+- Verification performed (if any)
+  - `bash -n install.sh` (pass)
+  - `bash -n smoke_test_models.sh` (pass)
+  - `bash smoke_test_models.sh` against live Z.ai API: 8/9 models PASS as documented above.
