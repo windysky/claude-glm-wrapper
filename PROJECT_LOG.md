@@ -312,3 +312,43 @@ Session 2026-04-17 20:05 CDT
   - `bash -n install.sh` (pass)
   - `bash -n smoke_test_models.sh` (pass)
   - `bash smoke_test_models.sh` against live Z.ai API: 8/9 models PASS as documented above.
+
+Session 2026-04-17 20:40 CDT
+- Coding CLI used: Claude Code
+- Phase(s) worked on
+  - Phase 10: Harness code review using a proportional 4-agent team (Orchestrator + Reviewer-for-triage + Implementer + Reviewer-for-verification). Fixed 5 real defects surfaced during the review. Dropped Playwright/web-UI phases (not applicable — project has no web UI) and unit-test baselines (no test suite exists by design).
+- Concrete changes implemented
+  - SPEC: `.moai/specs/SPEC_HARNESS_CODE_REVIEW_2026_04_17.md` documents the 5 fixes with acceptance criteria and rollback plan.
+  - **SEC-01 [High]** (install.sh): Changed 9 `chmod +x "$wrapper_path"` calls to `chmod 700 "$wrapper_path"`. Wrappers contain the Z.AI API key in plaintext; previous mode 755 left them world-readable on shared systems.
+  - **SEC-02 [Medium]** (install.sh): Changed 3 API-key prompts from `read -p` to `read -rs -p` followed by `echo`. Hides key characters on screen during entry. Non-secret prompts (menus, y/n) unchanged. PowerShell `-AsSecureString` deferred (more invasive).
+  - **BUG-01 [High]** (install.sh): Removed the `local` keyword from `test_error_message` and `test_error_line` assignments at script top-level scope (lines 1300-1301 pre-fix). Bash was emitting `bash: local: can only be used in a function` to stderr during `--test-error` runs.
+  - **DEAD-01 [Medium]** (install.sh): Deleted the entire `create_claude_anthropic_wrapper()` function. It was defined but never called from `main()` or any other path; no alias pointed to it; no Windows equivalent existed.
+  - **PS-01 [Medium]** (install.ps1): Appended `-Encoding UTF8` to 9 `Set-Content` calls targeting `settings.json` inside `New-ClaudeGlm*Wrapper` functions. PS 5.1 defaults to UTF-16 LE with BOM, which can fail strict JSON parsers. `Set-Content $PROFILE` at line 283 intentionally untouched (consumed by PowerShell itself).
+- Files/modules/functions touched
+  - Modified: `install.sh`, `install.ps1`, `PROJECT_HANDOFF.md`, `PROJECT_LOG.md`
+  - Created: `.moai/specs/SPEC_HARNESS_CODE_REVIEW_2026_04_17.md`
+- Harness process
+  - Orchestrator did Phase 0 recon + Phase 1 triage directly (project is small: ~1000 LOC shell + ~1100 LOC PowerShell).
+  - Spawned `evaluator-active` subagent as Reviewer-for-triage: produced findings report with 2 CRITICAL, 2 HIGH, 3 MEDIUM, 4 LOW candidates.
+  - Orchestrator cut the list to 5 fixes (rejected 6 findings: key echo-to-history was technically wrong; unquoted array needs mapfile/bash-4+ which breaks macOS; `.bash_profile` preference could break existing users; heredoc injection is theoretical; flashx-in-smoke-test is intentional; curl-H quote was not a bug; all per "fix only what is broken").
+  - Spawned `builder` subagent as Implementer with SPEC-bound prompt: applied all 5 fixes in a single run with PASS verdict.
+  - Spawned second `evaluator-active` subagent as Reviewer-for-verification: APPROVED with independent acceptance checks, regression scan, and scope-discipline audit.
+- Agents spawned: 3 total (2 Reviewer + 1 Implementer). No QA Agent / Security Auditor spawns (project has no test suite or CI to baseline against; security-relevant findings were handled inline by the Reviewer).
+- Key technical decisions and rationale
+  - Proportional harness: project is ~2000 LOC of shell/PowerShell with no web UI, no CI, no tests. Running full 5-phase harness with Playwright setup would be wasteful. Used the harness where valuable (independent review of code I wrote) and skipped phases where N/A (Playwright, unit-test baseline).
+  - Rejected 6 of 11 review findings as out-of-scope per "fix only what is broken."
+  - Did not touch uncommitted `.gitignore` / `CLAUDE.md` drift (upstream MoAI-ADK framework, not project code).
+- Problems encountered and resolutions
+  - Orchestrator's first grep-verify of Fix 5 used a mis-escaped regex that reported 0 matches; direct check confirmed all 9 Set-Content calls have `-Encoding UTF8`. No re-work needed, just verification rigor.
+  - install.ps1 received an external (linter) modification between Implementer and Reviewer runs; Reviewer re-verified against the actual file state — all SPEC fixes still intact.
+- Items explicitly completed, resolved, or superseded in this session
+  - Completed: SEC-01 chmod 700 on all wrapper scripts
+  - Completed: SEC-02 silent API-key entry on bash
+  - Completed: BUG-01 removed `local` keyword outside function
+  - Completed: DEAD-01 deleted orphan `create_claude_anthropic_wrapper`
+  - Completed: PS-01 UTF-8 encoding forced for settings.json on PowerShell
+- Verification performed (if any)
+  - `bash -n install.sh` => OK (post-fix)
+  - `bash -n smoke_test_models.sh` => OK
+  - `bash smoke_test_models.sh` => 8/9 PASS (identical to pre-fix baseline = zero regression; only flashx fails due to plan quota, unchanged)
+  - Reviewer verdict: APPROVED (all 5 fixes, scope discipline, no regressions, no side effects)

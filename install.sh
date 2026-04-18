@@ -447,7 +447,7 @@ fi
 claude "\$@"
 EOF
 
-    chmod +x "$wrapper_path"
+    chmod 700 "$wrapper_path"
     echo "✅ Installed claude-glm-4.7 at $wrapper_path"
 }
 
@@ -499,7 +499,7 @@ fi
 claude "\$@"
 EOF
 
-    chmod +x "$wrapper_path"
+    chmod 700 "$wrapper_path"
     echo "✅ Installed claude-glm-4.5 at $wrapper_path"
 }
 
@@ -551,7 +551,7 @@ fi
 claude "\$@"
 EOF
 
-    chmod +x "$wrapper_path"
+    chmod 700 "$wrapper_path"
     echo "✅ Installed claude-glm-4.5v at $wrapper_path"
 }
 
@@ -603,7 +603,7 @@ fi
 claude "\$@"
 EOF
 
-    chmod +x "$wrapper_path"
+    chmod 700 "$wrapper_path"
     echo "✅ Installed claude-glm-4.5-air at $wrapper_path"
 }
 
@@ -655,7 +655,7 @@ fi
 claude "\$@"
 EOF
 
-    chmod +x "$wrapper_path"
+    chmod 700 "$wrapper_path"
     echo "✅ Installed claude-glm-4.6 at $wrapper_path"
 }
 
@@ -707,7 +707,7 @@ fi
 claude "\$@"
 EOF
 
-    chmod +x "$wrapper_path"
+    chmod 700 "$wrapper_path"
     echo "✅ Installed claude-glm-5 at $wrapper_path"
 }
 
@@ -759,7 +759,7 @@ fi
 claude "\$@"
 EOF
 
-    chmod +x "$wrapper_path"
+    chmod 700 "$wrapper_path"
     echo "✅ Installed claude-glm-5-turbo at $wrapper_path"
 }
 
@@ -811,7 +811,7 @@ fi
 claude "\$@"
 EOF
 
-    chmod +x "$wrapper_path"
+    chmod 700 "$wrapper_path"
     echo "✅ Installed claude-glm-5.1 at $wrapper_path"
 }
 
@@ -863,43 +863,8 @@ fi
 claude "\$@"
 EOF
 
-    chmod +x "$wrapper_path"
+    chmod 700 "$wrapper_path"
     echo "✅ Installed claude-glm-fast at $wrapper_path"
-}
-
-# Create Anthropic wrapper
-create_claude_anthropic_wrapper() {
-    local wrapper_path="$USER_BIN_DIR/claude-anthropic"
-
-    cat > "$wrapper_path" << 'EOF'
-#!/bin/bash
-# Claude-Anthropic - Claude Code with original Anthropic models
-
-# Clear any Z.AI environment variables
-unset ANTHROPIC_BASE_URL
-unset ANTHROPIC_AUTH_TOKEN
-unset ANTHROPIC_MODEL
-unset ANTHROPIC_SMALL_FAST_MODEL
-
-# Use default Claude config directory
-unset CLAUDE_HOME
-
-echo "🚀 Starting Claude Code with Anthropic Claude models..."
-echo ""
-
-# Check if claude exists
-if ! command -v claude &> /dev/null; then
-    echo "❌ Error: 'claude' command not found!"
-    echo "Please ensure Claude Code is installed and in your PATH"
-    exit 1
-fi
-
-# Run actual claude command
-claude "$@"
-EOF
-
-    chmod +x "$wrapper_path"
-    echo "✅ Installed claude-anthropic at $wrapper_path"
 }
 
 # Create shell aliases
@@ -1116,7 +1081,8 @@ main() {
 
         case "$update_choice" in
             1)
-                read -p "Enter your Z.AI API key: " input_key
+                read -rs -p "Enter your Z.AI API key: " input_key
+                echo
                 if [ -n "$input_key" ]; then
                     ZAI_API_KEY="$input_key"
                     create_claude_glm_45_wrapper
@@ -1137,7 +1103,8 @@ main() {
                 local existing_key
                 existing_key=$(detect_existing_zai_api_key 2>/dev/null || true)
                 if [ -z "$existing_key" ]; then
-                    read -p "Enter your Z.AI API key: " input_key
+                    read -rs -p "Enter your Z.AI API key: " input_key
+                    echo
                     if [ -z "$input_key" ]; then
                         exit 0
                     fi
@@ -1170,7 +1137,8 @@ main() {
     # Get API key
     echo ""
     echo "Enter your Z.AI API key (from https://z.ai/manage-apikey/apikey-list)"
-    read -p "API Key: " input_key
+    read -rs -p "API Key: " input_key
+    echo
 
     if [ -n "$input_key" ]; then
         ZAI_API_KEY="$input_key"
@@ -1297,8 +1265,8 @@ if [ "$TEST_ERROR" = true ]; then
     echo ""
 
     # Create a test error
-    local test_error_message="This is a test error to verify error reporting works correctly"
-    local test_error_line="Test mode - no actual error"
+    test_error_message="This is a test error to verify error reporting works correctly"
+    test_error_line="Test mode - no actual error"
 
     report_error "$test_error_message" "$test_error_line" "0"
 
