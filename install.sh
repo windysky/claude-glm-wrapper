@@ -43,8 +43,10 @@ fi
 # Configuration
 USER_BIN_DIR="$HOME/.local/bin"
 GLM_45_CONFIG_DIR="$HOME/.claude-glm-45"
+GLM_46_CONFIG_DIR="$HOME/.claude-glm-46"
 GLM_47_CONFIG_DIR="$HOME/.claude-glm-47"
 GLM_5_CONFIG_DIR="$HOME/.claude-glm-5"
+GLM_51_CONFIG_DIR="$HOME/.claude-glm-51"
 GLM_FAST_CONFIG_DIR="$HOME/.claude-glm-fast"
 ZAI_API_KEY="YOUR_ZAI_API_KEY_HERE"
 
@@ -283,8 +285,10 @@ cleanup_old_wrappers() {
 detect_existing_zai_api_key() {
     local candidate=""
     local wrapper_files=(
+        "$USER_BIN_DIR/claude-glm-5.1"
         "$USER_BIN_DIR/claude-glm-5"
         "$USER_BIN_DIR/claude-glm-4.7"
+        "$USER_BIN_DIR/claude-glm-4.6"
         "$USER_BIN_DIR/claude-glm-4.5"
         "$USER_BIN_DIR/claude-glm-fast"
     )
@@ -300,8 +304,10 @@ detect_existing_zai_api_key() {
     done
 
     local settings_files=(
+        "$GLM_51_CONFIG_DIR/settings.json"
         "$GLM_5_CONFIG_DIR/settings.json"
         "$GLM_47_CONFIG_DIR/settings.json"
+        "$GLM_46_CONFIG_DIR/settings.json"
         "$GLM_45_CONFIG_DIR/settings.json"
         "$GLM_FAST_CONFIG_DIR/settings.json"
     )
@@ -488,6 +494,58 @@ EOF
     echo "✅ Installed claude-glm-4.5 at $wrapper_path"
 }
 
+# Create GLM-4.6 wrapper
+create_claude_glm_46_wrapper() {
+    local wrapper_path="$USER_BIN_DIR/claude-glm-4.6"
+
+    cat > "$wrapper_path" << EOF
+#!/bin/bash
+# Claude-GLM-4.6 - Claude Code with Z.AI GLM-4.6
+
+# Set Z.AI environment variables
+export ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic"
+export ANTHROPIC_AUTH_TOKEN="$ZAI_API_KEY"
+export ANTHROPIC_MODEL="glm-4.6"
+export ANTHROPIC_SMALL_FAST_MODEL="glm-4.7-flashx"
+
+# Use custom config directory to avoid conflicts
+export CLAUDE_HOME="\$HOME/.claude-glm-46"
+
+# Create config directory if it doesn't exist
+mkdir -p "\$CLAUDE_HOME"
+
+# Create/update settings file with GLM configuration
+cat > "\$CLAUDE_HOME/settings.json" << SETTINGS
+{
+  "env": {
+    "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
+    "ANTHROPIC_AUTH_TOKEN": "$ZAI_API_KEY",
+    "ANTHROPIC_MODEL": "glm-4.6",
+    "ANTHROPIC_SMALL_FAST_MODEL": "glm-4.7-flashx"
+  }
+}
+SETTINGS
+
+# Launch Claude Code with custom config
+echo "🚀 Starting Claude Code with GLM-4.6..."
+echo "📁 Config directory: \$CLAUDE_HOME"
+echo ""
+
+# Check if claude exists
+if ! command -v claude &> /dev/null; then
+    echo "❌ Error: 'claude' command not found!"
+    echo "Please ensure Claude Code is installed and in your PATH"
+    exit 1
+fi
+
+# Run actual claude command
+claude "\$@"
+EOF
+
+    chmod +x "$wrapper_path"
+    echo "✅ Installed claude-glm-4.6 at $wrapper_path"
+}
+
 # Create GLM-5 wrapper
 create_claude_glm_5_wrapper() {
     local wrapper_path="$USER_BIN_DIR/claude-glm-5"
@@ -538,6 +596,58 @@ EOF
 
     chmod +x "$wrapper_path"
     echo "✅ Installed claude-glm-5 at $wrapper_path"
+}
+
+# Create GLM-5.1 wrapper
+create_claude_glm_51_wrapper() {
+    local wrapper_path="$USER_BIN_DIR/claude-glm-5.1"
+
+    cat > "$wrapper_path" << EOF
+#!/bin/bash
+# Claude-GLM-5.1 - Claude Code with Z.AI GLM-5.1 (Latest Model)
+
+# Set Z.AI environment variables
+export ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic"
+export ANTHROPIC_AUTH_TOKEN="$ZAI_API_KEY"
+export ANTHROPIC_MODEL="glm-5.1"
+export ANTHROPIC_SMALL_FAST_MODEL="glm-4.7-flashx"
+
+# Use custom config directory to avoid conflicts
+export CLAUDE_HOME="\$HOME/.claude-glm-51"
+
+# Create config directory if it doesn't exist
+mkdir -p "\$CLAUDE_HOME"
+
+# Create/update settings file with GLM configuration
+cat > "\$CLAUDE_HOME/settings.json" << SETTINGS
+{
+  "env": {
+    "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
+    "ANTHROPIC_AUTH_TOKEN": "$ZAI_API_KEY",
+    "ANTHROPIC_MODEL": "glm-5.1",
+    "ANTHROPIC_SMALL_FAST_MODEL": "glm-4.7-flashx"
+  }
+}
+SETTINGS
+
+# Launch Claude Code with custom config
+echo "🚀 Starting Claude Code with GLM-5.1 (Latest Model)..."
+echo "📁 Config directory: \$CLAUDE_HOME"
+echo ""
+
+# Check if claude exists
+if ! command -v claude &> /dev/null; then
+    echo "❌ Error: 'claude' command not found!"
+    echo "Please ensure Claude Code is installed and in your PATH"
+    exit 1
+fi
+
+# Run actual claude command
+claude "\$@"
+EOF
+
+    chmod +x "$wrapper_path"
+    echo "✅ Installed claude-glm-5.1 at $wrapper_path"
 }
 
 # Create fast GLM-4.7-flashx wrapper
@@ -655,13 +765,18 @@ create_shell_aliases() {
             grep -v "alias ccg45=" | \
             grep -v "alias ccg45D=" | \
             grep -v "alias ccg45Dd=" | \
-            grep -v "alias ccg47=" | \
             grep -v "alias ccg46=" | \
-            grep -v "alias ccg5=" | \
+            grep -v "alias ccg46D=" | \
+            grep -v "alias ccg46Dd=" | \
+            grep -v "alias ccg47=" | \
             grep -v "alias ccg47D=" | \
             grep -v "alias ccg47Dd=" | \
+            grep -v "alias ccg5=" | \
             grep -v "alias ccg5D=" | \
             grep -v "alias ccg5Dd=" | \
+            grep -v "alias ccg51=" | \
+            grep -v "alias ccg51D=" | \
+            grep -v "alias ccg51Dd=" | \
             grep -v "alias ccf=" | \
             grep -v "alias ccx=" > "$target_rc.tmp"
             mv "$target_rc.tmp" "$target_rc"
@@ -694,12 +809,18 @@ alias claudeDd 'claudeD -d'
 alias ccg45 'claude-glm-4.5'
 alias ccg45D 'ccg45 --dangerously-skip-permissions'
 alias ccg45Dd 'ccg45 --dangerously-skip-permissions -d'
+alias ccg46 'claude-glm-4.6'
+alias ccg46D 'ccg46 --dangerously-skip-permissions'
+alias ccg46Dd 'ccg46 --dangerously-skip-permissions -d'
 alias ccg47 'claude-glm-4.7'
 alias ccg47D 'ccg47 --dangerously-skip-permissions'
 alias ccg47Dd 'ccg47 --dangerously-skip-permissions -d'
 alias ccg5 'claude-glm-5'
 alias ccg5D 'ccg5 --dangerously-skip-permissions'
 alias ccg5Dd 'ccg5 --dangerously-skip-permissions -d'
+alias ccg51 'claude-glm-5.1'
+alias ccg51D 'ccg51 --dangerously-skip-permissions'
+alias ccg51Dd 'ccg51 --dangerously-skip-permissions -d'
 alias ccf 'claude-glm-fast'
 EOF
         else
@@ -714,12 +835,18 @@ alias claudeDd='claudeD -d'
 alias ccg45='claude-glm-4.5'
 alias ccg45D='ccg45 --dangerously-skip-permissions'
 alias ccg45Dd='ccg45 --dangerously-skip-permissions -d'
+alias ccg46='claude-glm-4.6'
+alias ccg46D='ccg46 --dangerously-skip-permissions'
+alias ccg46Dd='ccg46 --dangerously-skip-permissions -d'
 alias ccg47='claude-glm-4.7'
 alias ccg47D='ccg47 --dangerously-skip-permissions'
 alias ccg47Dd='ccg47 --dangerously-skip-permissions -d'
 alias ccg5='claude-glm-5'
 alias ccg5D='ccg5 --dangerously-skip-permissions'
 alias ccg5Dd='ccg5 --dangerously-skip-permissions -d'
+alias ccg51='claude-glm-5.1'
+alias ccg51D='ccg51 --dangerously-skip-permissions'
+alias ccg51Dd='ccg51 --dangerously-skip-permissions -d'
 alias ccf='claude-glm-fast'
 EOF
         fi
@@ -786,7 +913,7 @@ main() {
     rm -f "$USER_BIN_DIR/ccx" 2>/dev/null || true
 
     # Check if already installed
-    if [ -f "$USER_BIN_DIR/claude-glm-5" ] || [ -f "$USER_BIN_DIR/claude-glm-4.7" ] || [ -f "$USER_BIN_DIR/claude-glm-4.5" ] || [ -f "$USER_BIN_DIR/claude-glm-fast" ]; then
+    if [ -f "$USER_BIN_DIR/claude-glm-5.1" ] || [ -f "$USER_BIN_DIR/claude-glm-5" ] || [ -f "$USER_BIN_DIR/claude-glm-4.7" ] || [ -f "$USER_BIN_DIR/claude-glm-4.6" ] || [ -f "$USER_BIN_DIR/claude-glm-4.5" ] || [ -f "$USER_BIN_DIR/claude-glm-fast" ]; then
         echo ""
         echo "✅ Existing installation detected!"
         echo "1) Update API key only"
@@ -801,8 +928,10 @@ main() {
                 if [ -n "$input_key" ]; then
                     ZAI_API_KEY="$input_key"
                     create_claude_glm_45_wrapper
+                    create_claude_glm_46_wrapper
                     create_claude_glm_47_wrapper
                     create_claude_glm_5_wrapper
+                    create_claude_glm_51_wrapper
                     create_claude_glm_fast_wrapper
                     create_shell_aliases
                     echo "✅ API key updated!"
@@ -822,8 +951,10 @@ main() {
 
                 ZAI_API_KEY="$existing_key"
                 create_claude_glm_45_wrapper
+                create_claude_glm_46_wrapper
                 create_claude_glm_47_wrapper
                 create_claude_glm_5_wrapper
+                create_claude_glm_51_wrapper
                 create_claude_glm_fast_wrapper
                 create_shell_aliases
                 echo "✅ Reset complete!"
@@ -849,15 +980,19 @@ main() {
     else
         echo "⚠️  No API key provided. Add it manually later to:"
         echo "   $USER_BIN_DIR/claude-glm-4.5"
+        echo "   $USER_BIN_DIR/claude-glm-4.6"
         echo "   $USER_BIN_DIR/claude-glm-4.7"
         echo "   $USER_BIN_DIR/claude-glm-5"
+        echo "   $USER_BIN_DIR/claude-glm-5.1"
         echo "   $USER_BIN_DIR/claude-glm-fast"
     fi
 
     # Create wrappers
     create_claude_glm_45_wrapper
+    create_claude_glm_46_wrapper
     create_claude_glm_47_wrapper
     create_claude_glm_5_wrapper
+    create_claude_glm_51_wrapper
     create_claude_glm_fast_wrapper
     create_shell_aliases
 
@@ -879,8 +1014,10 @@ main() {
     echo ""
     echo "Commands:"
     echo "   claude-glm-4.5   - GLM-4.5"
+    echo "   claude-glm-4.6   - GLM-4.6"
     echo "   claude-glm-4.7   - GLM-4.7"
-    echo "   claude-glm-5     - GLM-5 (latest)"
+    echo "   claude-glm-5     - GLM-5"
+    echo "   claude-glm-5.1   - GLM-5.1 (latest)"
     echo "   claude-glm-fast  - GLM-4.7-flashx (fast)"
     echo ""
     echo "Aliases:"
@@ -888,22 +1025,26 @@ main() {
     echo "   ccdD   - claude --dangerously-skip-permissions"
     echo "   ccdDd  - claude --dangerously-skip-permissions -d"
     echo "   ccg45  - claude-glm-4.5 (GLM-4.5)"
+    echo "   ccg46  - claude-glm-4.6 (GLM-4.6)"
     echo "   ccg47  - claude-glm-4.7 (GLM-4.7)"
     echo "   ccg5   - claude-glm-5 (GLM-5)"
+    echo "   ccg51  - claude-glm-5.1 (GLM-5.1)"
     echo "   ccf    - claude-glm-fast"
     echo ""
 
     if [ "$ZAI_API_KEY" = "YOUR_ZAI_API_KEY_HERE" ]; then
         echo "⚠️  Don't forget to add your API key to:"
         echo "   $USER_BIN_DIR/claude-glm-4.5"
+        echo "   $USER_BIN_DIR/claude-glm-4.6"
         echo "   $USER_BIN_DIR/claude-glm-4.7"
         echo "   $USER_BIN_DIR/claude-glm-5"
+        echo "   $USER_BIN_DIR/claude-glm-5.1"
         echo "   $USER_BIN_DIR/claude-glm-fast"
     fi
 
     echo ""
     echo "📁 Installation location: $USER_BIN_DIR"
-    echo "📁 Config directories: ~/.claude-glm-45, ~/.claude-glm-47, ~/.claude-glm-5, ~/.claude-glm-fast"
+    echo "📁 Config directories: ~/.claude-glm-45, ~/.claude-glm-46, ~/.claude-glm-47, ~/.claude-glm-5, ~/.claude-glm-51, ~/.claude-glm-fast"
 }
 
 # Error handler

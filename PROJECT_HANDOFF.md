@@ -2,8 +2,8 @@
 
 ## 1. Project Overview
 - Purpose: Local wrapper/installer scripts to run Claude Code against Z.AI GLM models via per-model `CLAUDE_HOME` directories.
-- Scope: Cross-platform install scripts + docs for `ccg5` (GLM-5), `ccg47` (GLM-4.7), `ccg45` (GLM-4.5), and `ccf` (GLM-4.7-flashx).
-- Last updated: 2026-03-08 13:33 CDT
+- Scope: Cross-platform install scripts + docs for `ccg51` (GLM-5.1), `ccg5` (GLM-5), `ccg47` (GLM-4.7), `ccg46` (GLM-4.6), `ccg45` (GLM-4.5), and `ccf` (GLM-4.7-flashx).
+- Last updated: 2026-04-17 18:10 CDT
 - Last coding CLI used (informational): Claude Code
 
 ## 2. Current State
@@ -23,6 +23,8 @@
   - Completed in Session 2026-02-11 21:59 CST
 - Restore GLM-4.5 wrapper + add Claude/model danger-skip aliases: Completed
   - Completed in Session 2026-03-08 13:33 CDT
+- Add GLM-4.6 wrapper (`ccg46`) + GLM-5.1 wrapper (`ccg51`) with D/Dd variants: Completed
+  - Completed in Session 2026-04-17 18:10 CDT
 
 ## 3. Execution Plan Status
 - Phase 1: Add GLM-5 / adjust GLM-4.7 directories and mappings
@@ -46,6 +48,9 @@
 - Phase 7: Restore GLM-4.5 + expand danger-skip aliases
   - Status: Completed
   - Last updated: 2026-03-08 13:33 CDT
+- Phase 8: Add GLM-4.6 and GLM-5.1 wrappers + danger-skip variants
+  - Status: Completed
+  - Last updated: 2026-04-17 18:10 CDT
 
 ## 4. Outstanding Work
 - None.
@@ -67,14 +72,18 @@
   - `bash -n install.sh` => OK (2026-02-11 21:54 CST)
   - `bash -n install.sh` => OK (2026-02-11 21:59 CST)
   - `bash -n install.sh` => OK (2026-03-08 13:33 CDT)
+  - `bash -n install.sh` => OK (2026-04-17 18:10 CDT)
+  - Grep sanity for ccg46/ccg51: 2 new bash wrappers, 2 new PowerShell wrappers, all alias/function/shim pairs present (2026-04-17 18:10 CDT)
 - Not yet verified:
   - PowerShell script execution on Windows (reason: not run in this environment)
 
 ## 7. Restart Instructions
 - Starting point:
-  1. Tree is clean. All changes committed and pushed to `main` as `02cbff5`.
-  2. Untracked MoAI-ADK files remain: `.mcp.json`, `.moai/`, `CLAUDE.md` (not project deliverables).
+  1. Phase 8 edits are in the working tree (uncommitted): `install.sh`, `install.ps1`, `README.md`, `package.json`, `PROJECT_HANDOFF.md`, `PROJECT_LOG.md`.
+  2. Version bumped to 2.2.0.
+  3. Prior untracked MoAI-ADK files (`.mcp.json`, `.moai/`, `CLAUDE.md`) are now tracked (added in commit `bac6bdf`); `.gitignore` has pending edits.
 - Recommended next actions:
-  1. Optionally run Windows-side smoke test: execute `install.ps1` in PowerShell and confirm all aliases/shims (`ccg5`, `ccg47`, `ccg45`, `ccf`, `ccdD`, etc.) work.
-  2. Decide whether to add MoAI-ADK files to `.gitignore` or leave as-is.
-- Last updated: 2026-03-08 13:33 CDT
+  1. Run `bash install.sh` locally, choose option 2 "Reset wrappers/aliases using existing API key" to materialize new wrappers and add aliases to `~/.bashrc`.
+  2. After sourcing, verify `ccg51`, `ccg51D`, `ccg51Dd`, `ccg46`, `ccg46D`, `ccg46Dd` launch Claude Code with the correct model IDs.
+  3. Commit Phase 8 changes and optionally run Windows-side smoke test.
+- Last updated: 2026-04-17 18:10 CDT

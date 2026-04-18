@@ -229,3 +229,41 @@ Session 2026-03-08 13:33 CDT
   - Superseded: Phase 2 removal of GLM-4.5 commands
 - Verification performed (if any)
   - `bash -n install.sh` (pass)
+
+Session 2026-04-17 18:10 CDT
+- Coding CLI used: Claude Code
+- Phase(s) worked on
+  - Phase 8: Add GLM-4.6 (`ccg46`) and GLM-5.1 (`ccg51`) wrappers with full D/Dd danger-skip variants
+- Concrete changes implemented
+  - Added `create_claude_glm_46_wrapper()` and `create_claude_glm_51_wrapper()` (bash)
+  - Added `New-ClaudeGlm46Wrapper` and `New-ClaudeGlm51Wrapper` (PowerShell)
+  - New config dirs: `~/.claude-glm-46/` and `~/.claude-glm-51/` (Windows: `%USERPROFILE%\.claude-glm-46`, `%USERPROFILE%\.claude-glm-51`)
+  - Model IDs: `glm-4.6` and `glm-5.1`; small/fast model remains `glm-4.7-flashx` for both (consistent with existing wrappers)
+  - Added 6 new aliases to bash/zsh and csh/tcsh alias blocks in install.sh:
+    - `ccg46='claude-glm-4.6'`, `ccg46D='ccg46 --dangerously-skip-permissions'`, `ccg46Dd='ccg46 --dangerously-skip-permissions -d'`
+    - `ccg51='claude-glm-5.1'`, `ccg51D='ccg51 --dangerously-skip-permissions'`, `ccg51Dd='ccg51 --dangerously-skip-permissions -d'`
+  - Added corresponding Set-Alias + profile function pairs (ccg46, ccg46D, ccg46Dd, ccg51, ccg51D, ccg51Dd) to install.ps1
+  - Added 6 new `.cmd` shims for Windows (ccg46, ccg46D, ccg46Dd, ccg51, ccg51D, ccg51Dd)
+  - Updated cleanup/grep-v blocks to strip the 6 new alias/function names before rewriting
+  - Extended API-key detection (`detect_existing_zai_api_key` bash, `Get-ExistingZaiApiKey` PowerShell) to search the two new wrapper files and settings files
+  - Extended existing-install detection, upgrade call sites, and help/summary echoes to list the new wrappers and aliases
+  - Removed GLM-4.6 from `Remove-DeprecatedGlmArtifacts` in install.ps1 (GLM-4.6 is restored; function kept as a hook)
+  - Decision: `ccg5` retains its meaning (GLM-5) rather than becoming a rolling latest alias; `ccg51` is the new explicit handle for GLM-5.1
+  - Updated README.md (model list, quick-start block, alias table + danger-variant note, fork changes)
+  - Bumped version 2.1.0 -> 2.2.0 in package.json
+- Files/modules/functions touched
+  - Modified: `install.sh`, `install.ps1`, `README.md`, `package.json`, `PROJECT_HANDOFF.md`, `PROJECT_LOG.md`
+- Key technical decisions and rationale
+  - Keep `glm-4.7-flashx` as small/fast model for both new wrappers for consistency with the existing suite (no confirmation that `glm-4.6-flashx` or `glm-5.1-flashx` exist on Z.AI)
+  - Cleanup/detection blocks updated so re-running the installer idempotently replaces the new aliases/shims
+  - `Remove-DeprecatedGlmArtifacts` left in place (empty bodies) as a hook for future deprecations rather than deleted outright
+- Problems encountered and resolutions
+  - None
+- Items explicitly completed, resolved, or superseded in this session
+  - Completed: GLM-4.6 wrapper (`ccg46`) with D/Dd variants
+  - Completed: GLM-5.1 wrapper (`ccg51`) with D/Dd variants
+  - Completed: Windows parity (PowerShell functions + `.cmd` shims)
+  - Superseded: Previous deprecation of GLM-4.6 in install.ps1 `Remove-DeprecatedGlmArtifacts`
+- Verification performed (if any)
+  - `bash -n install.sh` (pass)
+  - Grep sanity: install.sh has 12 new alias lines (6 per shell block) + 4 cleanup patterns + 2 new wrapper functions; install.ps1 has 2 Set-Alias + 4 profile functions, 2 wrapper functions, 6 new `.cmd` shims.

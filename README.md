@@ -18,7 +18,7 @@ Use [Z.AI's GLM models](https://z.ai) with [Claude Code](https://www.anthropic.c
 ## Features
 
 - 🚀 **Easy switching** between GLM and Claude models
-- ⚡ **Multiple GLM models**: GLM-5 (latest), GLM-4.7, GLM-4.5, and GLM-4.7-flashx (fast)
+- ⚡ **Multiple GLM models**: GLM-5.1 (latest), GLM-5, GLM-4.7, GLM-4.6, GLM-4.5, and GLM-4.7-flashx (fast)
 - 🔒 **No sudo/admin required**: Installs to user's home directory
 - 🖥️ **Cross-platform**: Works on Windows, macOS, and Linux
 - 📁 **Isolated configs**: Each model uses its own config directory — no conflicts!
@@ -64,7 +64,7 @@ cd claude-glm-wrapper
 Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 ```
 
-**Anaconda/cmd:** Run the PowerShell installer once (as above). It now creates `.cmd` shims in `AppData\Local\Microsoft\WindowsApps`, so `ccg5`, `ccg47`, `ccg45`, and `ccf` work in `cmd.exe` and Anaconda prompts.
+**Anaconda/cmd:** Run the PowerShell installer once (as above). It now creates `.cmd` shims in `AppData\Local\Microsoft\WindowsApps`, so `ccg51`, `ccg5`, `ccg47`, `ccg46`, `ccg45`, and `ccf` work in `cmd.exe` and Anaconda prompts.
 
 ### What the Installer Does
 
@@ -80,8 +80,10 @@ Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 
 ```bash
 claude           # Regular Claude Code
-ccg5             # Claude Code with GLM-5 (latest)
+ccg51            # Claude Code with GLM-5.1 (latest)
+ccg5             # Claude Code with GLM-5
 ccg47            # Claude Code with GLM-4.7
+ccg46            # Claude Code with GLM-4.6
 ccg45            # Claude Code with GLM-4.5
 ccf              # Claude Code with GLM-4.7-flashx (faster)
 ```
@@ -94,17 +96,21 @@ The installer creates these commands and aliases:
 |-------|--------------|--------------|-------------|
 | `claude` | `claude` | Regular Claude Code | Your normal Claude setup |
 | `ccdD` | `claude --dangerously-skip-permissions` | Claude (skip permissions) | Auto-approve all tool calls |
-| `ccg5` | `claude-glm-5` | GLM-5 (latest) | Best quality GLM model |
+| `ccg51` | `claude-glm-5.1` | GLM-5.1 (latest) | Newest GLM model |
+| `ccg5` | `claude-glm-5` | GLM-5 | Previous latest GLM model |
 | `ccg47` | `claude-glm-4.7` | GLM-4.7 | Stable GLM version |
-| `ccg45` | `claude-glm-4.5` | GLM-4.5 | Previous GLM version |
+| `ccg46` | `claude-glm-4.6` | GLM-4.6 | GLM-4.6 point release |
+| `ccg45` | `claude-glm-4.5` | GLM-4.5 | Older GLM version |
 | `ccf` | `claude-glm-fast` | GLM-4.7-flashx (fast) | Quicker responses, lower cost |
+
+Each model alias also has `D` and `Dd` variants that run with `--dangerously-skip-permissions` (and `-d` for debug), e.g. `ccg51D`, `ccg51Dd`, `ccg46D`, `ccg46Dd`, plus the pre-existing `ccg5D/Dd`, `ccg47D/Dd`, `ccg45D/Dd`, `ccdD/Dd`, `claudeD/Dd`.
 
 **💡 Tip**: Use the short aliases! They're faster to type and easier to remember.
 
 ### How It Works
 
 Each command starts a **separate Claude Code session** with different configurations:
-- `ccg5`, `ccg47`, `ccg45`, and `ccf` use Z.AI's API with your Z.AI key
+- `ccg51`, `ccg5`, `ccg47`, `ccg46`, `ccg45`, and `ccf` use Z.AI's API with your Z.AI key
 - `ccd` uses Anthropic's API with your Anthropic key (default Claude setup)
 - Your configurations **never conflict** — they're stored in separate directories
 
@@ -112,8 +118,8 @@ Each command starts a **separate Claude Code session** with different configurat
 
 **Start a coding session with the latest GLM:**
 ```bash
-ccg5
-# Opens Claude Code using GLM-5
+ccg51
+# Opens Claude Code using GLM-5.1
 ```
 
 **Use GLM-4.7:**
@@ -164,9 +170,9 @@ For detailed documentation on workflows, configuration, troubleshooting, and mor
 This fork includes the following modifications:
 
 - **Security Fix**: Fixed command injection vulnerability in error reporting
-- **Alias Update**: `ccg5` for GLM-5, `ccg47` for GLM-4.7, `ccg45` for GLM-4.5
-- **Model Update**: GLM-5 is now the default (`ccg5`)
-- **Danger-skip aliases**: `ccdD`, `claudeD`, and per-model `D`/`Dd` variants
+- **Alias Update**: `ccg51` for GLM-5.1, `ccg5` for GLM-5, `ccg47` for GLM-4.7, `ccg46` for GLM-4.6, `ccg45` for GLM-4.5
+- **Model Update**: GLM-5.1 is now the latest (`ccg51`); `ccg5` continues to point at GLM-5
+- **Danger-skip aliases**: `ccdD`, `claudeD`, and per-model `D`/`Dd` variants (`ccg51D/Dd`, `ccg5D/Dd`, `ccg47D/Dd`, `ccg46D/Dd`, `ccg45D/Dd`)
 
 ---
 
