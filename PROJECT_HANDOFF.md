@@ -3,8 +3,10 @@
 ## 1. Project Overview
 - Purpose: Local wrapper/installer scripts to run Claude Code against Z.AI GLM models via per-model `CLAUDE_HOME` directories.
 - Scope: Cross-platform install scripts + docs for `ccg51` (GLM-5.1), `ccg5t` (GLM-5-Turbo), `ccg5` (GLM-5), `ccg47` (GLM-4.7), `ccg46` (GLM-4.6), `ccg45` (GLM-4.5), `ccg45v` (GLM-4.5V vision), `ccg45air` (GLM-4.5-Air), and `ccf` (alias for GLM-4.5-Air).
-- Last updated: 2026-04-17 20:40 CDT
+- Last updated: 2026-04-17 21:10 CDT
 - Last coding CLI used (informational): Claude Code
+- Current version: 2.3.0 (package.json)
+- Latest commit on `main`: `dc3e6b8` (Phase 10 harness code review)
 
 ## 2. Current State
 - GLM-5 wrapper (`ccg5`): Completed
@@ -92,12 +94,15 @@
 
 ## 7. Restart Instructions
 - Starting point:
-  1. Phase 10 (harness code review) edits are in the working tree: `install.sh`, `install.ps1`, new SPEC file under `.moai/specs/`, `PROJECT_HANDOFF.md`, `PROJECT_LOG.md`.
-  2. Phase 9 was committed as `873b8a6` and pushed; version 2.3.0.
-  3. Pre-existing `.gitignore` and `CLAUDE.md` drift (MoAI-ADK framework updates) remains uncommitted — not in scope for this review.
-- Recommended next actions:
-  1. Run `bash install.sh` locally, choose option 2 "Reset wrappers/aliases using existing API key" to regenerate wrappers with new file mode (700 = owner-only). Verify `ls -l ~/.local/bin/claude-glm-*` shows `-rwx------`.
-  2. Next API-key entry via `install.sh` will be silent (read -rs); verify behavior on fresh input.
-  3. Optionally re-run `smoke_test_models.sh` any time Z.ai changes plan availability.
-  4. Run Windows-side smoke test if desired.
-- Last updated: 2026-04-17 20:40 CDT
+  1. Tree is clean for project code. All phases 1-10 are committed and pushed to `main`.
+     - Phase 8 → `b0acd38` (v2.1.0 preserved; 2.2.0 wrappers)
+     - Phase 9 → `873b8a6` (v2.3.0, wrappers + smoke test)
+     - Phase 10 → `dc3e6b8` (harness review fixes)
+  2. SPEC artifact at `.moai/specs/SPEC_HARNESS_CODE_REVIEW_2026_04_17.md` is local-only (`.moai/` is gitignored).
+  3. Pre-existing uncommitted drift on `.gitignore` and `CLAUDE.md` is unrelated to this project's code — it's upstream MoAI-ADK framework updates. Decide separately whether to commit, revert, or ignore.
+- Recommended next actions (optional):
+  1. Run `bash install.sh` locally, choose option 2 "Reset wrappers/aliases using existing API key" to regenerate wrappers under the new SEC-01 file mode. Verify `ls -l ~/.local/bin/claude-glm-*` shows `-rwx------`.
+  2. Sanity-check silent API-key entry on the next fresh-key flow (read -rs).
+  3. Re-run `smoke_test_models.sh` anytime Z.ai changes plan availability (last baseline 2026-04-17: 8/9 PASS, only glm-4.7-flashx 429s).
+  4. Windows-side smoke test of `install.ps1` remains unverified — run on a Windows host if convenient.
+- Last updated: 2026-04-17 21:10 CDT

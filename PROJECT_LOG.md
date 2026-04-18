@@ -352,3 +352,4 @@ Session 2026-04-17 20:40 CDT
   - `bash -n smoke_test_models.sh` => OK
   - `bash smoke_test_models.sh` => 8/9 PASS (identical to pre-fix baseline = zero regression; only flashx fails due to plan quota, unchanged)
   - Reviewer verdict: APPROVED (all 5 fixes, scope discipline, no regressions, no side effects)
+- Commit: `dc3e6b8` on `main`, pushed to origin.
