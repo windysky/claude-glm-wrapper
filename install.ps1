@@ -205,9 +205,10 @@ function Add-PowerShellAliases {
     # Remove old aliases if they exist.
     # User-curated claude aliases are preserved by default; ONLY auto-installed claude
     # aliases from the legacy wrapper version are scrubbed via fingerprint detection
-    # (presence of `function ccdDd` AND `function claudeDd` self-references).
-    $legacyClaudeFingerprint = ($profileContent -match '^\s*function\s+ccdDd\b').Count -gt 0 `
-        -and ($profileContent -match '^\s*function\s+claudeDd\b').Count -gt 0
+    # (presence of 'function ccdDd' AND 'function claudeDd' self-references).
+    $hasCcdDdFunction = @($profileContent | Where-Object { $_ -match '^\s*function\s+ccdDd\b' }).Count -gt 0
+    $hasClaudeDdFunction = @($profileContent | Where-Object { $_ -match '^\s*function\s+claudeDd\b' }).Count -gt 0
+    $legacyClaudeFingerprint = $hasCcdDdFunction -and $hasClaudeDdFunction
     if ($legacyClaudeFingerprint) {
         Write-Host "INFO: Detected legacy claude alias block from previous wrapper version - migrating."
     }
