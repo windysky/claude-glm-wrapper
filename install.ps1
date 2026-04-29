@@ -1103,9 +1103,9 @@ function Install-ClaudeGlm {
     Write-Host "==============================================="
     Write-Host ""
     Write-Host "This installer:"
-    Write-Host "  • Does NOT require administrator rights"
-    Write-Host "  • Installs to: $UserBinDir"
-    Write-Host "  • Works on Windows systems"
+    Write-Host "  * Does NOT require administrator rights"
+    Write-Host "  * Installs to: $UserBinDir"
+    Write-Host "  * Works on Windows systems"
     Write-Host ""
 
     if ($Debug) {
@@ -1117,7 +1117,7 @@ function Install-ClaudeGlm {
 
     # Check Claude Code
     Write-DebugLog "Checking Claude Code installation..."
-    Test-ClaudeInstallation
+    $null = Test-ClaudeInstallation
 
     # Setup user bin directory
     Write-DebugLog "Setting up user bin directory..."
