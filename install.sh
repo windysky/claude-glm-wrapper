@@ -883,15 +883,35 @@ create_shell_aliases() {
             return
         fi
 
-        # Remove old aliases if they exist
-        if grep -q "# Claude Code Model Switcher Aliases" "$target_rc" 2>/dev/null; then
+        # Remove old aliases if they exist.
+        # Trigger matches both the legacy header ("# Claude Code Model Switcher Aliases")
+        # and the current header ("# Claude-GLM Model Switcher Aliases") so re-runs
+        # never duplicate the alias block.
+        local legacy_pristine_block=0
+        if grep -qE "^alias ccdDd=['\"]?claude --dangerously-skip-permissions -d" "$target_rc" 2>/dev/null \
+           && grep -qE "^alias claudeDd=['\"]?claudeD -d" "$target_rc" 2>/dev/null; then
+            # Fingerprint of the OLD wrapper's auto-installed claude alias block.
+            # If present, scrub the full quintet as part of migration.
+            # User-curated claude aliases (without these specific Dd self-references)
+            # do NOT match this fingerprint and are left alone.
+            legacy_pristine_block=1
+            echo "ℹ️  Detected legacy claude alias block from previous wrapper version — migrating."
+        fi
+
+        if grep -qE "^# (Claude Code|Claude-GLM) Model Switcher Aliases" "$target_rc" 2>/dev/null; then
+            local legacy_claude_filter='cat'
+            if [ "$legacy_pristine_block" = "1" ]; then
+                legacy_claude_filter='grep -vE "^alias (ccd|ccdD|ccdDd|claudeD|claudeDd)="'
+            fi
+
             # Use temp file for compatibility
-            grep -v "# Claude Code Model Switcher Aliases" "$target_rc" | \
-            grep -v "alias ccd=" | \
-            grep -v "alias ccdD=" | \
-            grep -v "alias ccdDd=" | \
-            grep -v "alias claudeD=" | \
-            grep -v "alias claudeDd=" | \
+            grep -vE "^# (Claude Code|Claude-GLM) Model Switcher Aliases" "$target_rc" | \
+            grep -v "^#  manage those manually in your shell rc)" | \
+            grep -v "^# (claude itself and any claude-only aliases are intentionally left untouched" | \
+            eval "$legacy_claude_filter" | \
+            grep -v "alias ccg=" | \
+            grep -v "alias ccgD=" | \
+            grep -v "alias ccgDd=" | \
             grep -v "alias ccg45=" | \
             grep -v "alias ccg45D=" | \
             grep -v "alias ccg45Dd=" | \
@@ -939,12 +959,12 @@ create_shell_aliases() {
         if [ "$shell_style" = "csh" ]; then
             cat >> "$target_rc" << 'EOF'
 
-# Claude Code Model Switcher Aliases
-alias ccd 'claude'
-alias ccdD 'claude --dangerously-skip-permissions'
-alias ccdDd 'claude --dangerously-skip-permissions -d'
-alias claudeD 'claude --dangerously-skip-permissions'
-alias claudeDd 'claudeD -d'
+# Claude-GLM Model Switcher Aliases
+# (claude itself and any claude-only aliases are intentionally left untouched —
+#  manage those manually in your shell rc)
+alias ccg 'claude-glm-5.1'
+alias ccgD 'ccg --dangerously-skip-permissions'
+alias ccgDd 'ccg --dangerously-skip-permissions -d'
 alias ccg45 'claude-glm-4.5'
 alias ccg45D 'ccg45 --dangerously-skip-permissions'
 alias ccg45Dd 'ccg45 --dangerously-skip-permissions -d'
@@ -974,12 +994,12 @@ EOF
         else
             cat >> "$target_rc" << 'EOF'
 
-# Claude Code Model Switcher Aliases
-alias ccd='claude'
-alias ccdD='claude --dangerously-skip-permissions'
-alias ccdDd='claude --dangerously-skip-permissions -d'
-alias claudeD='claude --dangerously-skip-permissions'
-alias claudeDd='claudeD -d'
+# Claude-GLM Model Switcher Aliases
+# (claude itself and any claude-only aliases are intentionally left untouched —
+#  manage those manually in your shell rc)
+alias ccg='claude-glm-5.1'
+alias ccgD='ccg --dangerously-skip-permissions'
+alias ccgDd='ccg --dangerously-skip-permissions -d'
 alias ccg45='claude-glm-4.5'
 alias ccg45D='ccg45 --dangerously-skip-permissions'
 alias ccg45Dd='ccg45 --dangerously-skip-permissions -d'
@@ -1195,10 +1215,10 @@ main() {
     echo "   claude-glm-5.1     - GLM-5.1 (latest)"
     echo "   claude-glm-fast    - GLM-4.5-Air (fast, alias for ccg45air)"
     echo ""
-    echo "Aliases:"
-    echo "   ccd    - claude (regular Claude / default)"
-    echo "   ccdD   - claude --dangerously-skip-permissions"
-    echo "   ccdDd  - claude --dangerously-skip-permissions -d"
+    echo "Aliases (GLM only — your 'claude' command is left untouched):"
+    echo "   ccg      - claude-glm-5.1 (GLM-5.1, default)"
+    echo "   ccgD     - ccg --dangerously-skip-permissions"
+    echo "   ccgDd    - ccg --dangerously-skip-permissions -d"
     echo "   ccg45    - claude-glm-4.5 (GLM-4.5)"
     echo "   ccg45v   - claude-glm-4.5v (GLM-4.5V, vision)"
     echo "   ccg45air - claude-glm-4.5-air (GLM-4.5-Air)"
@@ -1206,7 +1226,7 @@ main() {
     echo "   ccg47    - claude-glm-4.7 (GLM-4.7)"
     echo "   ccg5     - claude-glm-5 (GLM-5)"
     echo "   ccg5t    - claude-glm-5-turbo (GLM-5-Turbo)"
-    echo "   ccg51    - claude-glm-5.1 (GLM-5.1)"
+    echo "   ccg51    - claude-glm-5.1 (GLM-5.1, same as ccg)"
     echo "   ccf      - claude-glm-fast (alias for GLM-4.5-Air)"
     echo ""
 

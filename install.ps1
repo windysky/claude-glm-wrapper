@@ -202,10 +202,34 @@ function Add-PowerShellAliases {
         }
     }
 
-    # Remove old aliases if they exist
+    # Remove old aliases if they exist.
+    # User-curated claude aliases are preserved by default; ONLY auto-installed claude
+    # aliases from the legacy wrapper version are scrubbed via fingerprint detection
+    # (presence of `function ccdDd` AND `function claudeDd` self-references).
+    $legacyClaudeFingerprint = ($profileContent -match '^\s*function\s+ccdDd\b').Count -gt 0 `
+        -and ($profileContent -match '^\s*function\s+claudeDd\b').Count -gt 0
+    if ($legacyClaudeFingerprint) {
+        Write-Host "INFO: Detected legacy claude alias block from previous wrapper version - migrating."
+    }
+
     $filteredContent = $profileContent | Where-Object {
+        $line = $_
+        $keep = $true
+
+        if ($legacyClaudeFingerprint) {
+            if ($line -match '^Set-Alias ccd ' -or
+                $line -match '^\s*function\s+ccdD\b' -or
+                $line -match '^\s*function\s+ccdDd\b' -or
+                $line -match '^\s*function\s+claudeD\b' -or
+                $line -match '^\s*function\s+claudeDd\b') {
+                $keep = $false
+            }
+        }
+
+        $keep -and
         $_ -notmatch "# Claude Code Model Switcher Aliases" -and
-        $_ -notmatch "Set-Alias ccd " -and
+        $_ -notmatch "# Claude-GLM Model Switcher Aliases" -and
+        $_ -notmatch "Set-Alias ccg " -and
         $_ -notmatch "Set-Alias ccg51 " -and
         $_ -notmatch "Set-Alias ccg5t " -and
         $_ -notmatch "Set-Alias ccg5 " -and
@@ -219,10 +243,9 @@ function Add-PowerShellAliases {
         -and $_ -notmatch "^\s*function\s+ccx\b"
         -and $_ -notmatch "\\ccx\.ps1"
         -and $_ -notmatch "# Claude Code Danger Skip Aliases"
-        -and $_ -notmatch "^\s*function\s+ccdD\b"
-        -and $_ -notmatch "^\s*function\s+ccdDd\b"
-        -and $_ -notmatch "^\s*function\s+claudeD\b"
-        -and $_ -notmatch "^\s*function\s+claudeDd\b"
+        -and $_ -notmatch "# Claude-GLM Danger Skip Aliases"
+        -and $_ -notmatch "^\s*function\s+ccgD\b"
+        -and $_ -notmatch "^\s*function\s+ccgDd\b"
         -and $_ -notmatch "^\s*function\s+ccg45D\b"
         -and $_ -notmatch "^\s*function\s+ccg45Dd\b"
         -and $_ -notmatch "^\s*function\s+ccg45vD\b"
@@ -242,10 +265,11 @@ function Add-PowerShellAliases {
     }
 
     # Add new aliases
+    # claude itself and any claude-only aliases are intentionally left untouched.
     $aliases = @"
 
-# Claude Code Model Switcher Aliases
-Set-Alias ccd claude
+# Claude-GLM Model Switcher Aliases
+Set-Alias ccg claude-glm-5.1
 Set-Alias ccg5 claude-glm
 Set-Alias ccg5t claude-glm-5-turbo
 Set-Alias ccg51 claude-glm-5.1
@@ -256,11 +280,9 @@ Set-Alias ccg45v claude-glm-4.5v
 Set-Alias ccg45air claude-glm-4.5-air
 Set-Alias ccf claude-glm-fast
 
-# Claude Code Danger Skip Aliases
-function ccdD { claude --dangerously-skip-permissions @args }
-function ccdDd { claude --dangerously-skip-permissions -d @args }
-function claudeD { claude --dangerously-skip-permissions @args }
-function claudeDd { claudeD -d @args }
+# Claude-GLM Danger Skip Aliases
+function ccgD { ccg --dangerously-skip-permissions @args }
+function ccgDd { ccg --dangerously-skip-permissions -d @args }
 function ccg45D { ccg45 --dangerously-skip-permissions @args }
 function ccg45Dd { ccg45 --dangerously-skip-permissions -d @args }
 function ccg45vD { ccg45v --dangerously-skip-permissions @args }
@@ -840,6 +862,7 @@ function Add-CmdShims {
     Remove-DeprecatedGlmArtifacts
     Remove-DangerSkipArtifacts
     # Ensure the main wrappers exist before creating shims
+    New-CmdShim -Name "ccg"      -TargetScript (Join-Path $UserBinDir "claude-glm-5.1.ps1")
     New-CmdShim -Name "ccg5"     -TargetScript (Join-Path $UserBinDir "claude-glm.ps1")
     New-CmdShim -Name "ccg5t"    -TargetScript (Join-Path $UserBinDir "claude-glm-5-turbo.ps1")
     New-CmdShim -Name "ccg51"    -TargetScript (Join-Path $UserBinDir "claude-glm-5.1.ps1")
@@ -850,6 +873,8 @@ function Add-CmdShims {
     New-CmdShim -Name "ccg45air" -TargetScript (Join-Path $UserBinDir "claude-glm-4.5-air.ps1")
     New-CmdShim -Name "ccf"      -TargetScript (Join-Path $UserBinDir "claude-glm-fast.ps1")
 
+    New-CmdShim -Name "ccgD"       -TargetScript (Join-Path $UserBinDir "claude-glm-5.1.ps1")      -ExtraArgs "--dangerously-skip-permissions"
+    New-CmdShim -Name "ccgDd"      -TargetScript (Join-Path $UserBinDir "claude-glm-5.1.ps1")      -ExtraArgs "--dangerously-skip-permissions -d"
     New-CmdShim -Name "ccg5D"      -TargetScript (Join-Path $UserBinDir "claude-glm.ps1")          -ExtraArgs "--dangerously-skip-permissions"
     New-CmdShim -Name "ccg5Dd"     -TargetScript (Join-Path $UserBinDir "claude-glm.ps1")          -ExtraArgs "--dangerously-skip-permissions -d"
     New-CmdShim -Name "ccg5tD"     -TargetScript (Join-Path $UserBinDir "claude-glm-5-turbo.ps1")  -ExtraArgs "--dangerously-skip-permissions"
@@ -1239,10 +1264,10 @@ function Install-ClaudeGlm {
     Write-Host "   claude-glm-4.5-air - GLM-4.5-Air"
     Write-Host "   claude-glm-fast    - GLM-4.5-Air (fast, alias for ccg45air)"
     Write-Host ""
-    Write-Host "Aliases:"
-    Write-Host "   ccd    - claude (regular Claude / default)"
-    Write-Host "   ccdD   - claude --dangerously-skip-permissions"
-    Write-Host "   ccdDd  - claude --dangerously-skip-permissions -d"
+    Write-Host "Aliases (GLM only — your 'claude' command is left untouched):"
+    Write-Host "   ccg      - claude-glm-5.1 (GLM-5.1, default)"
+    Write-Host "   ccgD     - ccg --dangerously-skip-permissions"
+    Write-Host "   ccgDd    - ccg --dangerously-skip-permissions -d"
     Write-Host "   ccg45    - claude-glm-4.5 (GLM-4.5)"
     Write-Host "   ccg45v   - claude-glm-4.5v (GLM-4.5V, vision)"
     Write-Host "   ccg45air - claude-glm-4.5-air (GLM-4.5-Air)"
@@ -1250,8 +1275,8 @@ function Install-ClaudeGlm {
     Write-Host "   ccg47    - claude-glm-4.7 (GLM-4.7)"
     Write-Host "   ccg5     - claude-glm (GLM-5)"
     Write-Host "   ccg5t    - claude-glm-5-turbo (GLM-5-Turbo)"
-    Write-Host "   ccg51    - claude-glm-5.1 (GLM-5.1)"
-    Write-Host "   ccf    - claude-glm-fast"
+    Write-Host "   ccg51    - claude-glm-5.1 (GLM-5.1, same as ccg)"
+    Write-Host "   ccf      - claude-glm-fast"
     Write-Host ""
 
     if ($ZaiApiKey -eq "YOUR_ZAI_API_KEY_HERE") {

@@ -67,10 +67,13 @@ detect_key() {
     # 3. Existing wrapper scripts
     local wrapper_files=(
         "$USER_BIN_DIR/claude-glm-5.1"
+        "$USER_BIN_DIR/claude-glm-5-turbo"
         "$USER_BIN_DIR/claude-glm-5"
         "$USER_BIN_DIR/claude-glm-4.7"
         "$USER_BIN_DIR/claude-glm-4.6"
         "$USER_BIN_DIR/claude-glm-4.5"
+        "$USER_BIN_DIR/claude-glm-4.5v"
+        "$USER_BIN_DIR/claude-glm-4.5-air"
         "$USER_BIN_DIR/claude-glm-fast"
     )
     for f in "${wrapper_files[@]}"; do
@@ -85,10 +88,13 @@ detect_key() {
     # 4. settings.json in config dirs
     local settings_files=(
         "$HOME/.claude-glm-5/settings.json"
+        "$HOME/.claude-glm-5-turbo/settings.json"
         "$HOME/.claude-glm-51/settings.json"
         "$HOME/.claude-glm-47/settings.json"
         "$HOME/.claude-glm-46/settings.json"
         "$HOME/.claude-glm-45/settings.json"
+        "$HOME/.claude-glm-45v/settings.json"
+        "$HOME/.claude-glm-45-air/settings.json"
         "$HOME/.claude-glm-fast/settings.json"
     )
     for f in "${settings_files[@]}"; do

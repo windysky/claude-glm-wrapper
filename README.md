@@ -64,7 +64,7 @@ cd claude-glm-wrapper
 Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 ```
 
-**Anaconda/cmd:** Run the PowerShell installer once (as above). It now creates `.cmd` shims in `AppData\Local\Microsoft\WindowsApps`, so `ccg51`, `ccg5t`, `ccg5`, `ccg47`, `ccg46`, `ccg45`, `ccg45v`, `ccg45air`, and `ccf` work in `cmd.exe` and Anaconda prompts.
+**Anaconda/cmd:** Run the PowerShell installer once (as above). It now creates `.cmd` shims in `AppData\Local\Microsoft\WindowsApps`, so `ccg`, `ccgD`, `ccgDd`, `ccg51`, `ccg5t`, `ccg5`, `ccg47`, `ccg46`, `ccg45`, `ccg45v`, `ccg45air`, and `ccf` work in `cmd.exe` and Anaconda prompts.
 
 ### What the Installer Does
 
@@ -79,8 +79,10 @@ Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 ### Start Using GLM Models
 
 ```bash
-claude           # Regular Claude Code (Anthropic)
-ccg51            # Claude Code with GLM-5.1 (latest)
+claude           # Regular Claude Code (Anthropic) — untouched by this installer
+ccg              # Claude Code with GLM-5.1 (default GLM model)
+ccgD             # ccg --dangerously-skip-permissions
+ccg51            # Claude Code with GLM-5.1 (same as ccg)
 ccg5t            # Claude Code with GLM-5-Turbo
 ccg5             # Claude Code with GLM-5
 ccg47            # Claude Code with GLM-4.7
@@ -93,13 +95,13 @@ ccf              # Alias for GLM-4.5-Air
 
 ### Available Commands & Aliases
 
-The installer creates these commands and aliases:
+The installer creates these commands and aliases. **The installer only manages GLM aliases — your `claude` command and any `ccd`/`ccdD`/`claudeD` aliases for the regular Anthropic Claude Code CLI are left untouched, so you can manage them yourself.**
 
 | Alias | Full Command | What It Does | When to Use |
 |-------|--------------|--------------|-------------|
-| `claude` | `claude` | Regular Claude Code | Your normal Claude setup |
-| `ccdD` | `claude --dangerously-skip-permissions` | Claude (skip permissions) | Auto-approve all tool calls |
-| `ccg51` | `claude-glm-5.1` | GLM-5.1 (latest) | Newest GLM model |
+| `ccg` | `claude-glm-5.1` | **GLM-5.1 (default)** | Recommended default — shortest alias, points at the latest GLM model |
+| `ccgD` | `ccg --dangerously-skip-permissions` | GLM-5.1 (skip permissions) | Default GLM with auto-approved tool calls |
+| `ccg51` | `claude-glm-5.1` | GLM-5.1 (same as `ccg`) | Explicit version alias |
 | `ccg5t` | `claude-glm-5-turbo` | GLM-5-Turbo | Faster variant of GLM-5 family |
 | `ccg5` | `claude-glm-5` | GLM-5 | Previous latest GLM model |
 | `ccg47` | `claude-glm-4.7` | GLM-4.7 | Stable GLM version |
@@ -109,7 +111,7 @@ The installer creates these commands and aliases:
 | `ccg45air` | `claude-glm-4.5-air` | GLM-4.5-Air | Cheap/fast lightweight model |
 | `ccf` | `claude-glm-fast` | GLM-4.5-Air | Shortcut alias for the cheap/fast model |
 
-Each model alias also has `D` and `Dd` variants that run with `--dangerously-skip-permissions` (and `-d` for debug), e.g. `ccg51D/Dd`, `ccg5tD/Dd`, `ccg5D/Dd`, `ccg47D/Dd`, `ccg46D/Dd`, `ccg45D/Dd`, `ccg45vD/Dd`, `ccg45airD/Dd`, plus `ccdD/Dd` and `claudeD/Dd` for vanilla Claude.
+Each GLM alias also has `D` and `Dd` variants that run with `--dangerously-skip-permissions` (and `-d` for debug), e.g. `ccgD/Dd`, `ccg51D/Dd`, `ccg5tD/Dd`, `ccg5D/Dd`, `ccg47D/Dd`, `ccg46D/Dd`, `ccg45D/Dd`, `ccg45vD/Dd`, `ccg45airD/Dd`.
 
 **Note on availability:** Not every model is included in every Z.ai billing plan. The repo ships with `smoke_test_models.sh` — run it to see which models your key can actually hit.
 
@@ -118,15 +120,15 @@ Each model alias also has `D` and `Dd` variants that run with `--dangerously-ski
 ### How It Works
 
 Each command starts a **separate Claude Code session** with different configurations:
-- `ccg51`, `ccg5t`, `ccg5`, `ccg47`, `ccg46`, `ccg45`, `ccg45v`, `ccg45air`, and `ccf` use Z.AI's API with your Z.AI key
-- `ccd` uses Anthropic's API with your Anthropic key (default Claude setup)
+- `ccg`, `ccg51`, `ccg5t`, `ccg5`, `ccg47`, `ccg46`, `ccg45`, `ccg45v`, `ccg45air`, and `ccf` use Z.AI's API with your Z.AI key
+- `claude` (and any `ccd`/`ccdD`/`claudeD` aliases you set up yourself) uses Anthropic's API with your Anthropic key — completely untouched by this installer
 - Your configurations **never conflict** — they're stored in separate directories
 
 ### Basic Examples
 
-**Start a coding session with the latest GLM:**
+**Start a coding session with the latest GLM (default):**
 ```bash
-ccg51
+ccg
 # Opens Claude Code using GLM-5.1
 ```
 
@@ -139,12 +141,12 @@ ccg47
 **Need faster responses? Use the fast model:**
 ```bash
 ccf
-# Opens Claude Code using GLM-4.7-flashx
+# Opens Claude Code using GLM-4.5-Air
 ```
 
-**Use regular Claude:**
+**Use regular Claude (your existing setup, not managed by this installer):**
 ```bash
-ccd
+claude
 # Opens Claude Code with Anthropic models (your default setup)
 ```
 
@@ -178,10 +180,12 @@ For detailed documentation on workflows, configuration, troubleshooting, and mor
 This fork includes the following modifications:
 
 - **Security Fix**: Fixed command injection vulnerability in error reporting
-- **Alias Update**: `ccg51` for GLM-5.1, `ccg5t` for GLM-5-Turbo, `ccg5` for GLM-5, `ccg47` for GLM-4.7, `ccg46` for GLM-4.6, `ccg45` for GLM-4.5, `ccg45v` for GLM-4.5V (vision), `ccg45air` for GLM-4.5-Air
-- **Model Update**: GLM-5.1 is the latest (`ccg51`); `ccg5` continues to point at GLM-5; `ccf` now maps to GLM-4.5-Air (previous `glm-4.7-flashx` target is off most billing plans and returned HTTP 429)
+- **Alias Update**: new short `ccg` is the default (GLM-5.1); plus `ccg51`, `ccg5t`, `ccg5`, `ccg47`, `ccg46`, `ccg45`, `ccg45v`, `ccg45air` for explicit versions
+- **Default GLM alias**: `ccg` → `claude-glm-5.1` (latest GLM); `ccgD` → `ccg --dangerously-skip-permissions`
+- **Model Update**: GLM-5.1 is the latest; `ccf` now maps to GLM-4.5-Air (previous `glm-4.7-flashx` target is off most billing plans and returned HTTP 429)
 - **Small/Fast Model**: `ANTHROPIC_SMALL_FAST_MODEL` is now `glm-4.5-air` everywhere (verified on-plan for typical Z.ai subscriptions)
-- **Danger-skip aliases**: `ccdD`, `claudeD`, and per-model `D`/`Dd` variants for every GLM alias
+- **Claude untouched**: this installer no longer creates or removes `ccd`/`ccdD`/`claudeD`/`claudeDd` aliases; the bare `claude` command and any aliases you set up yourself for it are left alone
+- **Danger-skip aliases**: per-model `D`/`Dd` variants for every GLM alias
 - **Smoke test**: `smoke_test_models.sh` included to verify which models your Z.ai key can reach
 
 ---

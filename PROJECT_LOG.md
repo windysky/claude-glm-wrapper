@@ -353,3 +353,78 @@ Session 2026-04-17 20:40 CDT
   - `bash smoke_test_models.sh` => 8/9 PASS (identical to pre-fix baseline = zero regression; only flashx fails due to plan quota, unchanged)
   - Reviewer verdict: APPROVED (all 5 fixes, scope discipline, no regressions, no side effects)
 - Commit: `dc3e6b8` on `main`, pushed to origin.
+
+Session 2026-04-28 19:00 CDT
+- Coding CLI used: Claude Code (Opus 4.7)
+- Phase(s) worked on
+  - Phase 11: Add `ccg`/`ccgD`/`ccgDd` default GLM aliases pointing at GLM-5.1; remove installer-managed claude aliases entirely; add legacy-block fingerprint migration so older installs auto-clean their orphan claude aliases on upgrade.
+- Motivation
+  - User wanted a shorter default GLM alias (`ccg`) and explicitly requested that the installer stop managing `ccd`/`ccdD`/`claudeD`/`claudeDd` because the bare `claude` command should remain tied to their Anthropic account and any user-curated claude aliases are personal customizations.
+- Concrete changes implemented
+  - Added `alias ccg='claude-glm-5.1'`, `alias ccgD='ccg --dangerously-skip-permissions'`, `alias ccgDd='ccg --dangerously-skip-permissions -d'` to install.sh fish/csh and bash/zsh alias blocks.
+  - Removed `ccd`/`ccdD`/`ccdDd`/`claudeD`/`claudeDd` from install.sh's create blocks and from `remove_aliases_from_rc` cleanup grep list.
+  - Updated cleanup trigger to match BOTH legacy header `# Claude Code Model Switcher Aliases` and current header `# Claude-GLM Model Switcher Aliases` so re-runs never duplicate the alias block.
+  - Added legacy-block fingerprint detection: when `~/.bashrc` contains both `alias ccdDd='claude --dangerously-skip-permissions -d'` AND `alias claudeDd='claudeD -d'` (signatures unique to the old auto-installer), the cleanup additionally strips `ccd`/`ccdD`/`ccdDd`/`claudeD`/`claudeDd` as a one-time migration. User-customized blocks (without those exact self-references) are preserved.
+  - Mirrored all logic in install.ps1: removed `Set-Alias ccd`, `function ccdD/ccdDd/claudeD/claudeDd` from create block; added `Set-Alias ccg claude-glm-5.1` and `function ccgD/ccgDd`; added cmd shims for `ccg`/`ccgD`/`ccgDd`; added fingerprint check (`function ccdDd` + `function claudeDd` both present) to scrub legacy auto-installed claude functions.
+  - Updated post-install summary echoes (bash + PowerShell) to reflect the GLM-only alias set.
+  - Updated README.md: added `ccg`/`ccgD` to aliases table marked as recommended default; clarified that `claude` and any user-curated claude-side aliases are intentionally untouched; refreshed quick-start example; updated "Changes in This Fork" section.
+  - Fixed user's pre-existing `~/.bashrc` typo: `alias ccdd=` -> `alias ccdD=` (one-time edit, backup at `~/.bashrc.bak.ccg-cleanup`).
+- Files/modules/functions touched
+  - Modified: `install.sh`, `install.ps1`, `README.md`, `~/.bashrc` (one-time typo fix)
+- Key technical decisions and rationale
+  - Fingerprint-based migration uses the unique self-reference `claudeDd='claudeD -d'` (a peculiar pattern only the auto-installer would create) plus `ccdDd` definition. Two independent markers reduces false positives. Users who manually added their own `ccdD` or `claudeD` without these specific Dd self-references are NOT affected by migration.
+  - Cleanup trigger regex `^# (Claude Code|Claude-GLM) Model Switcher Aliases` ensures idempotency across legacy and current header text — re-running the installer never appends a duplicate block.
+  - PowerShell uses Where-Object filter with explicit `$keep = $false` flag for clarity (vs. shell-style `eval "$grep_filter"`); both achieve the same conditional strip.
+- Problems encountered and resolutions
+  - First-cut implementation only matched the legacy header text in the cleanup trigger, which would have caused duplicate blocks on second re-run after the header changed. Caught during review; fixed by widening the regex to match both old and new headers.
+- Items explicitly completed, resolved, or superseded in this session
+  - Completed: `ccg` short default + `ccgD` danger-skip variants
+  - Completed: Installer no longer creates or removes `ccd`/`ccdD`/`claudeD`/`claudeDd` (per user request)
+  - Completed: Legacy block fingerprint migration (one-shot scrub of orphan claude aliases on upgrade)
+  - Completed: Re-run idempotency (cleanup trigger matches both legacy and current marker)
+  - Superseded: Phase 7's auto-injection of claude-side aliases into user shell rc (now hands-off)
+- Verification performed
+  - `bash -n install.sh` => OK
+  - Migration test against synthetic legacy bashrc: full claude quintet stripped. PASS.
+  - Migration test against user-curated bashrc (no `ccdDd`/`claudeDd` fingerprint): claude aliases preserved, GLM aliases stripped. PASS.
+  - Dry-run cleanup against user's real `~/.bashrc`: `ccdD`, `claudeD`, `codexD`, `ccd` PRESERVED; `ccg47`, `ccg5`, `ccg47D/Dd`, `ccg5D/Dd`, `ccf` STRIPPED. PASS.
+
+Session 2026-04-28 19:30 CDT
+- Coding CLI used: Claude Code (Opus 4.7)
+- Phase(s) worked on
+  - Phase 12: Harness code review and fix run via `/harness-hur-code-review-and-fix` slash command. Single defect found and resolved.
+- Motivation
+  - User-invoked harness-driven code review of all uncommitted Phase 11 work plus existing scripts.
+- Findings (Phase 0/1)
+  - Critical: 0
+  - High: 0
+  - Medium: 1 — SMOKE-01: `smoke_test_models.sh` API key auto-detection paths missed 3 newer wrappers (`claude-glm-5-turbo`, `claude-glm-4.5v`, `claude-glm-4.5-air`) and their settings dirs (`.claude-glm-5-turbo/settings.json`, `.claude-glm-45v/settings.json`, `.claude-glm-45-air/settings.json`). Pre-existing bug introduced in Phase 9; not introduced by Phase 11 changes.
+  - Low: 0
+  - Rejected as not-broken (preserve existing style/architecture per harness mandate):
+    - install.sh `eval "$legacy_claude_filter"` — uses eval but with hardcoded internal string only, no user input. Works correctly. Refactor would be cosmetic.
+    - install.ps1 `(array -match pattern).Count -gt 0` fingerprint check — works for typical multi-line profile content. Edge case (single-line profile) is impractical.
+    - install.sh cleanup grep for csh/tcsh format aliases (`alias X 'value'` without `=`) — pre-existing, csh users rare, fixing risks regressions.
+    - `fix_hooks_config.py` docstring vs implementation mismatch — utility works for its actual use case.
+- Concrete changes implemented
+  - SMOKE-01 (smoke_test_models.sh): Added `claude-glm-5-turbo`, `claude-glm-4.5v`, `claude-glm-4.5-air` to `wrapper_files` array. Added `$HOME/.claude-glm-5-turbo/settings.json`, `$HOME/.claude-glm-45v/settings.json`, `$HOME/.claude-glm-45-air/settings.json` to `settings_files` array. Coverage now 9/9 wrappers + 9/9 settings dirs (was 6/6 each).
+- Files/modules/functions touched
+  - Modified: `smoke_test_models.sh`, `PROJECT_HANDOFF.md`, `PROJECT_LOG.md`
+- Harness process
+  - Project size (~2000 LOC shell + PowerShell, no web UI, no test suite, no CI) does not warrant full multi-agent persistent team spawning. Orchestrator performed Phase 0 reconnaissance + Phase 1 triage + Phase 2 implementation directly, then Phase 3 verification via syntax checks and dry-run, Phase 4 live smoke test, Phase 5 docs.
+  - Per "fix only what is broken" mandate: rejected 4 candidate findings that were working code with theoretical edge cases or stylistic preferences.
+- Key technical decisions and rationale
+  - Smoke test fix is purely additive — appended new paths to existing arrays in the established convention. No restructuring.
+  - Did not touch `CLAUDE.md` even though it shows uncommitted modifications — confirmed by PROJECT_HANDOFF that this is upstream MoAI-ADK framework drift, not project code.
+- Problems encountered and resolutions
+  - None.
+- Items explicitly completed, resolved, or superseded in this session
+  - Completed: SMOKE-01 — full wrapper/settings path coverage in smoke_test_models.sh
+- Verification performed
+  - `bash -n install.sh` => OK
+  - `bash -n smoke_test_models.sh` => OK (post-fix)
+  - `python3 ast.parse(fix_hooks_config.py)` => OK
+  - `node --check bin/cli.js`, `node --check bin/preinstall.js` => OK
+  - `json.load(package.json)` => OK
+  - `bash smoke_test_models.sh` against live Z.ai API => 8/9 PASS, identical to baseline (no regression). API key auto-detected from existing wrappers, SMOKE-01 fix verified working.
+- Final test counts vs baseline: 8/9 PASS (no change). Final security posture: unchanged from Phase 10 (chmod 700 wrappers, silent key entry, UTF-8 settings.json all still in place).
+- Remaining open issues: none.
