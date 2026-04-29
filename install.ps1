@@ -213,56 +213,70 @@ function Add-PowerShellAliases {
         Write-Host "INFO: Detected legacy claude alias block from previous wrapper version - migrating."
     }
 
+    # Patterns owned by this installer - always stripped on every run.
+    # Strings are matched as regex via -match (substrings without anchors
+    # match anywhere in the line; explicit ^ anchors match line start).
+    $installerOwnedPatterns = @(
+        "# Claude Code Model Switcher Aliases",
+        "# Claude-GLM Model Switcher Aliases",
+        "# Claude Code Danger Skip Aliases",
+        "# Claude-GLM Danger Skip Aliases",
+        "# ccx multi-provider proxy function",
+        "Set-Alias ccg ",
+        "Set-Alias ccg51 ",
+        "Set-Alias ccg5t ",
+        "Set-Alias ccg5 ",
+        "Set-Alias ccg47 ",
+        "Set-Alias ccg46 ",
+        "Set-Alias ccg45air ",
+        "Set-Alias ccg45v ",
+        "Set-Alias ccg45 ",
+        "Set-Alias ccf ",
+        '^\s*function\s+ccx\b',
+        '\\ccx\.ps1',
+        '^\s*function\s+ccgD\b',
+        '^\s*function\s+ccgDd\b',
+        '^\s*function\s+ccg45D\b',
+        '^\s*function\s+ccg45Dd\b',
+        '^\s*function\s+ccg45vD\b',
+        '^\s*function\s+ccg45vDd\b',
+        '^\s*function\s+ccg45airD\b',
+        '^\s*function\s+ccg45airDd\b',
+        '^\s*function\s+ccg46D\b',
+        '^\s*function\s+ccg46Dd\b',
+        '^\s*function\s+ccg47D\b',
+        '^\s*function\s+ccg47Dd\b',
+        '^\s*function\s+ccg5D\b',
+        '^\s*function\s+ccg5Dd\b',
+        '^\s*function\s+ccg5tD\b',
+        '^\s*function\s+ccg5tDd\b',
+        '^\s*function\s+ccg51D\b',
+        '^\s*function\s+ccg51Dd\b'
+    )
+
+    # Legacy claude alias patterns - stripped only when fingerprint detected.
+    $legacyClaudePatterns = @(
+        '^Set-Alias ccd ',
+        '^\s*function\s+ccdD\b',
+        '^\s*function\s+ccdDd\b',
+        '^\s*function\s+claudeD\b',
+        '^\s*function\s+claudeDd\b'
+    )
+
     $filteredContent = $profileContent | Where-Object {
         $line = $_
-        $keep = $true
+
+        foreach ($pattern in $installerOwnedPatterns) {
+            if ($line -match $pattern) { return $false }
+        }
 
         if ($legacyClaudeFingerprint) {
-            if ($line -match '^Set-Alias ccd ' -or
-                $line -match '^\s*function\s+ccdD\b' -or
-                $line -match '^\s*function\s+ccdDd\b' -or
-                $line -match '^\s*function\s+claudeD\b' -or
-                $line -match '^\s*function\s+claudeDd\b') {
-                $keep = $false
+            foreach ($pattern in $legacyClaudePatterns) {
+                if ($line -match $pattern) { return $false }
             }
         }
 
-        $keep -and
-        $_ -notmatch "# Claude Code Model Switcher Aliases" -and
-        $_ -notmatch "# Claude-GLM Model Switcher Aliases" -and
-        $_ -notmatch "Set-Alias ccg " -and
-        $_ -notmatch "Set-Alias ccg51 " -and
-        $_ -notmatch "Set-Alias ccg5t " -and
-        $_ -notmatch "Set-Alias ccg5 " -and
-        $_ -notmatch "Set-Alias ccg47 " -and
-        $_ -notmatch "Set-Alias ccg46 " -and
-        $_ -notmatch "Set-Alias ccg45air " -and
-        $_ -notmatch "Set-Alias ccg45v " -and
-        $_ -notmatch "Set-Alias ccg45 " -and
-        $_ -notmatch "Set-Alias ccf "
-        -and $_ -notmatch "# ccx multi-provider proxy function"
-        -and $_ -notmatch "^\s*function\s+ccx\b"
-        -and $_ -notmatch "\\ccx\.ps1"
-        -and $_ -notmatch "# Claude Code Danger Skip Aliases"
-        -and $_ -notmatch "# Claude-GLM Danger Skip Aliases"
-        -and $_ -notmatch "^\s*function\s+ccgD\b"
-        -and $_ -notmatch "^\s*function\s+ccgDd\b"
-        -and $_ -notmatch "^\s*function\s+ccg45D\b"
-        -and $_ -notmatch "^\s*function\s+ccg45Dd\b"
-        -and $_ -notmatch "^\s*function\s+ccg45vD\b"
-        -and $_ -notmatch "^\s*function\s+ccg45vDd\b"
-        -and $_ -notmatch "^\s*function\s+ccg45airD\b"
-        -and $_ -notmatch "^\s*function\s+ccg45airDd\b"
-        -and $_ -notmatch "^\s*function\s+ccg46D\b"
-        -and $_ -notmatch "^\s*function\s+ccg46Dd\b"
-        -and $_ -notmatch "^\s*function\s+ccg47D\b"
-        -and $_ -notmatch "^\s*function\s+ccg47Dd\b"
-        -and $_ -notmatch "^\s*function\s+ccg5D\b"
-        -and $_ -notmatch "^\s*function\s+ccg5Dd\b"
-        -and $_ -notmatch "^\s*function\s+ccg5tD\b"
-        -and $_ -notmatch "^\s*function\s+ccg5tDd\b"
-        -and $_ -notmatch "^\s*function\s+ccg51D\b"
-        -and $_ -notmatch "^\s*function\s+ccg51Dd\b"
+        return $true
     }
 
     # Add new aliases
