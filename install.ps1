@@ -330,7 +330,7 @@ function Remove-CcxArtifacts {
 }
 
 function Remove-DangerSkipArtifacts {
-    # No longer removing danger-skip shims — they are actively used
+    # No longer removing danger-skip shims -- they are actively used
 }
 
 function Get-ExistingZaiApiKey {
@@ -1264,7 +1264,7 @@ function Install-ClaudeGlm {
     Write-Host "   claude-glm-4.5-air - GLM-4.5-Air"
     Write-Host "   claude-glm-fast    - GLM-4.5-Air (fast, alias for ccg45air)"
     Write-Host ""
-    Write-Host "Aliases (GLM only — your 'claude' command is left untouched):"
+    Write-Host "Aliases (GLM only -- your 'claude' command is left untouched):"
     Write-Host "   ccg      - claude-glm-5.1 (GLM-5.1, default)"
     Write-Host "   ccgD     - ccg --dangerously-skip-permissions"
     Write-Host "   ccgDd    - ccg --dangerously-skip-permissions -d"
