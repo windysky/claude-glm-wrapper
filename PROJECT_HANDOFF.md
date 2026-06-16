@@ -6,8 +6,7 @@
 - Last updated: 2026-06-16
 - Last coding CLI used (informational): Claude Code
 - Current version: 2.4.0 (package.json)
-- Latest committed commit on `main`: `70ff1ff` (install.ps1 PS5.1 fixes). NOTE: the prior handoff incorrectly recorded `25ff837` as the tip; git history actually has `072a9c9` (Phase 11+12) plus a run of install.ps1 PS5.1 hardening commits (`ec387cb`, `4399507`, `03e7dfb`, `657b2c9`, `70ff1ff`) that were never logged in PROJECT_LOG.md. Those are pre-existing and left as-is.
-- Phase 13 (GLM-5.2) work is implemented and verified but NOT yet committed (working tree has modifications to install.sh, install.ps1, smoke_test_models.sh, README.md, package.json).
+- Latest commit on `main`: `502411d` (Phase 13: GLM-5.2 default + tier-scheme migration), pushed to origin. NOTE: the prior handoff incorrectly recorded `25ff837` as the tip; git history between that and Phase 13 also has `072a9c9` (Phase 11+12) plus a run of install.ps1 PS5.1 hardening commits (`ec387cb`, `4399507`, `03e7dfb`, `657b2c9`, `70ff1ff`) that were never logged in PROJECT_LOG.md. Those are pre-existing and left as-is.
 
 ## 2. Current State
 - GLM-5 wrapper (`ccg5`): Completed
@@ -77,11 +76,10 @@
   - Status: Completed
   - Last updated: 2026-04-28 19:30 CDT
 - Phase 13: Add GLM-5.2 default (`ccg52`, `ccg`→5.2, 1M context) + tier-mapping migration across all wrappers + smoke test + README + v2.4.0
-  - Status: Completed (implemented + independently reviewed; uncommitted)
+  - Status: Completed (implemented + independently reviewed; committed `502411d`, pushed)
   - Last updated: 2026-06-16
 
 ## 4. Outstanding Work
-- Commit + push Phase 13 (GLM-5.2). Working-tree changes to install.sh, install.ps1, smoke_test_models.sh, README.md, package.json are verified but not yet committed. User has not yet requested a commit.
 - Windows-side verification of install.ps1 for the new 5.2 wrapper + tier scheme remains unrun (no Windows host in this environment) — same standing gap as prior phases.
 - Runtime confirmation that `glm-5.2[1m]` resolves inside a real Claude Code launch (the raw `/v1/messages` API 400s on the bracket form because `[1m]` is a Claude Code client-side routing convention, not a raw model id; base `glm-5.2` is confirmed reachable HTTP 200). Recommend one live `ccg` launch to confirm.
 
