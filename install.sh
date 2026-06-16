@@ -50,6 +50,7 @@ GLM_47_CONFIG_DIR="$HOME/.claude-glm-47"
 GLM_5_CONFIG_DIR="$HOME/.claude-glm-5"
 GLM_5T_CONFIG_DIR="$HOME/.claude-glm-5-turbo"
 GLM_51_CONFIG_DIR="$HOME/.claude-glm-51"
+GLM_52_CONFIG_DIR="$HOME/.claude-glm-52"
 GLM_FAST_CONFIG_DIR="$HOME/.claude-glm-fast"
 ZAI_API_KEY="YOUR_ZAI_API_KEY_HERE"
 
@@ -288,6 +289,7 @@ cleanup_old_wrappers() {
 detect_existing_zai_api_key() {
     local candidate=""
     local wrapper_files=(
+        "$USER_BIN_DIR/claude-glm-5.2"
         "$USER_BIN_DIR/claude-glm-5.1"
         "$USER_BIN_DIR/claude-glm-5-turbo"
         "$USER_BIN_DIR/claude-glm-5"
@@ -310,6 +312,7 @@ detect_existing_zai_api_key() {
     done
 
     local settings_files=(
+        "$GLM_52_CONFIG_DIR/settings.json"
         "$GLM_51_CONFIG_DIR/settings.json"
         "$GLM_5T_CONFIG_DIR/settings.json"
         "$GLM_5_CONFIG_DIR/settings.json"
@@ -410,8 +413,9 @@ create_claude_glm_47_wrapper() {
 # Set Z.AI environment variables
 export ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic"
 export ANTHROPIC_AUTH_TOKEN="$ZAI_API_KEY"
-export ANTHROPIC_MODEL="glm-4.7"
-export ANTHROPIC_SMALL_FAST_MODEL="glm-4.5-air"
+export ANTHROPIC_DEFAULT_OPUS_MODEL="glm-4.7"
+export ANTHROPIC_DEFAULT_SONNET_MODEL="glm-4.7"
+export ANTHROPIC_DEFAULT_HAIKU_MODEL="glm-4.5-air"
 
 # Use custom config directory to avoid conflicts
 export CLAUDE_HOME="\$HOME/.claude-glm-47"
@@ -425,8 +429,9 @@ cat > "\$CLAUDE_HOME/settings.json" << SETTINGS
   "env": {
     "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
     "ANTHROPIC_AUTH_TOKEN": "$ZAI_API_KEY",
-    "ANTHROPIC_MODEL": "glm-4.7",
-    "ANTHROPIC_SMALL_FAST_MODEL": "glm-4.5-air"
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.7",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.7",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.5-air"
   }
 }
 SETTINGS
@@ -462,8 +467,9 @@ create_claude_glm_45_wrapper() {
 # Set Z.AI environment variables
 export ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic"
 export ANTHROPIC_AUTH_TOKEN="$ZAI_API_KEY"
-export ANTHROPIC_MODEL="glm-4.5"
-export ANTHROPIC_SMALL_FAST_MODEL="glm-4.5-air"
+export ANTHROPIC_DEFAULT_OPUS_MODEL="glm-4.5"
+export ANTHROPIC_DEFAULT_SONNET_MODEL="glm-4.5"
+export ANTHROPIC_DEFAULT_HAIKU_MODEL="glm-4.5-air"
 
 # Use custom config directory to avoid conflicts
 export CLAUDE_HOME="\$HOME/.claude-glm-45"
@@ -477,8 +483,9 @@ cat > "\$CLAUDE_HOME/settings.json" << SETTINGS
   "env": {
     "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
     "ANTHROPIC_AUTH_TOKEN": "$ZAI_API_KEY",
-    "ANTHROPIC_MODEL": "glm-4.5",
-    "ANTHROPIC_SMALL_FAST_MODEL": "glm-4.5-air"
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.5",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.5",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.5-air"
   }
 }
 SETTINGS
@@ -514,8 +521,9 @@ create_claude_glm_45v_wrapper() {
 # Set Z.AI environment variables
 export ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic"
 export ANTHROPIC_AUTH_TOKEN="$ZAI_API_KEY"
-export ANTHROPIC_MODEL="glm-4.5v"
-export ANTHROPIC_SMALL_FAST_MODEL="glm-4.5-air"
+export ANTHROPIC_DEFAULT_OPUS_MODEL="glm-4.5v"
+export ANTHROPIC_DEFAULT_SONNET_MODEL="glm-4.5v"
+export ANTHROPIC_DEFAULT_HAIKU_MODEL="glm-4.5-air"
 
 # Use custom config directory to avoid conflicts
 export CLAUDE_HOME="\$HOME/.claude-glm-45v"
@@ -529,8 +537,9 @@ cat > "\$CLAUDE_HOME/settings.json" << SETTINGS
   "env": {
     "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
     "ANTHROPIC_AUTH_TOKEN": "$ZAI_API_KEY",
-    "ANTHROPIC_MODEL": "glm-4.5v",
-    "ANTHROPIC_SMALL_FAST_MODEL": "glm-4.5-air"
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.5v",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.5v",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.5-air"
   }
 }
 SETTINGS
@@ -566,8 +575,9 @@ create_claude_glm_45air_wrapper() {
 # Set Z.AI environment variables
 export ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic"
 export ANTHROPIC_AUTH_TOKEN="$ZAI_API_KEY"
-export ANTHROPIC_MODEL="glm-4.5-air"
-export ANTHROPIC_SMALL_FAST_MODEL="glm-4.5-air"
+export ANTHROPIC_DEFAULT_OPUS_MODEL="glm-4.5-air"
+export ANTHROPIC_DEFAULT_SONNET_MODEL="glm-4.5-air"
+export ANTHROPIC_DEFAULT_HAIKU_MODEL="glm-4.5-air"
 
 # Use custom config directory to avoid conflicts
 export CLAUDE_HOME="\$HOME/.claude-glm-45-air"
@@ -581,8 +591,9 @@ cat > "\$CLAUDE_HOME/settings.json" << SETTINGS
   "env": {
     "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
     "ANTHROPIC_AUTH_TOKEN": "$ZAI_API_KEY",
-    "ANTHROPIC_MODEL": "glm-4.5-air",
-    "ANTHROPIC_SMALL_FAST_MODEL": "glm-4.5-air"
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.5-air",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.5-air",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.5-air"
   }
 }
 SETTINGS
@@ -618,8 +629,9 @@ create_claude_glm_46_wrapper() {
 # Set Z.AI environment variables
 export ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic"
 export ANTHROPIC_AUTH_TOKEN="$ZAI_API_KEY"
-export ANTHROPIC_MODEL="glm-4.6"
-export ANTHROPIC_SMALL_FAST_MODEL="glm-4.5-air"
+export ANTHROPIC_DEFAULT_OPUS_MODEL="glm-4.6"
+export ANTHROPIC_DEFAULT_SONNET_MODEL="glm-4.6"
+export ANTHROPIC_DEFAULT_HAIKU_MODEL="glm-4.5-air"
 
 # Use custom config directory to avoid conflicts
 export CLAUDE_HOME="\$HOME/.claude-glm-46"
@@ -633,8 +645,9 @@ cat > "\$CLAUDE_HOME/settings.json" << SETTINGS
   "env": {
     "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
     "ANTHROPIC_AUTH_TOKEN": "$ZAI_API_KEY",
-    "ANTHROPIC_MODEL": "glm-4.6",
-    "ANTHROPIC_SMALL_FAST_MODEL": "glm-4.5-air"
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.6",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.6",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.5-air"
   }
 }
 SETTINGS
@@ -670,8 +683,9 @@ create_claude_glm_5_wrapper() {
 # Set Z.AI environment variables
 export ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic"
 export ANTHROPIC_AUTH_TOKEN="$ZAI_API_KEY"
-export ANTHROPIC_MODEL="glm-5"
-export ANTHROPIC_SMALL_FAST_MODEL="glm-4.5-air"
+export ANTHROPIC_DEFAULT_OPUS_MODEL="glm-5"
+export ANTHROPIC_DEFAULT_SONNET_MODEL="glm-5"
+export ANTHROPIC_DEFAULT_HAIKU_MODEL="glm-4.5-air"
 
 # Use custom config directory to avoid conflicts
 export CLAUDE_HOME="\$HOME/.claude-glm-5"
@@ -685,8 +699,9 @@ cat > "\$CLAUDE_HOME/settings.json" << SETTINGS
   "env": {
     "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
     "ANTHROPIC_AUTH_TOKEN": "$ZAI_API_KEY",
-    "ANTHROPIC_MODEL": "glm-5",
-    "ANTHROPIC_SMALL_FAST_MODEL": "glm-4.5-air"
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-5",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.5-air"
   }
 }
 SETTINGS
@@ -722,8 +737,9 @@ create_claude_glm_5t_wrapper() {
 # Set Z.AI environment variables
 export ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic"
 export ANTHROPIC_AUTH_TOKEN="$ZAI_API_KEY"
-export ANTHROPIC_MODEL="glm-5-turbo"
-export ANTHROPIC_SMALL_FAST_MODEL="glm-4.5-air"
+export ANTHROPIC_DEFAULT_OPUS_MODEL="glm-5-turbo"
+export ANTHROPIC_DEFAULT_SONNET_MODEL="glm-5-turbo"
+export ANTHROPIC_DEFAULT_HAIKU_MODEL="glm-4.5-air"
 
 # Use custom config directory to avoid conflicts
 export CLAUDE_HOME="\$HOME/.claude-glm-5-turbo"
@@ -737,8 +753,9 @@ cat > "\$CLAUDE_HOME/settings.json" << SETTINGS
   "env": {
     "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
     "ANTHROPIC_AUTH_TOKEN": "$ZAI_API_KEY",
-    "ANTHROPIC_MODEL": "glm-5-turbo",
-    "ANTHROPIC_SMALL_FAST_MODEL": "glm-4.5-air"
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5-turbo",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-5-turbo",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.5-air"
   }
 }
 SETTINGS
@@ -774,8 +791,9 @@ create_claude_glm_51_wrapper() {
 # Set Z.AI environment variables
 export ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic"
 export ANTHROPIC_AUTH_TOKEN="$ZAI_API_KEY"
-export ANTHROPIC_MODEL="glm-5.1"
-export ANTHROPIC_SMALL_FAST_MODEL="glm-4.5-air"
+export ANTHROPIC_DEFAULT_OPUS_MODEL="glm-5.1"
+export ANTHROPIC_DEFAULT_SONNET_MODEL="glm-5.1"
+export ANTHROPIC_DEFAULT_HAIKU_MODEL="glm-4.5-air"
 
 # Use custom config directory to avoid conflicts
 export CLAUDE_HOME="\$HOME/.claude-glm-51"
@@ -789,8 +807,9 @@ cat > "\$CLAUDE_HOME/settings.json" << SETTINGS
   "env": {
     "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
     "ANTHROPIC_AUTH_TOKEN": "$ZAI_API_KEY",
-    "ANTHROPIC_MODEL": "glm-5.1",
-    "ANTHROPIC_SMALL_FAST_MODEL": "glm-4.5-air"
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5.1",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-5.1",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.5-air"
   }
 }
 SETTINGS
@@ -815,6 +834,62 @@ EOF
     echo "✅ Installed claude-glm-5.1 at $wrapper_path"
 }
 
+# Create GLM-5.2 wrapper (default, 1M context)
+create_claude_glm_52_wrapper() {
+    local wrapper_path="$USER_BIN_DIR/claude-glm-5.2"
+
+    cat > "$wrapper_path" << EOF
+#!/bin/bash
+# Claude-GLM-5.2 - Claude Code with Z.AI GLM-5.2 (Default, 1M context)
+
+# Set Z.AI environment variables
+export ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic"
+export ANTHROPIC_AUTH_TOKEN="$ZAI_API_KEY"
+export ANTHROPIC_DEFAULT_OPUS_MODEL="glm-5.2[1m]"
+export ANTHROPIC_DEFAULT_SONNET_MODEL="glm-5.2[1m]"
+export ANTHROPIC_DEFAULT_HAIKU_MODEL="glm-4.5-air"
+export CLAUDE_CODE_AUTO_COMPACT_WINDOW="1000000"
+
+# Use custom config directory to avoid conflicts
+export CLAUDE_HOME="\$HOME/.claude-glm-52"
+
+# Create config directory if it doesn't exist
+mkdir -p "\$CLAUDE_HOME"
+
+# Create/update settings file with GLM configuration
+cat > "\$CLAUDE_HOME/settings.json" << SETTINGS
+{
+  "env": {
+    "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
+    "ANTHROPIC_AUTH_TOKEN": "$ZAI_API_KEY",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5.2[1m]",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-5.2[1m]",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.5-air",
+    "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "1000000"
+  }
+}
+SETTINGS
+
+# Launch Claude Code with custom config
+echo "🚀 Starting Claude Code with GLM-5.2 (Default, 1M context)..."
+echo "📁 Config directory: \$CLAUDE_HOME"
+echo ""
+
+# Check if claude exists
+if ! command -v claude &> /dev/null; then
+    echo "❌ Error: 'claude' command not found!"
+    echo "Please ensure Claude Code is installed and in your PATH"
+    exit 1
+fi
+
+# Run actual claude command
+claude "\$@"
+EOF
+
+    chmod 700 "$wrapper_path"
+    echo "✅ Installed claude-glm-5.2 at $wrapper_path"
+}
+
 # Create fast GLM-4.5-Air wrapper
 create_claude_glm_fast_wrapper() {
     local wrapper_path="$USER_BIN_DIR/claude-glm-fast"
@@ -826,8 +901,9 @@ create_claude_glm_fast_wrapper() {
 # Set Z.AI environment variables
 export ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic"
 export ANTHROPIC_AUTH_TOKEN="$ZAI_API_KEY"
-export ANTHROPIC_MODEL="glm-4.5-air"
-export ANTHROPIC_SMALL_FAST_MODEL="glm-4.5-air"
+export ANTHROPIC_DEFAULT_OPUS_MODEL="glm-4.5-air"
+export ANTHROPIC_DEFAULT_SONNET_MODEL="glm-4.5-air"
+export ANTHROPIC_DEFAULT_HAIKU_MODEL="glm-4.5-air"
 
 # Use custom config directory to avoid conflicts
 export CLAUDE_HOME="\$HOME/.claude-glm-fast"
@@ -841,8 +917,9 @@ cat > "\$CLAUDE_HOME/settings.json" << SETTINGS
   "env": {
     "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
     "ANTHROPIC_AUTH_TOKEN": "$ZAI_API_KEY",
-    "ANTHROPIC_MODEL": "glm-4.5-air",
-    "ANTHROPIC_SMALL_FAST_MODEL": "glm-4.5-air"
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.5-air",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.5-air",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.5-air"
   }
 }
 SETTINGS
@@ -936,6 +1013,9 @@ create_shell_aliases() {
             grep -v "alias ccg51=" | \
             grep -v "alias ccg51D=" | \
             grep -v "alias ccg51Dd=" | \
+            grep -v "alias ccg52=" | \
+            grep -v "alias ccg52D=" | \
+            grep -v "alias ccg52Dd=" | \
             grep -v "alias ccf=" | \
             grep -v "alias ccx=" > "$target_rc.tmp"
             mv "$target_rc.tmp" "$target_rc"
@@ -962,7 +1042,7 @@ create_shell_aliases() {
 # Claude-GLM Model Switcher Aliases
 # (claude itself and any claude-only aliases are intentionally left untouched —
 #  manage those manually in your shell rc)
-alias ccg 'claude-glm-5.1'
+alias ccg 'claude-glm-5.2'
 alias ccgD 'ccg --dangerously-skip-permissions'
 alias ccgDd 'ccg --dangerously-skip-permissions -d'
 alias ccg45 'claude-glm-4.5'
@@ -989,6 +1069,9 @@ alias ccg5tDd 'ccg5t --dangerously-skip-permissions -d'
 alias ccg51 'claude-glm-5.1'
 alias ccg51D 'ccg51 --dangerously-skip-permissions'
 alias ccg51Dd 'ccg51 --dangerously-skip-permissions -d'
+alias ccg52 'claude-glm-5.2'
+alias ccg52D 'ccg52 --dangerously-skip-permissions'
+alias ccg52Dd 'ccg52 --dangerously-skip-permissions -d'
 alias ccf 'claude-glm-fast'
 EOF
         else
@@ -997,7 +1080,7 @@ EOF
 # Claude-GLM Model Switcher Aliases
 # (claude itself and any claude-only aliases are intentionally left untouched —
 #  manage those manually in your shell rc)
-alias ccg='claude-glm-5.1'
+alias ccg='claude-glm-5.2'
 alias ccgD='ccg --dangerously-skip-permissions'
 alias ccgDd='ccg --dangerously-skip-permissions -d'
 alias ccg45='claude-glm-4.5'
@@ -1024,6 +1107,9 @@ alias ccg5tDd='ccg5t --dangerously-skip-permissions -d'
 alias ccg51='claude-glm-5.1'
 alias ccg51D='ccg51 --dangerously-skip-permissions'
 alias ccg51Dd='ccg51 --dangerously-skip-permissions -d'
+alias ccg52='claude-glm-5.2'
+alias ccg52D='ccg52 --dangerously-skip-permissions'
+alias ccg52Dd='ccg52 --dangerously-skip-permissions -d'
 alias ccf='claude-glm-fast'
 EOF
         fi
@@ -1090,7 +1176,7 @@ main() {
     rm -f "$USER_BIN_DIR/ccx" 2>/dev/null || true
 
     # Check if already installed
-    if [ -f "$USER_BIN_DIR/claude-glm-5.1" ] || [ -f "$USER_BIN_DIR/claude-glm-5-turbo" ] || [ -f "$USER_BIN_DIR/claude-glm-5" ] || [ -f "$USER_BIN_DIR/claude-glm-4.7" ] || [ -f "$USER_BIN_DIR/claude-glm-4.6" ] || [ -f "$USER_BIN_DIR/claude-glm-4.5v" ] || [ -f "$USER_BIN_DIR/claude-glm-4.5-air" ] || [ -f "$USER_BIN_DIR/claude-glm-4.5" ] || [ -f "$USER_BIN_DIR/claude-glm-fast" ]; then
+    if [ -f "$USER_BIN_DIR/claude-glm-5.2" ] || [ -f "$USER_BIN_DIR/claude-glm-5.1" ] || [ -f "$USER_BIN_DIR/claude-glm-5-turbo" ] || [ -f "$USER_BIN_DIR/claude-glm-5" ] || [ -f "$USER_BIN_DIR/claude-glm-4.7" ] || [ -f "$USER_BIN_DIR/claude-glm-4.6" ] || [ -f "$USER_BIN_DIR/claude-glm-4.5v" ] || [ -f "$USER_BIN_DIR/claude-glm-4.5-air" ] || [ -f "$USER_BIN_DIR/claude-glm-4.5" ] || [ -f "$USER_BIN_DIR/claude-glm-fast" ]; then
         echo ""
         echo "✅ Existing installation detected!"
         echo "1) Update API key only"
@@ -1113,6 +1199,7 @@ main() {
                     create_claude_glm_5_wrapper
                     create_claude_glm_5t_wrapper
                     create_claude_glm_51_wrapper
+                    create_claude_glm_52_wrapper
                     create_claude_glm_fast_wrapper
                     create_shell_aliases
                     echo "✅ API key updated!"
@@ -1140,6 +1227,7 @@ main() {
                 create_claude_glm_5_wrapper
                 create_claude_glm_5t_wrapper
                 create_claude_glm_51_wrapper
+                create_claude_glm_52_wrapper
                 create_claude_glm_fast_wrapper
                 create_shell_aliases
                 echo "✅ Reset complete!"
@@ -1173,6 +1261,7 @@ main() {
         echo "   $USER_BIN_DIR/claude-glm-5"
         echo "   $USER_BIN_DIR/claude-glm-5-turbo"
         echo "   $USER_BIN_DIR/claude-glm-5.1"
+        echo "   $USER_BIN_DIR/claude-glm-5.2"
         echo "   $USER_BIN_DIR/claude-glm-fast"
     fi
 
@@ -1185,6 +1274,7 @@ main() {
     create_claude_glm_5_wrapper
     create_claude_glm_5t_wrapper
     create_claude_glm_51_wrapper
+    create_claude_glm_52_wrapper
     create_claude_glm_fast_wrapper
     create_shell_aliases
 
@@ -1212,11 +1302,12 @@ main() {
     echo "   claude-glm-4.7     - GLM-4.7"
     echo "   claude-glm-5       - GLM-5"
     echo "   claude-glm-5-turbo - GLM-5-Turbo"
-    echo "   claude-glm-5.1     - GLM-5.1 (latest)"
+    echo "   claude-glm-5.1     - GLM-5.1"
+    echo "   claude-glm-5.2     - GLM-5.2 (default, 1M context)"
     echo "   claude-glm-fast    - GLM-4.5-Air (fast, alias for ccg45air)"
     echo ""
     echo "Aliases (GLM only — your 'claude' command is left untouched):"
-    echo "   ccg      - claude-glm-5.1 (GLM-5.1, default)"
+    echo "   ccg      - claude-glm-5.2 (GLM-5.2, default, 1M context)"
     echo "   ccgD     - ccg --dangerously-skip-permissions"
     echo "   ccgDd    - ccg --dangerously-skip-permissions -d"
     echo "   ccg45    - claude-glm-4.5 (GLM-4.5)"
@@ -1226,7 +1317,8 @@ main() {
     echo "   ccg47    - claude-glm-4.7 (GLM-4.7)"
     echo "   ccg5     - claude-glm-5 (GLM-5)"
     echo "   ccg5t    - claude-glm-5-turbo (GLM-5-Turbo)"
-    echo "   ccg51    - claude-glm-5.1 (GLM-5.1, same as ccg)"
+    echo "   ccg51    - claude-glm-5.1 (GLM-5.1)"
+    echo "   ccg52    - claude-glm-5.2 (GLM-5.2, same as ccg)"
     echo "   ccf      - claude-glm-fast (alias for GLM-4.5-Air)"
     echo ""
 
@@ -1240,12 +1332,13 @@ main() {
         echo "   $USER_BIN_DIR/claude-glm-5"
         echo "   $USER_BIN_DIR/claude-glm-5-turbo"
         echo "   $USER_BIN_DIR/claude-glm-5.1"
+        echo "   $USER_BIN_DIR/claude-glm-5.2"
         echo "   $USER_BIN_DIR/claude-glm-fast"
     fi
 
     echo ""
     echo "📁 Installation location: $USER_BIN_DIR"
-    echo "📁 Config directories: ~/.claude-glm-45, ~/.claude-glm-45v, ~/.claude-glm-45-air, ~/.claude-glm-46, ~/.claude-glm-47, ~/.claude-glm-5, ~/.claude-glm-5-turbo, ~/.claude-glm-51, ~/.claude-glm-fast"
+    echo "📁 Config directories: ~/.claude-glm-45, ~/.claude-glm-45v, ~/.claude-glm-45-air, ~/.claude-glm-46, ~/.claude-glm-47, ~/.claude-glm-5, ~/.claude-glm-5-turbo, ~/.claude-glm-51, ~/.claude-glm-52, ~/.claude-glm-fast"
 }
 
 # Error handler

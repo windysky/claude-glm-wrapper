@@ -23,6 +23,7 @@ TIMEOUT_SECONDS=15
 
 # Candidate models to probe. Override with --models a,b,c.
 DEFAULT_MODELS=(
+    "glm-5.2"
     "glm-5.1"
     "glm-5"
     "glm-5-turbo"
@@ -66,6 +67,7 @@ detect_key() {
 
     # 3. Existing wrapper scripts
     local wrapper_files=(
+        "$USER_BIN_DIR/claude-glm-5.2"
         "$USER_BIN_DIR/claude-glm-5.1"
         "$USER_BIN_DIR/claude-glm-5-turbo"
         "$USER_BIN_DIR/claude-glm-5"
@@ -87,6 +89,7 @@ detect_key() {
 
     # 4. settings.json in config dirs
     local settings_files=(
+        "$HOME/.claude-glm-52/settings.json"
         "$HOME/.claude-glm-5/settings.json"
         "$HOME/.claude-glm-5-turbo/settings.json"
         "$HOME/.claude-glm-51/settings.json"

@@ -428,3 +428,53 @@ Session 2026-04-28 19:30 CDT
   - `bash smoke_test_models.sh` against live Z.ai API => 8/9 PASS, identical to baseline (no regression). API key auto-detected from existing wrappers, SMOKE-01 fix verified working.
 - Final test counts vs baseline: 8/9 PASS (no change). Final security posture: unchanged from Phase 10 (chmod 700 wrappers, silent key entry, UTF-8 settings.json all still in place).
 - Remaining open issues: none.
+
+Session 2026-06-16
+- Coding CLI used: Claude Code (Opus 4.8)
+- Phase(s) worked on
+  - Phase 13: Add GLM-5.2 as the new default model; migrate every wrapper from the single-model env scheme to Z.AI's recommended opus/sonnet/haiku tier scheme.
+- Motivation
+  - Z.ai released GLM-5.2. Per https://docs.z.ai/devpack/overview "All plans support GLM-5.2, GLM-5-Turbo, GLM-4.7 and GLM-4.5-Air." Per https://docs.z.ai/devpack/tool/claude the recommended Claude Code config now uses ANTHROPIC_DEFAULT_OPUS_MODEL=glm-5.2[1m], ANTHROPIC_DEFAULT_SONNET_MODEL=glm-5.2[1m], ANTHROPIC_DEFAULT_HAIKU_MODEL=glm-4.5-air, plus CLAUDE_CODE_AUTO_COMPACT_WINDOW=1000000 for the 1M context window. User asked for the default wrapper to use glm-5.2[1m].
+- Empirical findings (live smoke test against user's key, ground truth before coding)
+  - glm-5.2 => PASS (HTTP 200). glm-5.1, glm-5, glm-5-turbo, glm-4.7, glm-4.6, glm-4.5, glm-4.5v, glm-4.5-air all still PASS — i.e. all existing models remain reachable on the user's plan even though the overview doc only guarantees a subset across all plans. Nothing had to be removed.
+  - Raw `glm-5.2[1m]` => HTTP 400 "Unknown Model" at the bare /v1/messages endpoint. The `[1m]` suffix is a Claude Code client-side routing convention (paired with CLAUDE_CODE_AUTO_COMPACT_WINDOW), not a raw model id, so the smoke test (raw curl) cannot validate it. Base glm-5.2 is the probeable form; the bracket form is correct-by-spec per the Z.AI Claude doc.
+- User decisions captured via AskUserQuestion (4 questions)
+  - Add explicit ccg52 wrapper AND repoint default ccg -> glm-5.2.
+  - Tier mapping on EVERY wrapper (opus+sonnet = own model, haiku = glm-4.5-air), not just the default.
+  - Keep all existing wrappers (purely additive).
+  - Enable [1m] + auto-compact on the default wrapper.
+- Concrete changes implemented
+  - install.sh: added `create_claude_glm_52_wrapper` (file claude-glm-5.2, config dir ~/.claude-glm-52, opus/sonnet=glm-5.2[1m], haiku=glm-4.5-air, CLAUDE_CODE_AUTO_COMPACT_WINDOW=1000000). Added GLM_52_CONFIG_DIR. Converted all 9 existing wrappers' export blocks AND settings.json blocks from ANTHROPIC_MODEL/ANTHROPIC_SMALL_FAST_MODEL to the OPUS/SONNET/HAIKU tier scheme. Repointed `ccg` (csh + bash blocks) to claude-glm-5.2; added ccg52/ccg52D/ccg52Dd aliases; added the 3 ccg52 cleanup grep-v patterns; added the new wrapper to all 3 create-call sites, the detect_existing_zai_api_key wrapper_files + settings_files arrays, the existing-install if-test, the help/summary/model/alias/"don't forget" echoes, and the config-dirs line.
+  - install.ps1: mirrored everything — New-ClaudeGlm52Wrapper, $Glm52ConfigDir, tier-scheme conversion of all 9 existing wrappers' env arrays + settings.json lines, Set-Alias ccg -> claude-glm-5.2, Set-Alias ccg52, function ccg52D/ccg52Dd, $installerOwnedPatterns (Set-Alias ccg52 + the two function regexes), Get-ExistingZaiApiKey wrapperPaths + settingsPaths, existing-install detection ($glm52Wrapper), 3 call sites, .cmd shims (ccg + ccgD/ccgDd repointed to claude-glm-5.2.ps1, new ccg52/ccg52D/ccg52Dd shims), summaries, and the config-dirs summary line (brought to full 10-dir parity).
+  - smoke_test_models.sh: added glm-5.2 to DEFAULT_MODELS; claude-glm-5.2 to wrapper_files; ~/.claude-glm-52/settings.json to settings_files.
+  - README.md: feature list, quick-start, alias table (ccg -> 5.2 default with 1M context; new ccg52 row; ccg51 demoted from "same as ccg"), D/Dd variant list, tier-mapping explainer paragraph, how-it-works list, and "Changes in This Fork" section.
+  - package.json: 2.3.0 -> 2.4.0.
+- Files/modules/functions touched
+  - Modified: install.sh, install.ps1, smoke_test_models.sh, README.md, package.json, PROJECT_HANDOFF.md, PROJECT_LOG.md
+- Key technical decisions and rationale
+  - Tier scheme fully replaces the old 2-var scheme (0 residual ANTHROPIC_MODEL/ANTHROPIC_SMALL_FAST_MODEL refs) per the user's "tier mapping on every wrapper" choice. Each wrapper's opus+sonnet point at its own model so /model switching stays on-brand; haiku (background/fast) is glm-4.5-air everywhere.
+  - [1m] + auto-compact restricted to the default/5.2 wrapper only; all other wrappers keep their plain model id.
+  - ccg and ccg52 both resolve to the single claude-glm-5.2 wrapper (mirrors the existing ccg/ccg51 -> claude-glm-5.1 pattern), so repointing ccg automatically carries ccgD/ccgDd.
+  - Kept ccg5 = glm-5, ccg51 = glm-5.1 unchanged (determinism); only the short default ccg moved to 5.2.
+- Harness process
+  - Orchestrator (Opus 4.8) did research (WebFetch of both Z.AI docs + live smoke probe), Socratic AskUserQuestion round (4 questions), then implemented both scripts directly given the high cross-file synchronization requirements, then spawned one evaluator-active subagent for an independent fresh-context review.
+- Independent review (evaluator-active)
+  - Verdict APPROVED. Scores: Functionality 96, Security 100, Craft 97, Consistency 98. All 9 spec requirements verified present and consistent across both scripts; 0 old-scheme residuals; 20/20/20 tier balance; [1m]/auto-compact isolated to 5.2; JSON valid. One Low finding (PowerShell config-dirs summary omitted $Glm52ConfigDir) — fixed by bringing the line to full 10-dir parity. One pre-existing, out-of-scope note (csh space-format alias cleanup gap) left untouched.
+- Verification performed
+  - bash -n install.sh => OK; bash -n smoke_test_models.sh => OK
+  - json.load(package.json) => 2.4.0
+  - grep: 0 residual ANTHROPIC_MODEL/ANTHROPIC_SMALL_FAST_MODEL in both scripts; OPUS=SONNET=HAIKU=20 in both; [1m]+auto-compact strictly inside the 5.2 wrapper
+  - Generated bash claude-glm-5.2 settings.json extracted + python json.load => VALID (6 env keys); PowerShell 5.2 settings.json line parsed => VALID
+  - Live smoke_test_models.sh vs Z.ai API: glm-5.2 PASS, all wrapper models PASS, only glm-4.7-flashx 429 (plan quota, unchanged)
+- Items explicitly completed, resolved, or superseded in this session
+  - Completed: GLM-5.2 wrapper (ccg52) + ccg default repoint + 1M context
+  - Completed: tier-scheme migration across all wrappers (both installers)
+  - Completed: smoke test, README, version bump, independent review
+  - Superseded: ANTHROPIC_MODEL + ANTHROPIC_SMALL_FAST_MODEL scheme (now OPUS/SONNET/HAIKU tier scheme everywhere)
+  - Superseded: ccg -> claude-glm-5.1 (now ccg -> claude-glm-5.2)
+- Remaining open issues
+  - Phase 13 is uncommitted (user has not requested a commit). Working tree: install.sh, install.ps1, smoke_test_models.sh, README.md, package.json.
+  - Windows-side execution of install.ps1 still unverified (no Windows host).
+  - One live `ccg` launch recommended to confirm glm-5.2[1m] resolves inside Claude Code (raw API cannot validate the bracket form).
+- Documentation reconciliation note
+  - On takeover, found PROJECT_HANDOFF.md was stale: it recorded latest commit 25ff837, but git HEAD is 70ff1ff with unlogged commits 072a9c9 (Phase 11+12) and a run of install.ps1 PS5.1 fixes (ec387cb, 4399507, 03e7dfb, 657b2c9, 70ff1ff). Handoff "Latest committed commit" pointer corrected to 70ff1ff; those prior commits are pre-existing and left as-is.

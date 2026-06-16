@@ -18,7 +18,7 @@ Use [Z.AI's GLM models](https://z.ai) with [Claude Code](https://www.anthropic.c
 ## Features
 
 - 🚀 **Easy switching** between GLM and Claude models
-- ⚡ **Multiple GLM models**: GLM-5.1 (latest), GLM-5-Turbo, GLM-5, GLM-4.7, GLM-4.6, GLM-4.5, GLM-4.5V (vision), and GLM-4.5-Air (fast)
+- ⚡ **Multiple GLM models**: GLM-5.2 (default, 1M context), GLM-5.1, GLM-5-Turbo, GLM-5, GLM-4.7, GLM-4.6, GLM-4.5, GLM-4.5V (vision), and GLM-4.5-Air (fast)
 - 🔒 **No sudo/admin required**: Installs to user's home directory
 - 🖥️ **Cross-platform**: Works on Windows, macOS, and Linux
 - 📁 **Isolated configs**: Each model uses its own config directory — no conflicts!
@@ -64,7 +64,7 @@ cd claude-glm-wrapper
 Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 ```
 
-**Anaconda/cmd:** Run the PowerShell installer once (as above). It now creates `.cmd` shims in `AppData\Local\Microsoft\WindowsApps`, so `ccg`, `ccgD`, `ccgDd`, `ccg51`, `ccg5t`, `ccg5`, `ccg47`, `ccg46`, `ccg45`, `ccg45v`, `ccg45air`, and `ccf` work in `cmd.exe` and Anaconda prompts.
+**Anaconda/cmd:** Run the PowerShell installer once (as above). It now creates `.cmd` shims in `AppData\Local\Microsoft\WindowsApps`, so `ccg`, `ccgD`, `ccgDd`, `ccg52`, `ccg51`, `ccg5t`, `ccg5`, `ccg47`, `ccg46`, `ccg45`, `ccg45v`, `ccg45air`, and `ccf` work in `cmd.exe` and Anaconda prompts.
 
 ### What the Installer Does
 
@@ -80,9 +80,10 @@ Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 
 ```bash
 claude           # Regular Claude Code (Anthropic) — untouched by this installer
-ccg              # Claude Code with GLM-5.1 (default GLM model)
+ccg              # Claude Code with GLM-5.2 (default GLM model, 1M context)
 ccgD             # ccg --dangerously-skip-permissions
-ccg51            # Claude Code with GLM-5.1 (same as ccg)
+ccg52            # Claude Code with GLM-5.2 (same as ccg)
+ccg51            # Claude Code with GLM-5.1
 ccg5t            # Claude Code with GLM-5-Turbo
 ccg5             # Claude Code with GLM-5
 ccg47            # Claude Code with GLM-4.7
@@ -99,9 +100,10 @@ The installer creates these commands and aliases. **The installer only manages G
 
 | Alias | Full Command | What It Does | When to Use |
 |-------|--------------|--------------|-------------|
-| `ccg` | `claude-glm-5.1` | **GLM-5.1 (default)** | Recommended default — shortest alias, points at the latest GLM model |
-| `ccgD` | `ccg --dangerously-skip-permissions` | GLM-5.1 (skip permissions) | Default GLM with auto-approved tool calls |
-| `ccg51` | `claude-glm-5.1` | GLM-5.1 (same as `ccg`) | Explicit version alias |
+| `ccg` | `claude-glm-5.2` | **GLM-5.2 (default, 1M context)** | Recommended default — shortest alias, points at the latest GLM model with 1M-token context |
+| `ccgD` | `ccg --dangerously-skip-permissions` | GLM-5.2 (skip permissions) | Default GLM with auto-approved tool calls |
+| `ccg52` | `claude-glm-5.2` | GLM-5.2 (same as `ccg`) | Explicit version alias |
+| `ccg51` | `claude-glm-5.1` | GLM-5.1 | Explicit version alias |
 | `ccg5t` | `claude-glm-5-turbo` | GLM-5-Turbo | Faster variant of GLM-5 family |
 | `ccg5` | `claude-glm-5` | GLM-5 | Previous latest GLM model |
 | `ccg47` | `claude-glm-4.7` | GLM-4.7 | Stable GLM version |
@@ -111,7 +113,9 @@ The installer creates these commands and aliases. **The installer only manages G
 | `ccg45air` | `claude-glm-4.5-air` | GLM-4.5-Air | Cheap/fast lightweight model |
 | `ccf` | `claude-glm-fast` | GLM-4.5-Air | Shortcut alias for the cheap/fast model |
 
-Each GLM alias also has `D` and `Dd` variants that run with `--dangerously-skip-permissions` (and `-d` for debug), e.g. `ccgD/Dd`, `ccg51D/Dd`, `ccg5tD/Dd`, `ccg5D/Dd`, `ccg47D/Dd`, `ccg46D/Dd`, `ccg45D/Dd`, `ccg45vD/Dd`, `ccg45airD/Dd`.
+Each GLM alias also has `D` and `Dd` variants that run with `--dangerously-skip-permissions` (and `-d` for debug), e.g. `ccgD/Dd`, `ccg52D/Dd`, `ccg51D/Dd`, `ccg5tD/Dd`, `ccg5D/Dd`, `ccg47D/Dd`, `ccg46D/Dd`, `ccg45D/Dd`, `ccg45vD/Dd`, `ccg45airD/Dd`.
+
+**Model tiers:** each wrapper maps Claude Code's Opus and Sonnet tiers to its own GLM model and the Haiku (background/fast) tier to `glm-4.5-air`, following Z.AI's recommended Claude Code configuration. The default `ccg`/`ccg52` wrapper uses `glm-5.2[1m]` for the 1M-token context window (with `CLAUDE_CODE_AUTO_COMPACT_WINDOW=1000000`).
 
 **Note on availability:** Not every model is included in every Z.ai billing plan. The repo ships with `smoke_test_models.sh` — run it to see which models your key can actually hit.
 
@@ -120,7 +124,7 @@ Each GLM alias also has `D` and `Dd` variants that run with `--dangerously-skip-
 ### How It Works
 
 Each command starts a **separate Claude Code session** with different configurations:
-- `ccg`, `ccg51`, `ccg5t`, `ccg5`, `ccg47`, `ccg46`, `ccg45`, `ccg45v`, `ccg45air`, and `ccf` use Z.AI's API with your Z.AI key
+- `ccg`, `ccg52`, `ccg51`, `ccg5t`, `ccg5`, `ccg47`, `ccg46`, `ccg45`, `ccg45v`, `ccg45air`, and `ccf` use Z.AI's API with your Z.AI key
 - `claude` (and any `ccd`/`ccdD`/`claudeD` aliases you set up yourself) uses Anthropic's API with your Anthropic key — completely untouched by this installer
 - Your configurations **never conflict** — they're stored in separate directories
 
@@ -129,7 +133,7 @@ Each command starts a **separate Claude Code session** with different configurat
 **Start a coding session with the latest GLM (default):**
 ```bash
 ccg
-# Opens Claude Code using GLM-5.1
+# Opens Claude Code using GLM-5.2 (1M context)
 ```
 
 **Use GLM-4.7:**
@@ -180,10 +184,10 @@ For detailed documentation on workflows, configuration, troubleshooting, and mor
 This fork includes the following modifications:
 
 - **Security Fix**: Fixed command injection vulnerability in error reporting
-- **Alias Update**: new short `ccg` is the default (GLM-5.1); plus `ccg51`, `ccg5t`, `ccg5`, `ccg47`, `ccg46`, `ccg45`, `ccg45v`, `ccg45air` for explicit versions
-- **Default GLM alias**: `ccg` → `claude-glm-5.1` (latest GLM); `ccgD` → `ccg --dangerously-skip-permissions`
-- **Model Update**: GLM-5.1 is the latest; `ccf` now maps to GLM-4.5-Air (previous `glm-4.7-flashx` target is off most billing plans and returned HTTP 429)
-- **Small/Fast Model**: `ANTHROPIC_SMALL_FAST_MODEL` is now `glm-4.5-air` everywhere (verified on-plan for typical Z.ai subscriptions)
+- **Alias Update**: new short `ccg` is the default (GLM-5.2, 1M context); plus `ccg52`, `ccg51`, `ccg5t`, `ccg5`, `ccg47`, `ccg46`, `ccg45`, `ccg45v`, `ccg45air` for explicit versions
+- **Default GLM alias**: `ccg` → `claude-glm-5.2` (latest GLM, `glm-5.2[1m]` with 1M context); `ccgD` → `ccg --dangerously-skip-permissions`
+- **Model Update**: GLM-5.2 is the latest and the new default; `ccf` maps to GLM-4.5-Air (previous `glm-4.7-flashx` target is off most billing plans and returned HTTP 429)
+- **Tier mapping**: each wrapper now sets `ANTHROPIC_DEFAULT_OPUS_MODEL` and `ANTHROPIC_DEFAULT_SONNET_MODEL` to its own GLM model and `ANTHROPIC_DEFAULT_HAIKU_MODEL` to `glm-4.5-air`, per Z.AI's recommended Claude Code configuration (replacing the prior `ANTHROPIC_MODEL` + `ANTHROPIC_SMALL_FAST_MODEL` scheme)
 - **Claude untouched**: this installer no longer creates or removes `ccd`/`ccdD`/`claudeD`/`claudeDd` aliases; the bare `claude` command and any aliases you set up yourself for it are left alone
 - **Danger-skip aliases**: per-model `D`/`Dd` variants for every GLM alias
 - **Smoke test**: `smoke_test_models.sh` included to verify which models your Z.ai key can reach
