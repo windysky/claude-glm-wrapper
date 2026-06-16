@@ -2,8 +2,8 @@
 
 ## 1. Project Overview
 - Purpose: Local wrapper/installer scripts to run Claude Code against Z.AI GLM models via per-model `CLAUDE_HOME` directories.
-- Scope: Cross-platform install scripts + docs for `ccg` (GLM-5.1, default), `ccg51` (GLM-5.1), `ccg5t` (GLM-5-Turbo), `ccg5` (GLM-5), `ccg47` (GLM-4.7), `ccg46` (GLM-4.6), `ccg45` (GLM-4.5), `ccg45v` (GLM-4.5V vision), `ccg45air` (GLM-4.5-Air), and `ccf` (alias for GLM-4.5-Air). Installer manages GLM aliases only — the bare `claude` command and any user-curated `ccd`/`ccdD`/`claudeD` aliases are intentionally untouched.
-- Last updated: 2026-06-16
+- Scope: Cross-platform install scripts + docs for `ccg` (GLM-5.2, default, 1M context), `ccg52` (GLM-5.2), `ccg51` (GLM-5.1), `ccg5t` (GLM-5-Turbo), `ccg5` (GLM-5), `ccg47` (GLM-4.7), `ccg46` (GLM-4.6), `ccg45` (GLM-4.5), `ccg45v` (GLM-4.5V vision), `ccg45air` (GLM-4.5-Air), and `ccf` (alias for GLM-4.5-Air). Each wrapper uses Z.AI's opus/sonnet/haiku tier scheme (opus+sonnet = its own model, haiku = glm-4.5-air). Installer manages GLM aliases only — the bare `claude` command and any user-curated `ccd`/`ccdD`/`claudeD` aliases are intentionally untouched.
+- Last updated: 2026-06-16 15:36 CDT
 - Last coding CLI used (informational): Claude Code
 - Current version: 2.4.0 (package.json)
 - Latest commit on `main`: `5e1eb62` (Phase 14: bash alias write smart-dedup), pushed to origin. Phase 13 (GLM-5.2 default + tier-scheme migration) is `502411d`. NOTE: the prior handoff incorrectly recorded `25ff837` as the tip; git history between that and Phase 13 also has `072a9c9` (Phase 11+12) plus a run of install.ps1 PS5.1 hardening commits (`ec387cb`, `4399507`, `03e7dfb`, `657b2c9`, `70ff1ff`) that were never logged in PROJECT_LOG.md. Those are pre-existing and left as-is.
@@ -36,9 +36,9 @@
 - Harness code review fix — SMOKE-01: smoke_test_models.sh API key auto-detection extended to cover all 9 wrappers (added missing `claude-glm-5-turbo`, `claude-glm-4.5v`, `claude-glm-4.5-air` and their settings dirs): Completed
   - Completed in Session 2026-04-28 19:30 CDT
 - Add GLM-5.2 wrapper (`ccg52`) as the new default (`ccg` repointed from GLM-5.1 to GLM-5.2 with `glm-5.2[1m]` 1M context + `CLAUDE_CODE_AUTO_COMPACT_WINDOW=1000000`); migrate ALL wrappers from `ANTHROPIC_MODEL`+`ANTHROPIC_SMALL_FAST_MODEL` to the tier scheme `ANTHROPIC_DEFAULT_OPUS_MODEL`/`ANTHROPIC_DEFAULT_SONNET_MODEL`=own model, `ANTHROPIC_DEFAULT_HAIKU_MODEL`=glm-4.5-air (per Z.AI Claude Code doc); keep all existing wrappers; smoke test + README + version 2.4.0: Completed (commit `502411d`)
-  - Completed in Session 2026-06-16
+  - Completed in Session 2026-06-16 15:36 CDT
 - bash alias write smart-dedup: write alias block to `~/.bashrc` only; for `~/.bashrc`-sourcing `~/.bash_profile`, strip any redundant installer block (de-dup on re-run); keep dual-write only when `~/.bash_profile` does NOT source `~/.bashrc` (login coverage). zsh/csh/PowerShell paths unchanged: Completed
-  - Completed in Session 2026-06-16
+  - Completed in Session 2026-06-16 15:36 CDT
 
 ## 3. Execution Plan Status
 - Phase 1: Add GLM-5 / adjust GLM-4.7 directories and mappings
@@ -79,14 +79,25 @@
   - Last updated: 2026-04-28 19:30 CDT
 - Phase 13: Add GLM-5.2 default (`ccg52`, `ccg`→5.2, 1M context) + tier-mapping migration across all wrappers + smoke test + README + v2.4.0
   - Status: Completed (implemented + independently reviewed; committed `502411d`, pushed)
-  - Last updated: 2026-06-16
+  - Last updated: 2026-06-16 15:36 CDT
 - Phase 14: bash alias write smart-dedup (aliases canonical in `~/.bashrc`; redundant `~/.bash_profile` copy stripped when it already sources `~/.bashrc`)
   - Status: Completed
-  - Last updated: 2026-06-16
+  - Last updated: 2026-06-16 15:36 CDT
 
 ## 4. Outstanding Work
-- Windows-side verification of install.ps1 for the new 5.2 wrapper + tier scheme remains unrun (no Windows host in this environment) — same standing gap as prior phases.
-- Runtime confirmation that `glm-5.2[1m]` resolves inside a real Claude Code launch (the raw `/v1/messages` API 400s on the bracket form because `[1m]` is a Claude Code client-side routing convention, not a raw model id; base `glm-5.2` is confirmed reachable HTTP 200). Recommend one live `ccg` launch to confirm.
+- Windows-side verification of install.ps1 (5.2 wrapper + tier scheme + ccg52 shims) on a real Windows host.
+  - Status: Open (no Windows host in this environment) — standing gap across all phases.
+  - Last updated: 2026-06-16 15:36 CDT
+  - Reference: PROJECT_LOG.md Session 2026-06-16 (Phase 13)
+- Runtime confirmation that `glm-5.2[1m]` resolves inside a real Claude Code launch.
+  - Status: Open
+  - Last updated: 2026-06-16 15:36 CDT
+  - Reference: PROJECT_LOG.md Session 2026-06-16 (Phase 13)
+  - Note: the raw `/v1/messages` API 400s on the literal bracket form because `[1m]` is a Claude Code client-side routing convention, not a raw model id; base `glm-5.2` is confirmed reachable (HTTP 200). Recommend one live `ccg` launch to confirm.
+- Clean the duplicate alias block currently on this machine's `~/.bash_profile`.
+  - Status: Open (user action) — re-run `bash install.sh` (reset/regenerate option); the Phase 14 smart-dedup strips the redundant `~/.bash_profile` block automatically.
+  - Last updated: 2026-06-16 15:36 CDT
+  - Reference: PROJECT_LOG.md Session 2026-06-16 (Phase 14)
 
 ## 5. Risks, Open Questions, and Assumptions
 - Risk: TypeScript build / proxy code removed; `package.json` no longer includes TypeScript/dev deps.
@@ -135,15 +146,14 @@
 
 ## 7. Restart Instructions
 - Starting point:
-  1. Tree is clean for project code. All phases 1-10 are committed and pushed to `main`.
-     - Phase 8 → `b0acd38` (v2.1.0 preserved; 2.2.0 wrappers)
-     - Phase 9 → `873b8a6` (v2.3.0, wrappers + smoke test)
-     - Phase 10 → `dc3e6b8` (harness review fixes)
-  2. SPEC artifact at `.moai/specs/SPEC_HARNESS_CODE_REVIEW_2026_04_17.md` is local-only (`.moai/` is gitignored).
-  3. Pre-existing uncommitted drift on `.gitignore` and `CLAUDE.md` is unrelated to this project's code — it's upstream MoAI-ADK framework updates. Decide separately whether to commit, revert, or ignore.
+  1. Working tree is clean. Latest commit on `main` is `f520235` (pushed to origin). Project version 2.4.0.
+     - Phase 13 (GLM-5.2 default + tier-scheme migration) → `502411d`
+     - Phase 14 (bash alias smart-dedup) → `5e1eb62`
+  2. `.moai/` is gitignored (local-only SPEC artifacts). The earlier `.gitignore`/`CLAUDE.md` upstream-drift question is closed — `CLAUDE.md` was committed (`03e7dfb`); nothing pending there.
+  3. Note for testing: in the Claude Code Bash-tool sandbox, `grep` is a shell-function wrapper that `exec`s away subshells — run any test that pipes installer functions through grep as a child `bash` process (real `/usr/bin/grep`), not in an inline `( … )` subshell. Real users running `bash install.sh` are unaffected.
 - Recommended next actions (optional):
-  1. Run `bash install.sh` locally, choose option 2 "Reset wrappers/aliases using existing API key" to regenerate wrappers under the new SEC-01 file mode. Verify `ls -l ~/.local/bin/claude-glm-*` shows `-rwx------`.
-  2. Sanity-check silent API-key entry on the next fresh-key flow (read -rs).
-  3. Re-run `smoke_test_models.sh` anytime Z.ai changes plan availability (last baseline 2026-04-17: 8/9 PASS, only glm-4.7-flashx 429s).
-  4. Windows-side smoke test of `install.ps1` remains unverified — run on a Windows host if convenient.
-- Last updated: 2026-04-17 21:10 CDT
+  1. Re-run `bash install.sh` locally (reset/regenerate option) to (a) regenerate wrappers including the new `claude-glm-5.2`, and (b) trigger the Phase 14 smart-dedup that strips the leftover alias block from `~/.bash_profile`. Confirm `~/.bashrc` holds the block and `~/.bash_profile` does not.
+  2. Launch `ccg` once to confirm `glm-5.2[1m]` resolves inside Claude Code (fallback if it errors: bare `glm-5.2`, confirmed reachable).
+  3. Re-run `smoke_test_models.sh` whenever Z.ai changes plan availability (baseline 2026-06-16: glm-5.2 + all wrapper models PASS; only glm-4.7-flashx 429s).
+  4. Windows-side execution of `install.ps1` remains unverified — run on a Windows host if convenient.
+- Last updated: 2026-06-16 15:36 CDT

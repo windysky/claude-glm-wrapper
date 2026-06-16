@@ -509,3 +509,26 @@ Session 2026-06-16 (Phase 14)
 - Remaining open issues
   - Windows install.ps1 still unverified on a real Windows host (standing gap).
   - To clean the duplicate that currently exists on the user's own machine, re-run `bash install.sh` (option to reset/regenerate aliases) — the dedup will strip the redundant ~/.bash_profile block.
+
+Session 2026-06-16 15:36 CDT (session close)
+- Coding CLI used: Claude Code CLI (Opus 4.8)
+- Phase(s) worked on
+  - Session opened with /startsession (takeover-plan review of PROJECT_HANDOFF.md + PROJECT_LOG.md), then executed Phase 13 (GLM-5.2 default + tier-scheme migration) and Phase 14 (bash alias smart-dedup). Both phases are fully detailed in the two preceding log entries dated this same day; this entry is the dated session-close summary.
+- Concrete changes implemented (net for the session)
+  - Phase 13: new claude-glm-5.2 wrapper (ccg52 + ccg default repointed, glm-5.2[1m] + CLAUDE_CODE_AUTO_COMPACT_WINDOW=1000000); migrated all wrappers to ANTHROPIC_DEFAULT_OPUS/SONNET/HAIKU scheme; smoke test + README + version 2.4.0; mirrored across install.sh and install.ps1.
+  - Phase 14: bash alias-write smart-dedup in install.sh (bash_profile_sources_bashrc helper + case-based create_shell_aliases tail).
+- Files/modules/functions touched (session total)
+  - install.sh, install.ps1, smoke_test_models.sh, README.md, package.json, PROJECT_HANDOFF.md, PROJECT_LOG.md
+- Key technical decisions and rationale
+  - Empirical-first: probed Z.ai live before coding (all existing models still reachable; glm-5.2 PASS; raw glm-5.2[1m] 400s because the bracket form is a Claude Code client-side convention).
+  - User chose, via AskUserQuestion: add ccg52 + repoint ccg; tier mapping on every wrapper; keep all wrappers; enable [1m] on default; and (Phase 14) smart-dedup over full-bridge or status-quo.
+  - Phase 14 scoped to bash only (the duplication was bash-specific); zsh/csh/PowerShell paths untouched.
+- Problems encountered and resolutions
+  - Phase 13: PowerShell config-dirs summary omitted $Glm52ConfigDir (caught by evaluator-active review) — fixed to full parity.
+  - Phase 14: Claude Code Bash-tool `grep` shell-function wrapper exec-replaced test subshells; diagnosed and worked around by testing in a child bash process (real grep). Documented in Restart Instructions for the next agent.
+- Items explicitly completed this session
+  - Phase 13 (commit 502411d), Phase 14 (commit 5e1eb62), plus doc-sync commits (0070d27, f520235). All pushed to origin/main.
+  - Reconciled the previously-stale handoff (it had recorded 25ff837 as the tip; corrected, and the unlogged prior PS5.1 commits noted as pre-existing).
+- Verification performed
+  - bash -n install.sh / smoke_test_models.sh => OK; package.json => 2.4.0; 0 old-scheme residuals; 20/20/20 tier balance both scripts; generated 5.2 settings.json VALID (bash + PS); live smoke test glm-5.2 PASS; evaluator-active review APPROVED; Phase 14 helper 6/6 + end-to-end 3/3 (child bash).
+- Final state: working tree clean at f520235; version 2.4.0; no regressions.
