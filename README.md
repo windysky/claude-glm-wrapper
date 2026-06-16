@@ -113,7 +113,11 @@ The installer creates these commands and aliases. **The installer only manages G
 | `ccg45air` | `claude-glm-4.5-air` | GLM-4.5-Air | Cheap/fast lightweight model |
 | `ccf` | `claude-glm-fast` | GLM-4.5-Air | Shortcut alias for the cheap/fast model |
 
-Each GLM alias also has `D` and `Dd` variants that run with `--dangerously-skip-permissions` (and `-d` for debug), e.g. `ccgD/Dd`, `ccg52D/Dd`, `ccg51D/Dd`, `ccg5tD/Dd`, `ccg5D/Dd`, `ccg47D/Dd`, `ccg46D/Dd`, `ccg45D/Dd`, `ccg45vD/Dd`, `ccg45airD/Dd`.
+Each GLM alias also has variant suffixes:
+- `D` / `Dd` → `--dangerously-skip-permissions` (and `-d` debug), e.g. `ccgD`, `ccg52Dd`
+- `A` → `--permission-mode auto` (auto mode), e.g. `ccgA`, `ccg52A`
+
+These apply to every GLM alias: `ccgD/Dd/A`, `ccg52D/Dd/A`, `ccg51D/Dd/A`, `ccg5tD/Dd/A`, `ccg5D/Dd/A`, `ccg47D/Dd/A`, `ccg46D/Dd/A`, `ccg45D/Dd/A`, `ccg45vD/Dd/A`, `ccg45airD/Dd/A`.
 
 **Model tiers:** each wrapper maps Claude Code's Opus and Sonnet tiers to its own GLM model and the Haiku (background/fast) tier to `glm-4.5-air`, following Z.AI's recommended Claude Code configuration. The default `ccg`/`ccg52` wrapper uses `glm-5.2[1m]` for the 1M-token context window (with `CLAUDE_CODE_AUTO_COMPACT_WINDOW=1000000`).
 

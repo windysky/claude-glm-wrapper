@@ -222,6 +222,7 @@ function Add-PowerShellAliases {
         "# Claude-GLM Model Switcher Aliases",
         "# Claude Code Danger Skip Aliases",
         "# Claude-GLM Danger Skip Aliases",
+        "# Claude-GLM Auto Mode Aliases",
         "# ccx multi-provider proxy function",
         "Set-Alias ccg ",
         "Set-Alias ccg51 ",
@@ -255,7 +256,17 @@ function Add-PowerShellAliases {
         '^\s*function\s+ccg51D\b',
         '^\s*function\s+ccg51Dd\b',
         '^\s*function\s+ccg52D\b',
-        '^\s*function\s+ccg52Dd\b'
+        '^\s*function\s+ccg52Dd\b',
+        '^\s*function\s+ccgA\b',
+        '^\s*function\s+ccg45A\b',
+        '^\s*function\s+ccg45vA\b',
+        '^\s*function\s+ccg45airA\b',
+        '^\s*function\s+ccg46A\b',
+        '^\s*function\s+ccg47A\b',
+        '^\s*function\s+ccg5A\b',
+        '^\s*function\s+ccg5tA\b',
+        '^\s*function\s+ccg51A\b',
+        '^\s*function\s+ccg52A\b'
     )
 
     # Legacy claude alias patterns - stripped only when fingerprint detected.
@@ -321,6 +332,18 @@ function ccg51D { ccg51 --dangerously-skip-permissions @args }
 function ccg51Dd { ccg51 --dangerously-skip-permissions -d @args }
 function ccg52D { ccg52 --dangerously-skip-permissions @args }
 function ccg52Dd { ccg52 --dangerously-skip-permissions -d @args }
+
+# Claude-GLM Auto Mode Aliases
+function ccgA { ccg --permission-mode auto @args }
+function ccg45A { ccg45 --permission-mode auto @args }
+function ccg45vA { ccg45v --permission-mode auto @args }
+function ccg45airA { ccg45air --permission-mode auto @args }
+function ccg46A { ccg46 --permission-mode auto @args }
+function ccg47A { ccg47 --permission-mode auto @args }
+function ccg5A { ccg5 --permission-mode auto @args }
+function ccg5tA { ccg5t --permission-mode auto @args }
+function ccg51A { ccg51 --permission-mode auto @args }
+function ccg52A { ccg52 --permission-mode auto @args }
 "@
 
     $newContent = $filteredContent + $aliases
@@ -974,6 +997,17 @@ function Add-CmdShims {
     New-CmdShim -Name "ccg45vDd"   -TargetScript (Join-Path $UserBinDir "claude-glm-4.5v.ps1")     -ExtraArgs "--dangerously-skip-permissions -d"
     New-CmdShim -Name "ccg45airD"  -TargetScript (Join-Path $UserBinDir "claude-glm-4.5-air.ps1")  -ExtraArgs "--dangerously-skip-permissions"
     New-CmdShim -Name "ccg45airDd" -TargetScript (Join-Path $UserBinDir "claude-glm-4.5-air.ps1")  -ExtraArgs "--dangerously-skip-permissions -d"
+
+    New-CmdShim -Name "ccgA"       -TargetScript (Join-Path $UserBinDir "claude-glm-5.2.ps1")      -ExtraArgs "--permission-mode auto"
+    New-CmdShim -Name "ccg45A"     -TargetScript (Join-Path $UserBinDir "claude-glm-4.5.ps1")      -ExtraArgs "--permission-mode auto"
+    New-CmdShim -Name "ccg45vA"    -TargetScript (Join-Path $UserBinDir "claude-glm-4.5v.ps1")     -ExtraArgs "--permission-mode auto"
+    New-CmdShim -Name "ccg45airA"  -TargetScript (Join-Path $UserBinDir "claude-glm-4.5-air.ps1")  -ExtraArgs "--permission-mode auto"
+    New-CmdShim -Name "ccg46A"     -TargetScript (Join-Path $UserBinDir "claude-glm-4.6.ps1")      -ExtraArgs "--permission-mode auto"
+    New-CmdShim -Name "ccg47A"     -TargetScript (Join-Path $UserBinDir "claude-glm-4.7.ps1")      -ExtraArgs "--permission-mode auto"
+    New-CmdShim -Name "ccg5A"      -TargetScript (Join-Path $UserBinDir "claude-glm.ps1")          -ExtraArgs "--permission-mode auto"
+    New-CmdShim -Name "ccg5tA"     -TargetScript (Join-Path $UserBinDir "claude-glm-5-turbo.ps1")  -ExtraArgs "--permission-mode auto"
+    New-CmdShim -Name "ccg51A"     -TargetScript (Join-Path $UserBinDir "claude-glm-5.1.ps1")      -ExtraArgs "--permission-mode auto"
+    New-CmdShim -Name "ccg52A"     -TargetScript (Join-Path $UserBinDir "claude-glm-5.2.ps1")      -ExtraArgs "--permission-mode auto"
 }
 
 # Check Claude Code availability
@@ -1357,6 +1391,7 @@ function Install-ClaudeGlm {
     Write-Host "   ccg      - claude-glm-5.2 (GLM-5.2, default, 1M context)"
     Write-Host "   ccgD     - ccg --dangerously-skip-permissions"
     Write-Host "   ccgDd    - ccg --dangerously-skip-permissions -d"
+    Write-Host "   ccgA     - ccg --permission-mode auto"
     Write-Host "   ccg45    - claude-glm-4.5 (GLM-4.5)"
     Write-Host "   ccg45v   - claude-glm-4.5v (GLM-4.5V, vision)"
     Write-Host "   ccg45air - claude-glm-4.5-air (GLM-4.5-Air)"

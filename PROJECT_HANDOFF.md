@@ -3,7 +3,7 @@
 ## 1. Project Overview
 - Purpose: Local wrapper/installer scripts to run Claude Code against Z.AI GLM models via per-model `CLAUDE_HOME` directories.
 - Scope: Cross-platform install scripts + docs for `ccg` (GLM-5.2, default, 1M context), `ccg52` (GLM-5.2), `ccg51` (GLM-5.1), `ccg5t` (GLM-5-Turbo), `ccg5` (GLM-5), `ccg47` (GLM-4.7), `ccg46` (GLM-4.6), `ccg45` (GLM-4.5), `ccg45v` (GLM-4.5V vision), `ccg45air` (GLM-4.5-Air), and `ccf` (alias for GLM-4.5-Air). Each wrapper uses Z.AI's opus/sonnet/haiku tier scheme (opus+sonnet = its own model, haiku = glm-4.5-air). Installer manages GLM aliases only — the bare `claude` command and any user-curated `ccd`/`ccdD`/`claudeD` aliases are intentionally untouched.
-- Last updated: 2026-06-16 15:36 CDT
+- Last updated: 2026-06-16 16:13 CDT
 - Last coding CLI used (informational): Claude Code
 - Current version: 2.4.0 (package.json)
 - Latest commit on `main`: `5e1eb62` (Phase 14: bash alias write smart-dedup), pushed to origin. Phase 13 (GLM-5.2 default + tier-scheme migration) is `502411d`. NOTE: the prior handoff incorrectly recorded `25ff837` as the tip; git history between that and Phase 13 also has `072a9c9` (Phase 11+12) plus a run of install.ps1 PS5.1 hardening commits (`ec387cb`, `4399507`, `03e7dfb`, `657b2c9`, `70ff1ff`) that were never logged in PROJECT_LOG.md. Those are pre-existing and left as-is.
@@ -39,6 +39,8 @@
   - Completed in Session 2026-06-16 15:36 CDT
 - bash alias write smart-dedup: write alias block to `~/.bashrc` only; for `~/.bashrc`-sourcing `~/.bash_profile`, strip any redundant installer block (de-dup on re-run); keep dual-write only when `~/.bash_profile` does NOT source `~/.bashrc` (login coverage). zsh/csh/PowerShell paths unchanged: Completed
   - Completed in Session 2026-06-16 15:36 CDT
+- Add `A` (auto mode, `--permission-mode auto`) alias variant for every GLM alias (e.g. `ccgA`, `ccg52A`), alongside the existing `D`/`Dd` variants; mirrored in install.sh + install.ps1 + README; also fixed personal `~/.bashrc` `ccdA` (`--enable-auto-mode` → `--permission-mode auto`): Completed
+  - Completed in Session 2026-06-16 16:13 CDT
 
 ## 3. Execution Plan Status
 - Phase 1: Add GLM-5 / adjust GLM-4.7 directories and mappings

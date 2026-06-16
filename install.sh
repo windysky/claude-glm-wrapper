@@ -1025,6 +1025,16 @@ create_shell_aliases() {
             grep -v "alias ccg52=" | \
             grep -v "alias ccg52D=" | \
             grep -v "alias ccg52Dd=" | \
+            grep -v "alias ccgA=" | \
+            grep -v "alias ccg45A=" | \
+            grep -v "alias ccg45vA=" | \
+            grep -v "alias ccg45airA=" | \
+            grep -v "alias ccg46A=" | \
+            grep -v "alias ccg47A=" | \
+            grep -v "alias ccg5A=" | \
+            grep -v "alias ccg5tA=" | \
+            grep -v "alias ccg51A=" | \
+            grep -v "alias ccg52A=" | \
             grep -v "alias ccf=" | \
             grep -v "alias ccx=" > "$target_rc.tmp"
             mv "$target_rc.tmp" "$target_rc"
@@ -1054,33 +1064,43 @@ create_shell_aliases() {
 alias ccg 'claude-glm-5.2'
 alias ccgD 'ccg --dangerously-skip-permissions'
 alias ccgDd 'ccg --dangerously-skip-permissions -d'
+alias ccgA 'ccg --permission-mode auto'
 alias ccg45 'claude-glm-4.5'
 alias ccg45D 'ccg45 --dangerously-skip-permissions'
 alias ccg45Dd 'ccg45 --dangerously-skip-permissions -d'
+alias ccg45A 'ccg45 --permission-mode auto'
 alias ccg45v 'claude-glm-4.5v'
 alias ccg45vD 'ccg45v --dangerously-skip-permissions'
 alias ccg45vDd 'ccg45v --dangerously-skip-permissions -d'
+alias ccg45vA 'ccg45v --permission-mode auto'
 alias ccg45air 'claude-glm-4.5-air'
 alias ccg45airD 'ccg45air --dangerously-skip-permissions'
 alias ccg45airDd 'ccg45air --dangerously-skip-permissions -d'
+alias ccg45airA 'ccg45air --permission-mode auto'
 alias ccg46 'claude-glm-4.6'
 alias ccg46D 'ccg46 --dangerously-skip-permissions'
 alias ccg46Dd 'ccg46 --dangerously-skip-permissions -d'
+alias ccg46A 'ccg46 --permission-mode auto'
 alias ccg47 'claude-glm-4.7'
 alias ccg47D 'ccg47 --dangerously-skip-permissions'
 alias ccg47Dd 'ccg47 --dangerously-skip-permissions -d'
+alias ccg47A 'ccg47 --permission-mode auto'
 alias ccg5 'claude-glm-5'
 alias ccg5D 'ccg5 --dangerously-skip-permissions'
 alias ccg5Dd 'ccg5 --dangerously-skip-permissions -d'
+alias ccg5A 'ccg5 --permission-mode auto'
 alias ccg5t 'claude-glm-5-turbo'
 alias ccg5tD 'ccg5t --dangerously-skip-permissions'
 alias ccg5tDd 'ccg5t --dangerously-skip-permissions -d'
+alias ccg5tA 'ccg5t --permission-mode auto'
 alias ccg51 'claude-glm-5.1'
 alias ccg51D 'ccg51 --dangerously-skip-permissions'
 alias ccg51Dd 'ccg51 --dangerously-skip-permissions -d'
+alias ccg51A 'ccg51 --permission-mode auto'
 alias ccg52 'claude-glm-5.2'
 alias ccg52D 'ccg52 --dangerously-skip-permissions'
 alias ccg52Dd 'ccg52 --dangerously-skip-permissions -d'
+alias ccg52A 'ccg52 --permission-mode auto'
 alias ccf 'claude-glm-fast'
 EOF
         else
@@ -1092,33 +1112,43 @@ EOF
 alias ccg='claude-glm-5.2'
 alias ccgD='ccg --dangerously-skip-permissions'
 alias ccgDd='ccg --dangerously-skip-permissions -d'
+alias ccgA='ccg --permission-mode auto'
 alias ccg45='claude-glm-4.5'
 alias ccg45D='ccg45 --dangerously-skip-permissions'
 alias ccg45Dd='ccg45 --dangerously-skip-permissions -d'
+alias ccg45A='ccg45 --permission-mode auto'
 alias ccg45v='claude-glm-4.5v'
 alias ccg45vD='ccg45v --dangerously-skip-permissions'
 alias ccg45vDd='ccg45v --dangerously-skip-permissions -d'
+alias ccg45vA='ccg45v --permission-mode auto'
 alias ccg45air='claude-glm-4.5-air'
 alias ccg45airD='ccg45air --dangerously-skip-permissions'
 alias ccg45airDd='ccg45air --dangerously-skip-permissions -d'
+alias ccg45airA='ccg45air --permission-mode auto'
 alias ccg46='claude-glm-4.6'
 alias ccg46D='ccg46 --dangerously-skip-permissions'
 alias ccg46Dd='ccg46 --dangerously-skip-permissions -d'
+alias ccg46A='ccg46 --permission-mode auto'
 alias ccg47='claude-glm-4.7'
 alias ccg47D='ccg47 --dangerously-skip-permissions'
 alias ccg47Dd='ccg47 --dangerously-skip-permissions -d'
+alias ccg47A='ccg47 --permission-mode auto'
 alias ccg5='claude-glm-5'
 alias ccg5D='ccg5 --dangerously-skip-permissions'
 alias ccg5Dd='ccg5 --dangerously-skip-permissions -d'
+alias ccg5A='ccg5 --permission-mode auto'
 alias ccg5t='claude-glm-5-turbo'
 alias ccg5tD='ccg5t --dangerously-skip-permissions'
 alias ccg5tDd='ccg5t --dangerously-skip-permissions -d'
+alias ccg5tA='ccg5t --permission-mode auto'
 alias ccg51='claude-glm-5.1'
 alias ccg51D='ccg51 --dangerously-skip-permissions'
 alias ccg51Dd='ccg51 --dangerously-skip-permissions -d'
+alias ccg51A='ccg51 --permission-mode auto'
 alias ccg52='claude-glm-5.2'
 alias ccg52D='ccg52 --dangerously-skip-permissions'
 alias ccg52Dd='ccg52 --dangerously-skip-permissions -d'
+alias ccg52A='ccg52 --permission-mode auto'
 alias ccf='claude-glm-fast'
 EOF
         fi
@@ -1343,6 +1373,7 @@ main() {
     echo "   ccg      - claude-glm-5.2 (GLM-5.2, default, 1M context)"
     echo "   ccgD     - ccg --dangerously-skip-permissions"
     echo "   ccgDd    - ccg --dangerously-skip-permissions -d"
+    echo "   ccgA     - ccg --permission-mode auto"
     echo "   ccg45    - claude-glm-4.5 (GLM-4.5)"
     echo "   ccg45v   - claude-glm-4.5v (GLM-4.5V, vision)"
     echo "   ccg45air - claude-glm-4.5-air (GLM-4.5-Air)"
