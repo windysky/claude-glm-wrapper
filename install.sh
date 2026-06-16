@@ -365,6 +365,15 @@ detect_shell_rc() {
     echo "$rc_file"
 }
 
+# Returns 0 if ~/.bash_profile already loads ~/.bashrc (via `.`/`source`), meaning a
+# second copy of the alias block in ~/.bash_profile would be redundant; 1 otherwise.
+bash_profile_sources_bashrc() {
+    [ -f "$HOME/.bash_profile" ] || return 1
+    grep -E '\.bashrc' "$HOME/.bash_profile" 2>/dev/null \
+        | grep -vE '^[[:space:]]*#' \
+        | grep -Eq '(^|[;&|[:space:]])(\.|source)[[:space:]]+[^;&|]*\.bashrc'
+}
+
 # Ensure user bin directory exists and is in PATH
 setup_user_bin() {
     # Create user bin directory
@@ -1115,17 +1124,41 @@ EOF
         fi
     }
 
-    if [[ "$rc_file" == *".cshrc" ]]; then
-        add_aliases_to_rc "$rc_file" "csh"
-    else
-        add_aliases_to_rc "$rc_file" "bash"
-    fi
+    case "$rc_file" in
+        *".cshrc")
+            add_aliases_to_rc "$rc_file" "csh"
+            echo "✅ Added aliases to $rc_file"
+            ;;
+        "$HOME/.bashrc"|"$HOME/.bash_profile")
+            # bash: ~/.bashrc is the canonical home for interactive aliases.
+            add_aliases_to_rc "$HOME/.bashrc" "bash"
+            local written="$HOME/.bashrc"
 
-    if [ "$HOME/.bashrc" != "$rc_file" ]; then
-        add_aliases_to_rc "$HOME/.bashrc" "bash"
-    fi
+            # Only keep a second copy in ~/.bash_profile when it does NOT already
+            # source ~/.bashrc. If it bridges to ~/.bashrc, the copy is redundant —
+            # strip any installer-owned block we previously left there (de-duplicate
+            # on re-run). This avoids the alias block living in two files at once.
+            if [ -f "$HOME/.bash_profile" ]; then
+                if bash_profile_sources_bashrc; then
+                    remove_aliases_from_rc "$HOME/.bash_profile"
+                else
+                    add_aliases_to_rc "$HOME/.bash_profile" "bash"
+                    written="$written and $HOME/.bash_profile"
+                fi
+            fi
 
-    echo "✅ Added aliases to $rc_file"
+            echo "✅ Added aliases to $written"
+            ;;
+        *)
+            # zsh / ksh / other: write the detected rc plus ~/.bashrc as a fallback
+            # (unchanged behavior for non-bash shells).
+            add_aliases_to_rc "$rc_file" "bash"
+            if [ "$HOME/.bashrc" != "$rc_file" ]; then
+                add_aliases_to_rc "$HOME/.bashrc" "bash"
+            fi
+            echo "✅ Added aliases to $rc_file"
+            ;;
+    esac
 }
 
 # Check Claude Code availability

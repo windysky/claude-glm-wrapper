@@ -478,3 +478,34 @@ Session 2026-06-16
   - One live `ccg` launch recommended to confirm glm-5.2[1m] resolves inside Claude Code (raw API cannot validate the bracket form).
 - Documentation reconciliation note
   - On takeover, found PROJECT_HANDOFF.md was stale: it recorded latest commit 25ff837, but git HEAD is 70ff1ff with unlogged commits 072a9c9 (Phase 11+12) and a run of install.ps1 PS5.1 fixes (ec387cb, 4399507, 03e7dfb, 657b2c9, 70ff1ff). Handoff "Latest committed commit" pointer corrected to 70ff1ff; those prior commits are pre-existing and left as-is.
+
+Session 2026-06-16 (Phase 14)
+- Coding CLI used: Claude Code (Opus 4.8)
+- Phase(s) worked on
+  - Phase 14: bash alias-write smart-dedup. User observed the installer writes the alias block to both ~/.bash_profile and ~/.bashrc and asked to avoid that duplication generally.
+- Background (the .bashrc vs .bash_profile question)
+  - ~/.bashrc is read by interactive non-login shells (new terminals, tmux panes); ~/.bash_profile is read by login shells (SSH, console). Bash reads only ONE of them per shell type, which is why the installer historically wrote both. ~/.bashrc is the conventional home for aliases; the canonical no-dup pattern is aliases in ~/.bashrc with ~/.bash_profile sourcing ~/.bashrc.
+- User decision (AskUserQuestion)
+  - Chose "Smart dedup": write aliases+block to ~/.bashrc; only ALSO write ~/.bash_profile when it does NOT already source ~/.bashrc. When it does source ~/.bashrc, strip any installer-owned block previously left there (clean up the duplication on re-run).
+- Concrete changes implemented (install.sh ONLY)
+  - Added top-level helper `bash_profile_sources_bashrc()` — returns 0 if ~/.bash_profile loads ~/.bashrc via `.`/`source` (comment- and guard-aware grep), 1 otherwise.
+  - Replaced the tail of `create_shell_aliases` (the old `add_aliases_to_rc primary` + unconditional `add_aliases_to_rc ~/.bashrc`) with a case statement: csh -> .cshrc only (unchanged); bash (.bashrc or .bash_profile) -> write ~/.bashrc, then if ~/.bash_profile exists: strip our block when it bridges (dedup) else dual-write (coverage); zsh/ksh/other -> unchanged (detected rc + ~/.bashrc fallback).
+- Files touched: install.sh, PROJECT_HANDOFF.md, PROJECT_LOG.md. install.ps1 (single $PROFILE) and csh (.cshrc) have no dual-write, so no change.
+- Key technical decisions and rationale
+  - Scope limited to bash; the duplication was bash-specific. zsh dual-write (.zshrc + .bashrc) intentionally preserved to avoid behavior change for zsh users.
+  - Dedup also CLEANS existing duplicates: remove_aliases_from_rc runs on ~/.bash_profile when it bridges, so re-running the installer removes the stale block users already have there (the user's own machine has this duplicate today).
+  - PATH-writing in setup_user_bin left unchanged (PATH is written to a single rc file, not duplicated, so it was out of scope).
+- Problems encountered and resolutions
+  - End-to-end testing was repeatedly sabotaged by the Claude Code Bash tool's `grep` shell-function wrapper, which does `exec -a ugrep ...` inside subshells ($BASHPID != $$), replacing/terminating any test subshell the moment create_shell_aliases called grep. Diagnosed via set -x trace + `type grep`. Resolved by running the test as a child `bash` process (shell functions are not inherited, so grep = /usr/bin/grep). The installer itself is unaffected — real users run `bash install.sh` with the real grep.
+- Verification performed
+  - `bash -n install.sh` => OK
+  - Helper unit tests: 6/6 cases correct (guarded multi-line, one-line &&, source keyword, comment-only, test-line-without-source, no-bashrc) + correctly detects the user's real ~/.bash_profile as sourcing ~/.bashrc.
+  - End-to-end (child bash, real grep), 3 cases all PASS:
+    A. .bash_profile bridges -> block only in ~/.bashrc (ccg=5.2), ~/.bash_profile block stripped (0), bridge preserved, 0 leftover aliases.
+    B. .bash_profile does not bridge -> dual-write kept (block in both).
+    C. no .bash_profile -> ~/.bashrc only, no profile created.
+- Items completed
+  - Completed: smart-dedup alias writing for bash; auto-cleanup of redundant ~/.bash_profile block on re-run.
+- Remaining open issues
+  - Windows install.ps1 still unverified on a real Windows host (standing gap).
+  - To clean the duplicate that currently exists on the user's own machine, re-run `bash install.sh` (option to reset/regenerate aliases) — the dedup will strip the redundant ~/.bash_profile block.
