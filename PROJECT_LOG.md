@@ -576,3 +576,24 @@ Session 2026-06-16 16:13 CDT (auto-mode aliases)
   - Completed: A (auto mode) variants for all GLM aliases in install.sh + install.ps1 + README; personal ~/.bashrc ccdA flag fix.
 - Note for the user
   - GLM A aliases take effect after re-running `bash install.sh` (reset/regenerate) to refresh the rc alias block; the ~/.bashrc ccdA fix is live on next shell or `source ~/.bashrc`.
+
+Session 2026-06-16 16:23 CDT (session close)
+- Coding CLI used: Claude Code CLI (Opus 4.8)
+- Phase(s) worked on
+  - Two pieces of work this session, each already fully detailed in the entries above: (1) removed the redundant `./install` bootstrap; (2) added auto-mode `A` alias variants for all GLM aliases + fixed personal `~/.bashrc` `ccdA`. This entry is the dated session-close summary.
+- Concrete changes implemented (net for the session)
+  - Removed `./install` (commits 92164c0 + 7b2d009 doc note).
+  - Added `<base>A` = `<base> --permission-mode auto` aliases for all 10 GLM bases across install.sh (csh + bash blocks, cleanup, summary) and install.ps1 (functions, .cmd shims, cleanup patterns, summary); README variant-suffix explainer updated; ~/.bashrc `ccdA` corrected from `--enable-auto-mode` to `--permission-mode auto` (commit d8c936d).
+- Files/modules/functions touched (session total)
+  - install.sh, install.ps1, README.md, ~/.bashrc (personal, backup at ~/.bashrc.bak.ccdA-fix), PROJECT_HANDOFF.md, PROJECT_LOG.md; deleted: install
+- Key technical decisions and rationale
+  - ./install removal: its OS-dispatch job is already done correctly by bin/cli.js (npx entry); it was unreferenced and unpublished.
+  - A variants: additive only; D/Dd unchanged; `A` (not `A`+`Ad`) per user choice; ccf gets no A variant (it has no D/Dd either).
+- Problems encountered and resolutions
+  - Edit tool refused to modify ~/.bashrc (outside project dir / path-traversal guard); used anchored `sed -i` after a backup, verified via diff. Recorded in handoff Restart Instructions for the next agent.
+- Items explicitly completed this session
+  - Completed: ./install removal (92164c0, 7b2d009); auto-mode A variants + ccdA fix (d8c936d). All pushed to origin/main.
+- Verification performed
+  - bash -n install.sh => OK; claude --help confirms `--permission-mode auto`; end-to-end A-alias generation + dedup (child bash, real grep) PASS; no `--enable-auto-mode` left in repo; ~/.bashrc diff shows only ccdA changed.
+- Final state: working tree clean at d8c936d; version 2.4.0; no regressions.
+- Outstanding for next session (unchanged): Windows install.ps1 execution test; one live `ccg` launch to confirm glm-5.2[1m]; re-run `bash install.sh` to activate the new GLM A aliases and clean this machine's ~/.bash_profile duplicate.
