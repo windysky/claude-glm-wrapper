@@ -532,3 +532,17 @@ Session 2026-06-16 15:36 CDT (session close)
 - Verification performed
   - bash -n install.sh / smoke_test_models.sh => OK; package.json => 2.4.0; 0 old-scheme residuals; 20/20/20 tier balance both scripts; generated 5.2 settings.json VALID (bash + PS); live smoke test glm-5.2 PASS; evaluator-active review APPROVED; Phase 14 helper 6/6 + end-to-end 3/3 (child bash).
 - Final state: working tree clean at f520235; version 2.4.0; no regressions.
+
+Session 2026-06-16 15:43 CDT (cleanup)
+- Coding CLI used: Claude Code CLI (Opus 4.8)
+- Phase(s) worked on
+  - Repo cleanup: removed the redundant `./install` bootstrap.
+- Concrete changes implemented
+  - `git rm install`. The 48-line bash bootstrap only detected `$OSTYPE` and `exec`-ed `install.sh` for Unix; on Windows it merely printed the PowerShell one-liner (it never actually ran install.ps1).
+- Rationale
+  - Dead/redundant: cross-platform OS dispatch is already handled correctly by `bin/cli.js` (the `claude-glm-installer` npx entry, which spawns install.ps1 on Windows / install.sh on Unix). `./install` was not referenced by README, not called by any code, and was excluded from package.json `files` (so it was never published to npm). On Unix it was identical to `bash install.sh`.
+- Files touched: removed `install`; PROJECT_LOG.md, PROJECT_HANDOFF.md updated.
+- Verification performed
+  - Post-removal grep for any reference to the bootstrap across the repo => none (clean). README install paths (curl install.sh / iwr install.ps1) and the npx bin/cli.js dispatcher are unaffected.
+- Items completed
+  - Completed: removed redundant ./install bootstrap.
