@@ -6,7 +6,7 @@
 - Last updated: 2026-06-16
 - Last coding CLI used (informational): Claude Code
 - Current version: 2.4.0 (package.json)
-- Latest commit on `main`: `502411d` (Phase 13: GLM-5.2 default + tier-scheme migration), pushed to origin. NOTE: the prior handoff incorrectly recorded `25ff837` as the tip; git history between that and Phase 13 also has `072a9c9` (Phase 11+12) plus a run of install.ps1 PS5.1 hardening commits (`ec387cb`, `4399507`, `03e7dfb`, `657b2c9`, `70ff1ff`) that were never logged in PROJECT_LOG.md. Those are pre-existing and left as-is.
+- Latest commit on `main`: `5e1eb62` (Phase 14: bash alias write smart-dedup), pushed to origin. Phase 13 (GLM-5.2 default + tier-scheme migration) is `502411d`. NOTE: the prior handoff incorrectly recorded `25ff837` as the tip; git history between that and Phase 13 also has `072a9c9` (Phase 11+12) plus a run of install.ps1 PS5.1 hardening commits (`ec387cb`, `4399507`, `03e7dfb`, `657b2c9`, `70ff1ff`) that were never logged in PROJECT_LOG.md. Those are pre-existing and left as-is.
 
 ## 2. Current State
 - GLM-5 wrapper (`ccg5`): Completed
