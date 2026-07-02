@@ -3,10 +3,10 @@
 ## 1. Project Overview
 - Purpose: Local wrapper/installer scripts to run Claude Code against Z.AI GLM models via per-model `CLAUDE_HOME` directories.
 - Scope: Cross-platform install scripts + docs for `ccg` (GLM-5.2, default, 1M context), `ccg52` (GLM-5.2), `ccg51` (GLM-5.1), `ccg5t` (GLM-5-Turbo), `ccg5` (GLM-5), `ccg47` (GLM-4.7), `ccg46` (GLM-4.6), `ccg45` (GLM-4.5), `ccg45v` (GLM-4.5V vision), `ccg45air` (GLM-4.5-Air), and `ccf` (alias for GLM-4.5-Air). Each wrapper uses Z.AI's opus/sonnet/haiku tier scheme (opus+sonnet = its own model, haiku = glm-4.5-air). Installer manages GLM aliases only — the bare `claude` command and any user-curated `ccd`/`ccdD`/`claudeD` aliases are intentionally untouched.
-- Last updated: 2026-06-16 16:23 CDT
+- Last updated: 2026-07-02 10:01 CDT
 - Last coding CLI used (informational): Claude Code
-- Current version: 2.4.0 (package.json)
-- Latest commit on `main`: `d8c936d` (auto-mode `A` alias variants), pushed to origin. Recent lineage: `d8c936d` (A variants) ← `7b2d009`/`92164c0` (remove redundant ./install bootstrap) ← `5e1eb62` (Phase 14 smart-dedup) ← `502411d` (Phase 13 GLM-5.2 + tier scheme). NOTE: the prior handoff incorrectly recorded `25ff837` as the tip; git history between that and Phase 13 also has `072a9c9` (Phase 11+12) plus a run of install.ps1 PS5.1 hardening commits (`ec387cb`, `4399507`, `03e7dfb`, `657b2c9`, `70ff1ff`) that were never logged in PROJECT_LOG.md. Those are pre-existing and left as-is.
+- Current version: 2.4.1 (package.json)
+- Latest commit on `main`: `a29600e` (Phase 15: GLM-5.2 auto-compact window 1000000 -> 900000, v2.4.1), pushed to origin. Recent lineage: `a29600e` (Phase 15 auto-compact 900K) ← `d8c936d` (A variants) ← `7b2d009`/`92164c0` (remove redundant ./install bootstrap) ← `5e1eb62` (Phase 14 smart-dedup) ← `502411d` (Phase 13 GLM-5.2 + tier scheme). NOTE: the prior handoff incorrectly recorded `25ff837` as the tip; git history between that and Phase 13 also has `072a9c9` (Phase 11+12) plus a run of install.ps1 PS5.1 hardening commits (`ec387cb`, `4399507`, `03e7dfb`, `657b2c9`, `70ff1ff`) that were never logged in PROJECT_LOG.md. Those are pre-existing and left as-is.
 
 ## 2. Current State
 - GLM-5 wrapper (`ccg5`): Completed
@@ -41,6 +41,8 @@
   - Completed in Session 2026-06-16 15:36 CDT
 - Add `A` (auto mode, `--permission-mode auto`) alias variant for every GLM alias (e.g. `ccgA`, `ccg52A`), alongside the existing `D`/`Dd` variants; mirrored in install.sh + install.ps1 + README; also fixed personal `~/.bashrc` `ccdA` (`--enable-auto-mode` → `--permission-mode auto`): Completed
   - Completed in Session 2026-06-16 16:13 CDT
+- Lower GLM-5.2 wrapper `CLAUDE_CODE_AUTO_COMPACT_WINDOW` from 1000000 to 900000 (auto-compact fires ~747K, ~250K headroom below glm-5.2's 1M ceiling; fixes frequent "context over limit" errors). Used the WINDOW lever, not the flaky `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE`. Only the 5.2 wrapper carries the var; install.sh + install.ps1 (both occurrences each) + README + v2.4.1; redeployed via `bash install.sh`: Completed (commit `a29600e`)
+  - Completed in Session 2026-07-02 10:01 CDT
 
 ## 3. Execution Plan Status
 - Phase 1: Add GLM-5 / adjust GLM-4.7 directories and mappings
@@ -85,6 +87,9 @@
 - Phase 14: bash alias write smart-dedup (aliases canonical in `~/.bashrc`; redundant `~/.bash_profile` copy stripped when it already sources `~/.bashrc`)
   - Status: Completed
   - Last updated: 2026-06-16 15:36 CDT
+- Phase 15: lower GLM-5.2 `CLAUDE_CODE_AUTO_COMPACT_WINDOW` 1000000 -> 900000 (only the 5.2 wrapper) + v2.4.1 + redeploy
+  - Status: Completed (implemented, verified, redeployed, committed `a29600e`, pushed)
+  - Last updated: 2026-07-02 10:01 CDT
 
 ## 4. Outstanding Work
 - Windows-side verification of install.ps1 (5.2 wrapper + tier scheme + ccg52 shims) on a real Windows host.
@@ -97,9 +102,12 @@
   - Reference: PROJECT_LOG.md Session 2026-06-16 (Phase 13)
   - Note: the raw `/v1/messages` API 400s on the literal bracket form because `[1m]` is a Claude Code client-side routing convention, not a raw model id; base `glm-5.2` is confirmed reachable (HTTP 200). Recommend one live `ccg` launch to confirm.
 - Clean the duplicate alias block currently on this machine's `~/.bash_profile`.
-  - Status: Open (user action) — re-run `bash install.sh` (reset/regenerate option); the Phase 14 smart-dedup strips the redundant `~/.bash_profile` block automatically.
-  - Last updated: 2026-06-16 15:36 CDT
-  - Reference: PROJECT_LOG.md Session 2026-06-16 (Phase 14)
+  - Status: Resolved (2026-07-02) — the Phase 15 redeploy re-ran `bash install.sh` (option 2); the Phase 14 smart-dedup stripped the redundant `~/.bash_profile` block (verified: no installer alias block remains there; it sources `~/.bashrc`). New GLM `A` aliases are now live in `~/.bashrc`.
+  - Last updated: 2026-07-02 10:01 CDT
+  - Reference: PROJECT_LOG.md Session 2026-07-02 (Phase 15)
+- Optional: remove the stale `~/.local/bin/claude-glm-5.2.bak-1000000` stopgap backup (leftover from the pre-Phase-15 hand-patch; still contains 1000000; inert — not on any alias path; not created by an MoAI session so left in place).
+  - Status: Open (optional user cleanup)
+  - Last updated: 2026-07-02 10:01 CDT
 
 ## 5. Risks, Open Questions, and Assumptions
 - Risk: TypeScript build / proxy code removed; `package.json` no longer includes TypeScript/dev deps.
@@ -112,6 +120,12 @@
   - Current assumption: Verification relies on installer script syntax checks and text search, not `npm` builds.
 
 ## 6. Verification Status
+- Verified (Session 2026-07-02 10:01 CDT, Phase 15 auto-compact 900000):
+  - `grep -rn 'AUTO_COMPACT_WINDOW' install.sh install.ps1` => only `900000` (2 per file, 4 total); 0 residual `1000000` in either script
+  - README.md line 122 documents `CLAUDE_CODE_AUTO_COMPACT_WINDOW=900000`
+  - `bash -n install.sh` => OK; `json.load(package.json)` => 2.4.1
+  - Deployed (after `bash install.sh` option-2 reset): `grep -n AUTO_COMPACT_WINDOW ~/.local/bin/claude-glm-5.2` => 2 lines, both `900000`. Scope confirmed — among live `~/.local/bin/claude-glm-*` wrappers, only `claude-glm-5.2` carries the var (a stale `claude-glm-5.2.bak-1000000` stopgap backup is the only other file with it; inert, left in place)
+  - `~/.bash_profile`: no installer alias block (Phase 14 dedup applied; it sources `~/.bashrc`). `~/.bashrc` holds `ccg`/`ccgA`/`ccg52`/`ccg52A`. Dotfile backups taken first (`~/.bashrc.bak.acw-*`, `~/.bash_profile.bak.acw-*`)
 - Verified (Session 2026-06-16 16:13 CDT, auto-mode `A` variants):
   - `bash -n install.sh` => OK; `claude --help` confirms `--permission-mode` accepts `auto` (old `--enable-auto-mode` is deprecated)
   - install.sh: 20 alias-`A` lines (10 csh + 10 bash blocks), 10 cleanup-list entries, 1 summary echo. install.ps1: 10 `A` profile functions (inside `$aliases` here-string), 10 `.cmd` shims, 10 cleanup function-regexes + 1 header pattern, 1 summary line
@@ -154,16 +168,17 @@
 
 ## 7. Restart Instructions
 - Starting point:
-  1. Working tree is clean. Latest commit on `main` is `d8c936d` (pushed to origin). Project version 2.4.0.
+  1. Working tree is clean. Latest substantive commit on `main` is `a29600e` (pushed to origin; a docs commit for handoff/log follows it). Project version 2.4.1.
      - Phase 13 (GLM-5.2 default + tier-scheme migration) → `502411d`
      - Phase 14 (bash alias smart-dedup) → `5e1eb62`
      - Removed redundant `./install` bootstrap → `92164c0`
      - Auto-mode `A` alias variants → `d8c936d`
+     - Phase 15 (GLM-5.2 auto-compact window 1000000 → 900000, v2.4.1) → `a29600e`
   2. `.moai/` is gitignored (local-only SPEC artifacts). The earlier `.gitignore`/`CLAUDE.md` upstream-drift question is closed — `CLAUDE.md` was committed (`03e7dfb`); nothing pending there.
   3. Note for testing: in the Claude Code Bash-tool sandbox, `grep` is a shell-function wrapper that `exec`s away subshells — run any test that pipes installer functions through grep as a child `bash` process (real `/usr/bin/grep`), not in an inline `( … )` subshell. Real users running `bash install.sh` are unaffected. Also: the Edit tool cannot write files outside the project dir (e.g. `~/.bashrc`); use an anchored `sed -i` after a backup.
 - Recommended next actions (optional):
-  1. Re-run `bash install.sh` locally (reset/regenerate option) to (a) regenerate wrappers including the new `claude-glm-5.2`, (b) install the new auto-mode `A` aliases (`ccgA` … `ccg52A`) into the rc alias block, and (c) trigger the Phase 14 smart-dedup that strips the leftover alias block from `~/.bash_profile`. Confirm `~/.bashrc` holds the block and `~/.bash_profile` does not.
-  2. Launch `ccg` once to confirm `glm-5.2[1m]` resolves inside Claude Code (fallback if it errors: bare `glm-5.2`, confirmed reachable).
+  1. Done this session (Phase 15 redeploy): `bash install.sh` (option 2) regenerated all wrappers (incl. `claude-glm-5.2` at the new 900000 window), installed the auto-mode `A` aliases (`ccgA` … `ccg52A`) into `~/.bashrc`, and triggered the Phase 14 dedup that stripped the leftover alias block from `~/.bash_profile`. Run `source ~/.bashrc` (or open a new shell) to pick up the refreshed aliases.
+  2. Launch `ccg` once to confirm the 900000 window behaves as expected inside a real Claude Code session (the raw API cannot validate the `glm-5.2[1m]` bracket form; base `glm-5.2` is confirmed reachable). If heavy turns still occasionally hit "context over limit", lower the 5.2 window to 800000 (auto-compact ~664K, ~336K headroom) — the safer fallback value.
   3. Re-run `smoke_test_models.sh` whenever Z.ai changes plan availability (baseline 2026-06-16: glm-5.2 + all wrapper models PASS; only glm-4.7-flashx 429s).
   4. Windows-side execution of `install.ps1` remains unverified — run on a Windows host if convenient.
-- Last updated: 2026-06-16 16:23 CDT
+- Last updated: 2026-07-02 10:01 CDT
