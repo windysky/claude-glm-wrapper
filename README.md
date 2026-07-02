@@ -119,7 +119,7 @@ Each GLM alias also has variant suffixes:
 
 These apply to every GLM alias: `ccgD/Dd/A`, `ccg52D/Dd/A`, `ccg51D/Dd/A`, `ccg5tD/Dd/A`, `ccg5D/Dd/A`, `ccg47D/Dd/A`, `ccg46D/Dd/A`, `ccg45D/Dd/A`, `ccg45vD/Dd/A`, `ccg45airD/Dd/A`.
 
-**Model tiers:** each wrapper maps Claude Code's Opus and Sonnet tiers to its own GLM model and the Haiku (background/fast) tier to `glm-4.5-air`, following Z.AI's recommended Claude Code configuration. The default `ccg`/`ccg52` wrapper uses `glm-5.2[1m]` for the 1M-token context window (with `CLAUDE_CODE_AUTO_COMPACT_WINDOW=1000000`).
+**Model tiers:** each wrapper maps Claude Code's Opus and Sonnet tiers to its own GLM model and the Haiku (background/fast) tier to `glm-4.5-air`, following Z.AI's recommended Claude Code configuration. The default `ccg`/`ccg52` wrapper uses `glm-5.2[1m]` for the 1M-token context window (with `CLAUDE_CODE_AUTO_COMPACT_WINDOW=900000`, ~250K headroom below the 1M ceiling).
 
 **Note on availability:** Not every model is included in every Z.ai billing plan. The repo ships with `smoke_test_models.sh` — run it to see which models your key can actually hit.
 

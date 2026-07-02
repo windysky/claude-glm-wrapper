@@ -597,3 +597,39 @@ Session 2026-06-16 16:23 CDT (session close)
   - bash -n install.sh => OK; claude --help confirms `--permission-mode auto`; end-to-end A-alias generation + dedup (child bash, real grep) PASS; no `--enable-auto-mode` left in repo; ~/.bashrc diff shows only ccdA changed.
 - Final state: working tree clean at d8c936d; version 2.4.0; no regressions.
 - Outstanding for next session (unchanged): Windows install.ps1 execution test; one live `ccg` launch to confirm glm-5.2[1m]; re-run `bash install.sh` to activate the new GLM A aliases and clean this machine's ~/.bash_profile duplicate.
+
+Session 2026-07-02 10:01 CDT
+- Coding CLI used: Claude Code CLI (Opus 4.8)
+- Phase(s) worked on
+  - Phase 15: lower the GLM-5.2 wrapper's `CLAUDE_CODE_AUTO_COMPACT_WINDOW` from 1000000 to 900000. Only the 5.2 wrapper carries this var; no other wrapper touched.
+- Motivation
+  - `CLAUDE_CODE_AUTO_COMPACT_WINDOW=1000000` caused frequent "context over limit" errors: Claude Code auto-compacts at ~83% of the window (~830K), leaving only ~170K of headroom below glm-5.2's real 1M ceiling, so a single tool-heavy turn could push a request past 1M and the API rejects it. Lowering the window to 900000 makes auto-compact fire at ~747K (~250K headroom).
+  - The 83% trigger is a ceiling (lowerable, not raisable), so the WINDOW value is the correct lever. Deliberately did NOT use `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` — that percent-override knob is known-flaky (anthropics/claude-code#36381) and may not trigger reliably.
+  - Context ceilings for reference: glm-5.2 = 1M; glm-4.7/4.6 = 200K. All other wrappers set no window override and correctly rely on Claude Code's default.
+- Concrete changes implemented
+  - install.sh: both occurrences in `create_claude_glm_52_wrapper` — the `export CLAUDE_CODE_AUTO_COMPACT_WINDOW="..."` line (860) and the settings.json block line (877) — 1000000 -> 900000.
+  - install.ps1: both occurrences in `New-ClaudeGlm52Wrapper` — the `$env:CLAUDE_CODE_AUTO_COMPACT_WINDOW = "..."` line (818) and the packed settings JSON string (829) — 1000000 -> 900000.
+  - README.md line 122: documented value 1000000 -> 900000, with an added "~250K headroom below the 1M ceiling" clause.
+  - package.json: 2.4.0 -> 2.4.1.
+- Files/modules/functions touched
+  - Modified: install.sh, install.ps1, README.md, package.json, PROJECT_HANDOFF.md, PROJECT_LOG.md
+- Redeploy
+  - Re-ran `bash install.sh` (option 2: reset wrappers/aliases using existing API key; key auto-detected from existing wrapper, no key prompt) as a child bash process so the real /usr/bin/grep is used (avoids the documented Bash-tool grep-wrapper subshell footgun). Regenerated all 10 wrappers in ~/.local/bin and refreshed the ~/.bashrc alias block.
+  - Note: ~/.local/bin/claude-glm-5.2 had already been hand-patched to 900000 as a stopgap before this session; the re-run makes source and deployed consistent (installer-generated). The user's stopgap left a stale backup file ~/.local/bin/claude-glm-5.2.bak-1000000 (still contains 1000000) — inert (not on any alias path), left in place (not created by this session); optional user cleanup.
+- Key technical decisions and rationale
+  - Value-only change; no structural edits. The var remains isolated to the 5.2 wrapper (verified: only claude-glm-5.2 among live wrappers carries it).
+  - 900000 chosen to match the already-deployed stopgap. If 900K still occasionally errors on very heavy turns, 800K is the safer next step (auto-compact ~664K, ~336K headroom) — noted for a future adjustment, not applied now.
+- Problems encountered and resolutions
+  - None. Installer exited 0 ("Reset complete!"); dotfiles backed up first (~/.bashrc.bak.acw-*, ~/.bash_profile.bak.acw-*).
+- Items explicitly completed, resolved, or superseded in this session
+  - Completed: GLM-5.2 auto-compact window lowered to 900000 across install.sh + install.ps1 + README, redeployed, v2.4.1.
+  - Superseded: CLAUDE_CODE_AUTO_COMPACT_WINDOW=1000000 on the 5.2 wrapper (now 900000).
+- Verification performed
+  - `grep -rn 'AUTO_COMPACT_WINDOW' install.sh install.ps1` => only 900000 (2 per file); 0 residual `1000000` in both scripts.
+  - `bash -n install.sh` => OK.
+  - `json.load(package.json)` => 2.4.1.
+  - Deployed: `grep -n AUTO_COMPACT_WINDOW ~/.local/bin/claude-glm-5.2` => 2 lines, both 900000. No other live wrapper carries the var. `~/.bash_profile` has no installer alias block (deduped; it sources ~/.bashrc). ~/.bashrc holds ccg/ccgA/ccg52/ccg52A.
+- Remaining open issues (unchanged)
+  - Windows install.ps1 execution still unverified on a real Windows host (standing gap).
+  - One live `ccg` launch recommended to confirm the 900000 window resolves as expected inside a real Claude Code session.
+  - Optional: remove the stale ~/.local/bin/claude-glm-5.2.bak-1000000 stopgap backup.
