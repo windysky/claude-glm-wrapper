@@ -3,7 +3,7 @@
 ## 1. Project Overview
 - Purpose: Local wrapper/installer scripts to run Claude Code against Z.AI GLM models via per-model `CLAUDE_HOME` directories.
 - Scope: Cross-platform install scripts + docs for `ccg` (GLM-5.2, default, 1M context), `ccg52` (GLM-5.2), `ccg51` (GLM-5.1), `ccg5t` (GLM-5-Turbo), `ccg5` (GLM-5), `ccg47` (GLM-4.7), `ccg46` (GLM-4.6), `ccg45` (GLM-4.5), `ccg45v` (GLM-4.5V vision), `ccg45air` (GLM-4.5-Air), and `ccf` (alias for GLM-4.5-Air). Each wrapper uses Z.AI's opus/sonnet/haiku tier scheme (opus+sonnet = its own model, haiku = glm-4.5-air). Installer manages GLM aliases only — the bare `claude` command and any user-curated `ccd`/`ccdD`/`claudeD` aliases are intentionally untouched.
-- Last updated: 2026-07-02 10:01 CDT
+- Last updated: 2026-07-02 20:49 CDT
 - Last coding CLI used (informational): Claude Code
 - Current version: 2.4.1 (package.json)
 - Latest commit on `main`: `a29600e` (Phase 15: GLM-5.2 auto-compact window 1000000 -> 900000, v2.4.1), pushed to origin. Recent lineage: `a29600e` (Phase 15 auto-compact 900K) ← `d8c936d` (A variants) ← `7b2d009`/`92164c0` (remove redundant ./install bootstrap) ← `5e1eb62` (Phase 14 smart-dedup) ← `502411d` (Phase 13 GLM-5.2 + tier scheme). NOTE: the prior handoff incorrectly recorded `25ff837` as the tip; git history between that and Phase 13 also has `072a9c9` (Phase 11+12) plus a run of install.ps1 PS5.1 hardening commits (`ec387cb`, `4399507`, `03e7dfb`, `657b2c9`, `70ff1ff`) that were never logged in PROJECT_LOG.md. Those are pre-existing and left as-is.
@@ -181,4 +181,5 @@
   2. Launch `ccg` once to confirm the 900000 window behaves as expected inside a real Claude Code session (the raw API cannot validate the `glm-5.2[1m]` bracket form; base `glm-5.2` is confirmed reachable). If heavy turns still occasionally hit "context over limit", lower the 5.2 window to 800000 (auto-compact ~664K, ~336K headroom) — the safer fallback value.
   3. Re-run `smoke_test_models.sh` whenever Z.ai changes plan availability (baseline 2026-06-16: glm-5.2 + all wrapper models PASS; only glm-4.7-flashx 429s).
   4. Windows-side execution of `install.ps1` remains unverified — run on a Windows host if convenient.
-- Last updated: 2026-07-02 10:01 CDT
+- Cross-project wiki: `~/PROJECTS/wiki/concept/claude-code-auto-compact-window-headroom.md` captures the auto-compact-window headroom lesson (why the 5.2 window is 900000, and 800000 as the safer fallback).
+- Last updated: 2026-07-02 20:49 CDT
