@@ -6,6 +6,7 @@ Bounded active log for the claude-glm-wrapper installer (Claude Code wrappers fo
 - logs/PROJECT_LOG_2026-H1.md — 9 sessions (2026-02 … 2026-04)
 
 ## Session Index (active, newest first)
+- 2026-07-03 00:57 CDT (Phase 16 harness review)
 - 2026-07-02 10:01 CDT
 - 2026-06-16 16:23 CDT (session close)
 - 2026-06-16 16:13 CDT (auto-mode aliases)
@@ -16,6 +17,40 @@ Bounded active log for the claude-glm-wrapper installer (Claude Code wrappers fo
 - 2026-04-28 19:30 CDT
 
 ---
+
+## Session 2026-07-03 00:57 CDT (Phase 16 harness review)
+- Coding CLI used: Claude Code CLI (Opus 4.8)
+- Phase(s) worked on
+  - Phase 16: `/harness-hur-code-review-and-fix` — autonomous harness-driven code review of the whole project, then fix all real defects. "Fix only what is broken."
+- Harness process (proportional, hybrid team)
+  - Orchestrator did Phase 0 deep recon (read install.sh 1469L, install.ps1 1486L, smoke_test_models.sh, bin/cli.js, bin/preinstall.js, fix_hooks_config.py in full) + Phase 1 triage directly.
+  - Spawned one independent fresh-context Reviewer/Security-Auditor (evaluator-active, read-only) — it CONFIRMED the settings.json finding, surfaced the set-e false-abort I under-weighted, and confirmed the csh idempotency bug. 3 real defects.
+  - Reproduced all 3 before fixing (Rule 4). Spawned an Implementer (general-purpose) to apply the fixes to install.sh per SPEC; routed the diff back to the same auditor as Reviewer — verdict APPROVED (it executed the real patched code, not paraphrased). No self-implement / no self-review.
+- Findings & fixes (all in install.sh; install.ps1 unaffected)
+  - FIX-1 [Security]: each wrapper wrote `~/.claude-glm-*/settings.json` (plaintext Z.AI key) world-readable at mode 644 (default umask) while the wrapper scripts were `chmod 700` (SEC-01). Added `chmod 600 "$CLAUDE_HOME/settings.json"` at wrapper RUNTIME in all 10 wrapper functions (after each SETTINGS heredoc, escaped `\$` so it resolves on launch). install.ps1 not changed — `.ps1`+settings.json live under `%USERPROFILE%` (NTFS ACL-restricted); the 644 exposure is Unix-only.
+  - FIX-2 [Bug]: `check_claude_installation` ends its "continue anyway" path with a bare `return 1`; called bare in `main()` under `set -eE`+ERR trap it fired a false "Installation failed!" abort before any wrapper was created (defeating documented option 3). Changed the call site to `check_claude_installation || true` (matches the existing `|| true` guards on the detect-key calls). Function/`return 1` untouched.
+  - FIX-3 [Idempotency]: `remove_aliases_from_rc` matched only bash `alias X=` format, so csh/.cshrc `alias X 'v'` (space) lines survived and duplicated on re-run. Added one space-format `grep -vE "^alias (…names…) "` filter to the pipeline (bash format + user aliases untouched). Previously deferred (Phase 12/13); fixed now since a low-risk fix exists.
+- Files/modules/functions touched
+  - Modified: install.sh (+23/-2), package.json (2.4.1 → 2.4.2), PROJECT_HANDOFF.md, PROJECT_LOG.md
+  - Created (gitignored, local): `.moai/specs/SPEC_HARNESS_CODE_REVIEW_2026_07_02.md`
+- Key technical decisions and rationale
+  - Proportional harness (no test suite / no CI / no web UI, ~3400 LOC) — Orchestrator recon+triage directly, one independent Reviewer/Auditor, one Implementer, per Phase 10/12 precedent. Playwright/unit-baseline phases N/A.
+  - install.ps1 deliberately left unchanged for both applicable findings, with documented per-finding rationale (platform-appropriate, minimal).
+  - csh fix uses a single trailing-space ERE (matches csh space-format only; verified it does not touch bash `alias X=` nor over-match `ccg5`/`ccg52` from the `ccg` branch).
+- Problems encountered and resolutions
+  - Grep escaping subtlety: `\$` in a grep pattern matches literal `$`, so a check for the runtime `\$CLAUDE_HOME` chmod line initially returned 0; confirmed the 10 lines are correct via `grep -n` and corrected escaping. The Implementer correctly STOPPED-and-reported rather than corrupt the fix to satisfy a flawed check.
+- Items explicitly completed / resolved / superseded this session
+  - Completed: FIX-1 (settings.json chmod 600 ×10), FIX-2 (set-e continue-anyway guard), FIX-3 (csh alias dedup); v2.4.2; independent review APPROVED.
+  - Superseded: the Phase 12/13 deferral of the csh alias-cleanup idempotency gap (now fixed).
+- Verification performed
+  - `bash -n install.sh` => OK; diff = install.sh only, +23/-2.
+  - FIX-1 end-to-end: redeployed via `bash install.sh` (option 2), launched the deployed 5.2 wrapper with `claude` masked → `~/.claude-glm-52/settings.json` 644 → 600, JSON valid (6 keys, token present); wrappers still 700; all config-dir settings.json proactively hardened to 600.
+  - FIX-2 + FIX-3: reproduced the bug and the fix for each (continue→exit 0, decline→exit 1; csh 42 aliases stripped, 0 false positives, idempotent).
+  - Independent evaluator-active Reviewer executed the real patched functions: APPROVED, no regressions, no scope creep, install.ps1/README/package.json untouched.
+- Remaining open issues (unchanged)
+  - Windows `install.ps1` execution unverified on a real Windows host (standing gap).
+  - Optional: remove stale `~/.local/bin/claude-glm-5.2.bak-1000000` backup.
+  - Note: on machines other than this one, users should launch each wrapper once to re-harden its settings.json from 644 → 600.
 
 ## Session 2026-07-02 10:01 CDT
 - Coding CLI used: Claude Code CLI (Opus 4.8)

@@ -3,10 +3,10 @@
 ## 1. Project Overview
 - Purpose: Local wrapper/installer scripts to run Claude Code against Z.AI GLM models via per-model `CLAUDE_HOME` directories.
 - Scope: Cross-platform install scripts + docs for `ccg` (GLM-5.2, default, 1M context), `ccg52` (GLM-5.2), `ccg51` (GLM-5.1), `ccg5t` (GLM-5-Turbo), `ccg5` (GLM-5), `ccg47` (GLM-4.7), `ccg46` (GLM-4.6), `ccg45` (GLM-4.5), `ccg45v` (GLM-4.5V vision), `ccg45air` (GLM-4.5-Air), and `ccf` (alias for GLM-4.5-Air). Each wrapper uses Z.AI's opus/sonnet/haiku tier scheme (opus+sonnet = its own model, haiku = glm-4.5-air). Installer manages GLM aliases only — the bare `claude` command and any user-curated `ccd`/`ccdD`/`claudeD` aliases are intentionally untouched.
-- Last updated: 2026-07-02 20:49 CDT
+- Last updated: 2026-07-03 00:57 CDT
 - Last coding CLI used (informational): Claude Code
-- Current version: 2.4.1 (package.json)
-- Latest commit on `main`: `a29600e` (Phase 15: GLM-5.2 auto-compact window 1000000 -> 900000, v2.4.1), pushed to origin. Recent lineage: `a29600e` (Phase 15 auto-compact 900K) ← `d8c936d` (A variants) ← `7b2d009`/`92164c0` (remove redundant ./install bootstrap) ← `5e1eb62` (Phase 14 smart-dedup) ← `502411d` (Phase 13 GLM-5.2 + tier scheme). NOTE: the prior handoff incorrectly recorded `25ff837` as the tip; git history between that and Phase 13 also has `072a9c9` (Phase 11+12) plus a run of install.ps1 PS5.1 hardening commits (`ec387cb`, `4399507`, `03e7dfb`, `657b2c9`, `70ff1ff`) that were never logged in PROJECT_LOG.md. Those are pre-existing and left as-is.
+- Current version: 2.4.2 (package.json)
+- Latest commit on `main`: `a103f0b` (Phase 16: harness code review — settings.json chmod 600 + set-e guard + csh dedup, v2.4.2), pushed to origin. Recent lineage: `a103f0b` (Phase 16 review fixes) ← `a29600e` (Phase 15 auto-compact 900K) ← `d8c936d` (A variants) ← `7b2d009`/`92164c0` (remove redundant ./install bootstrap) ← `5e1eb62` (Phase 14 smart-dedup) ← `502411d` (Phase 13 GLM-5.2 + tier scheme). NOTE: the prior handoff incorrectly recorded `25ff837` as the tip; git history between that and Phase 13 also has `072a9c9` (Phase 11+12) plus a run of install.ps1 PS5.1 hardening commits (`ec387cb`, `4399507`, `03e7dfb`, `657b2c9`, `70ff1ff`) that were never logged in PROJECT_LOG.md. Those are pre-existing and left as-is.
 
 ## 2. Current State
 - GLM-5 wrapper (`ccg5`): Completed
@@ -43,6 +43,8 @@
   - Completed in Session 2026-06-16 16:13 CDT
 - Lower GLM-5.2 wrapper `CLAUDE_CODE_AUTO_COMPACT_WINDOW` from 1000000 to 900000 (auto-compact fires ~747K, ~250K headroom below glm-5.2's 1M ceiling; fixes frequent "context over limit" errors). Used the WINDOW lever, not the flaky `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE`. Only the 5.2 wrapper carries the var; install.sh + install.ps1 (both occurrences each) + README + v2.4.1; redeployed via `bash install.sh`: Completed (commit `a29600e`)
   - Completed in Session 2026-07-02 10:01 CDT
+- Harness code review (harness-hur-code-review-and-fix) — 3 install.sh defects fixed: (SEC) `chmod 600` on the runtime-generated settings.json in all 10 wrappers (the plaintext API key was world-readable at 644 while wrappers were already 700); (BUG) `check_claude_installation || true` so the "continue anyway" path without `claude` no longer false-aborts under `set -eE`+ERR trap; (IDEMPOTENCY) csh space-format alias cleanup so `.cshrc` re-runs stop duplicating the alias block. install.ps1 unaffected (Unix-only exposure; PS path returns $false without throwing). v2.4.2; independently reviewed (evaluator-active) APPROVED: Completed (commit `a103f0b`)
+  - Completed in Session 2026-07-03 00:57 CDT
 
 ## 3. Execution Plan Status
 - Phase 1: Add GLM-5 / adjust GLM-4.7 directories and mappings
@@ -90,6 +92,10 @@
 - Phase 15: lower GLM-5.2 `CLAUDE_CODE_AUTO_COMPACT_WINDOW` 1000000 -> 900000 (only the 5.2 wrapper) + v2.4.1 + redeploy
   - Status: Completed (implemented, verified, redeployed, committed `a29600e`, pushed)
   - Last updated: 2026-07-02 10:01 CDT
+- Phase 16: harness code review + fix — SEC (settings.json chmod 600 ×10), BUG (set-e continue-anyway guard), IDEMPOTENCY (csh alias dedup) in install.sh + v2.4.2
+  - Status: Completed (Implementer applied, independent evaluator-active Reviewer APPROVED, redeployed + runtime-verified 600, committed `a103f0b`, pushed)
+  - Last updated: 2026-07-03 00:57 CDT
+  - SPEC: `.moai/specs/SPEC_HARNESS_CODE_REVIEW_2026_07_02.md` (gitignored, local)
 
 ## 4. Outstanding Work
 - Windows-side verification of install.ps1 (5.2 wrapper + tier scheme + ccg52 shims) on a real Windows host.
@@ -120,6 +126,12 @@
   - Current assumption: Verification relies on installer script syntax checks and text search, not `npm` builds.
 
 ## 6. Verification Status
+- Verified (Session 2026-07-03 00:57 CDT, Phase 16 harness review fixes):
+  - `bash -n install.sh` => OK; `git diff` = install.sh only, +23/-2 (minimal)
+  - FIX-1: 10 `chmod 600 "$CLAUDE_HOME/settings.json"` runtime lines (one per wrapper, after each SETTINGS heredoc); `chmod 700` on wrappers unchanged (10). Redeployed + launched the 5.2 wrapper (claude masked) → `~/.claude-glm-52/settings.json` went 644 → **600**, JSON still valid (6 keys, token present). Proactively chmod 600 on all remaining config dirs (now all 600)
+  - FIX-2: reproduced the false-abort (bare `check_claude_installation` return 1 under `set -eE`+trap → handle_error) and the fix (`|| true` → main proceeds); decline path still `exit 1`
+  - FIX-3: reproduced csh duplication (bash `=` filters leave `alias X 'v'` intact) and the fix (space-format `grep -vE` strips all 42 csh aliases, 0 false positives, bash format + user aliases untouched, idempotent across re-runs)
+  - Independent evaluator-active Reviewer executed the real patched code (not paraphrased): APPROVED, no regressions, no scope creep, install.ps1/README untouched
 - Verified (Session 2026-07-02 10:01 CDT, Phase 15 auto-compact 900000):
   - `grep -rn 'AUTO_COMPACT_WINDOW' install.sh install.ps1` => only `900000` (2 per file, 4 total); 0 residual `1000000` in either script
   - README.md line 122 documents `CLAUDE_CODE_AUTO_COMPACT_WINDOW=900000`
@@ -168,12 +180,13 @@
 
 ## 7. Restart Instructions
 - Starting point:
-  1. Working tree is clean. Latest substantive commit on `main` is `a29600e` (pushed to origin; a docs commit for handoff/log follows it). Project version 2.4.1.
+  1. Working tree is clean. Latest substantive commit on `main` is `a103f0b` (Phase 16 harness review fixes; pushed to origin; a docs commit for handoff/log follows it). Project version 2.4.2.
+     - Phase 16 (harness review: settings.json chmod 600 + set-e guard + csh dedup, v2.4.2) → `a103f0b`
+     - Phase 15 (GLM-5.2 auto-compact window 1000000 → 900000, v2.4.1) → `a29600e`
      - Phase 13 (GLM-5.2 default + tier-scheme migration) → `502411d`
      - Phase 14 (bash alias smart-dedup) → `5e1eb62`
      - Removed redundant `./install` bootstrap → `92164c0`
      - Auto-mode `A` alias variants → `d8c936d`
-     - Phase 15 (GLM-5.2 auto-compact window 1000000 → 900000, v2.4.1) → `a29600e`
   2. `.moai/` is gitignored (local-only SPEC artifacts). The earlier `.gitignore`/`CLAUDE.md` upstream-drift question is closed — `CLAUDE.md` was committed (`03e7dfb`); nothing pending there.
   3. Note for testing: in the Claude Code Bash-tool sandbox, `grep` is a shell-function wrapper that `exec`s away subshells — run any test that pipes installer functions through grep as a child `bash` process (real `/usr/bin/grep`), not in an inline `( … )` subshell. Real users running `bash install.sh` are unaffected. Also: the Edit tool cannot write files outside the project dir (e.g. `~/.bashrc`); use an anchored `sed -i` after a backup.
 - Recommended next actions (optional):
@@ -182,4 +195,5 @@
   3. Re-run `smoke_test_models.sh` whenever Z.ai changes plan availability (baseline 2026-06-16: glm-5.2 + all wrapper models PASS; only glm-4.7-flashx 429s).
   4. Windows-side execution of `install.ps1` remains unverified — run on a Windows host if convenient.
 - Cross-project wiki: `~/PROJECTS/wiki/concept/claude-code-auto-compact-window-headroom.md` captures the auto-compact-window headroom lesson (why the 5.2 window is 900000, and 800000 as the safer fallback).
-- Last updated: 2026-07-02 20:49 CDT
+- Security note (Phase 16): wrappers now `chmod 600` their settings.json at runtime. This machine's existing config-dir settings.json were proactively hardened to 600; on any other machine, launching each wrapper once re-hardens its settings.json (previously 644).
+- Last updated: 2026-07-03 00:57 CDT
