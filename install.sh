@@ -445,6 +445,8 @@ cat > "\$CLAUDE_HOME/settings.json" << SETTINGS
 }
 SETTINGS
 
+chmod 600 "\$CLAUDE_HOME/settings.json"
+
 # Launch Claude Code with custom config
 echo "🚀 Starting Claude Code with GLM-4.7 (Standard Model)..."
 echo "📁 Config directory: \$CLAUDE_HOME"
@@ -498,6 +500,8 @@ cat > "\$CLAUDE_HOME/settings.json" << SETTINGS
   }
 }
 SETTINGS
+
+chmod 600 "\$CLAUDE_HOME/settings.json"
 
 # Launch Claude Code with custom config
 echo "🚀 Starting Claude Code with GLM-4.5..."
@@ -553,6 +557,8 @@ cat > "\$CLAUDE_HOME/settings.json" << SETTINGS
 }
 SETTINGS
 
+chmod 600 "\$CLAUDE_HOME/settings.json"
+
 # Launch Claude Code with custom config
 echo "🖼️  Starting Claude Code with GLM-4.5V (Vision)..."
 echo "📁 Config directory: \$CLAUDE_HOME"
@@ -606,6 +612,8 @@ cat > "\$CLAUDE_HOME/settings.json" << SETTINGS
   }
 }
 SETTINGS
+
+chmod 600 "\$CLAUDE_HOME/settings.json"
 
 # Launch Claude Code with custom config
 echo "🪁 Starting Claude Code with GLM-4.5-Air..."
@@ -661,6 +669,8 @@ cat > "\$CLAUDE_HOME/settings.json" << SETTINGS
 }
 SETTINGS
 
+chmod 600 "\$CLAUDE_HOME/settings.json"
+
 # Launch Claude Code with custom config
 echo "🚀 Starting Claude Code with GLM-4.6..."
 echo "📁 Config directory: \$CLAUDE_HOME"
@@ -714,6 +724,8 @@ cat > "\$CLAUDE_HOME/settings.json" << SETTINGS
   }
 }
 SETTINGS
+
+chmod 600 "\$CLAUDE_HOME/settings.json"
 
 # Launch Claude Code with custom config
 echo "🚀 Starting Claude Code with GLM-5 (Latest Model)..."
@@ -769,6 +781,8 @@ cat > "\$CLAUDE_HOME/settings.json" << SETTINGS
 }
 SETTINGS
 
+chmod 600 "\$CLAUDE_HOME/settings.json"
+
 # Launch Claude Code with custom config
 echo "🚀 Starting Claude Code with GLM-5-Turbo..."
 echo "📁 Config directory: \$CLAUDE_HOME"
@@ -822,6 +836,8 @@ cat > "\$CLAUDE_HOME/settings.json" << SETTINGS
   }
 }
 SETTINGS
+
+chmod 600 "\$CLAUDE_HOME/settings.json"
 
 # Launch Claude Code with custom config
 echo "🚀 Starting Claude Code with GLM-5.1 (Latest Model)..."
@@ -879,6 +895,8 @@ cat > "\$CLAUDE_HOME/settings.json" << SETTINGS
 }
 SETTINGS
 
+chmod 600 "\$CLAUDE_HOME/settings.json"
+
 # Launch Claude Code with custom config
 echo "🚀 Starting Claude Code with GLM-5.2 (Default, 1M context)..."
 echo "📁 Config directory: \$CLAUDE_HOME"
@@ -932,6 +950,8 @@ cat > "\$CLAUDE_HOME/settings.json" << SETTINGS
   }
 }
 SETTINGS
+
+chmod 600 "\$CLAUDE_HOME/settings.json"
 
 # Launch Claude Code with custom config
 echo "⚡ Starting Claude Code with GLM-4.5-Air (Fast Model)..."
@@ -1036,7 +1056,8 @@ create_shell_aliases() {
             grep -v "alias ccg51A=" | \
             grep -v "alias ccg52A=" | \
             grep -v "alias ccf=" | \
-            grep -v "alias ccx=" > "$target_rc.tmp"
+            grep -v "alias ccx=" | \
+            grep -vE "^alias (ccg|ccgD|ccgDd|ccgA|ccg45|ccg45D|ccg45Dd|ccg45A|ccg45v|ccg45vD|ccg45vDd|ccg45vA|ccg45air|ccg45airD|ccg45airDd|ccg45airA|ccg46|ccg46D|ccg46Dd|ccg46A|ccg47|ccg47D|ccg47Dd|ccg47A|ccg5|ccg5D|ccg5Dd|ccg5A|ccg5t|ccg5tD|ccg5tDd|ccg5tA|ccg51|ccg51D|ccg51Dd|ccg51A|ccg52|ccg52D|ccg52Dd|ccg52A|ccf|ccx) " > "$target_rc.tmp"
             mv "$target_rc.tmp" "$target_rc"
         fi
     }
@@ -1227,7 +1248,7 @@ main() {
     echo ""
 
     # Check Claude Code
-    check_claude_installation
+    check_claude_installation || true
 
     # Setup user bin directory
     setup_user_bin
