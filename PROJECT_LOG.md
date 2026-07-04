@@ -3,7 +3,7 @@
 Bounded active log for the claude-glm-wrapper installer (Claude Code wrappers for Z.AI GLM models). Newest first. Older sessions are archived verbatim under `logs/` (see Archives once rotation runs).
 
 ## Archives
-- logs/PROJECT_LOG_2026-H1.md — 9 sessions (2026-02 … 2026-04)
+- logs/PROJECT_LOG_2026-H1.md — 10 sessions (2026-02 … 2026-04)
 
 ## Session Index (active, newest first)
 - 2026-07-03 00:57 CDT (Phase 16 harness review)
@@ -14,7 +14,6 @@ Bounded active log for the claude-glm-wrapper installer (Claude Code wrappers fo
 - 2026-06-16 15:36 CDT (session close)
 - 2026-06-16 (Phase 14)
 - 2026-06-16
-- 2026-04-28 19:30 CDT
 
 ---
 
@@ -256,44 +255,4 @@ Bounded active log for the claude-glm-wrapper installer (Claude Code wrappers fo
   - One live `ccg` launch recommended to confirm glm-5.2[1m] resolves inside Claude Code (raw API cannot validate the bracket form).
 - Documentation reconciliation note
   - On takeover, found PROJECT_HANDOFF.md was stale: it recorded latest commit 25ff837, but git HEAD is 70ff1ff with unlogged commits 072a9c9 (Phase 11+12) and a run of install.ps1 PS5.1 fixes (ec387cb, 4399507, 03e7dfb, 657b2c9, 70ff1ff). Handoff "Latest committed commit" pointer corrected to 70ff1ff; those prior commits are pre-existing and left as-is.
-
-## Session 2026-04-28 19:30 CDT
-- Coding CLI used: Claude Code (Opus 4.7)
-- Phase(s) worked on
-  - Phase 12: Harness code review and fix run via `/harness-hur-code-review-and-fix` slash command. Single defect found and resolved.
-- Motivation
-  - User-invoked harness-driven code review of all uncommitted Phase 11 work plus existing scripts.
-- Findings (Phase 0/1)
-  - Critical: 0
-  - High: 0
-  - Medium: 1 — SMOKE-01: `smoke_test_models.sh` API key auto-detection paths missed 3 newer wrappers (`claude-glm-5-turbo`, `claude-glm-4.5v`, `claude-glm-4.5-air`) and their settings dirs (`.claude-glm-5-turbo/settings.json`, `.claude-glm-45v/settings.json`, `.claude-glm-45-air/settings.json`). Pre-existing bug introduced in Phase 9; not introduced by Phase 11 changes.
-  - Low: 0
-  - Rejected as not-broken (preserve existing style/architecture per harness mandate):
-    - install.sh `eval "$legacy_claude_filter"` — uses eval but with hardcoded internal string only, no user input. Works correctly. Refactor would be cosmetic.
-    - install.ps1 `(array -match pattern).Count -gt 0` fingerprint check — works for typical multi-line profile content. Edge case (single-line profile) is impractical.
-    - install.sh cleanup grep for csh/tcsh format aliases (`alias X 'value'` without `=`) — pre-existing, csh users rare, fixing risks regressions.
-    - `fix_hooks_config.py` docstring vs implementation mismatch — utility works for its actual use case.
-- Concrete changes implemented
-  - SMOKE-01 (smoke_test_models.sh): Added `claude-glm-5-turbo`, `claude-glm-4.5v`, `claude-glm-4.5-air` to `wrapper_files` array. Added `$HOME/.claude-glm-5-turbo/settings.json`, `$HOME/.claude-glm-45v/settings.json`, `$HOME/.claude-glm-45-air/settings.json` to `settings_files` array. Coverage now 9/9 wrappers + 9/9 settings dirs (was 6/6 each).
-- Files/modules/functions touched
-  - Modified: `smoke_test_models.sh`, `PROJECT_HANDOFF.md`, `PROJECT_LOG.md`
-- Harness process
-  - Project size (~2000 LOC shell + PowerShell, no web UI, no test suite, no CI) does not warrant full multi-agent persistent team spawning. Orchestrator performed Phase 0 reconnaissance + Phase 1 triage + Phase 2 implementation directly, then Phase 3 verification via syntax checks and dry-run, Phase 4 live smoke test, Phase 5 docs.
-  - Per "fix only what is broken" mandate: rejected 4 candidate findings that were working code with theoretical edge cases or stylistic preferences.
-- Key technical decisions and rationale
-  - Smoke test fix is purely additive — appended new paths to existing arrays in the established convention. No restructuring.
-  - Did not touch `CLAUDE.md` even though it shows uncommitted modifications — confirmed by PROJECT_HANDOFF that this is upstream MoAI-ADK framework drift, not project code.
-- Problems encountered and resolutions
-  - None.
-- Items explicitly completed, resolved, or superseded in this session
-  - Completed: SMOKE-01 — full wrapper/settings path coverage in smoke_test_models.sh
-- Verification performed
-  - `bash -n install.sh` => OK
-  - `bash -n smoke_test_models.sh` => OK (post-fix)
-  - `python3 ast.parse(fix_hooks_config.py)` => OK
-  - `node --check bin/cli.js`, `node --check bin/preinstall.js` => OK
-  - `json.load(package.json)` => OK
-  - `bash smoke_test_models.sh` against live Z.ai API => 8/9 PASS, identical to baseline (no regression). API key auto-detected from existing wrappers, SMOKE-01 fix verified working.
-- Final test counts vs baseline: 8/9 PASS (no change). Final security posture: unchanged from Phase 10 (chmod 700 wrappers, silent key entry, UTF-8 settings.json all still in place).
-- Remaining open issues: none.
 
