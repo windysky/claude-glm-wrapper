@@ -37,6 +37,7 @@ $Glm5ConfigDir = "$env:USERPROFILE\.claude-glm-5"
 $Glm5tConfigDir = "$env:USERPROFILE\.claude-glm-5-turbo"
 $Glm51ConfigDir = "$env:USERPROFILE\.claude-glm-51"
 $Glm52ConfigDir = "$env:USERPROFILE\.claude-glm-52"
+$Glm53ConfigDir = "$env:USERPROFILE\.claude-glm-53"
 $GlmFastConfigDir = "$env:USERPROFILE\.claude-glm-fast"
 $ZaiApiKey = "YOUR_ZAI_API_KEY_HERE"
 
@@ -214,59 +215,32 @@ function Add-PowerShellAliases {
         Write-Host "INFO: Detected legacy claude alias block from previous wrapper version - migrating."
     }
 
-    # Patterns owned by this installer - always stripped on every run.
-    # Strings are matched as regex via -match (substrings without anchors
-    # match anywhere in the line; explicit ^ anchors match line start).
+    # --- Full-line alias matching -------------------------------------------
+    # A managed alias is removed ONLY when the alias NAME *and* its ENTIRE value
+    # match a form this installer generates. Matching the whole line (anchored
+    # ^...$) instead of a "Set-Alias NAME " prefix means a user's own alias of
+    # the same name, pointing at anything else, is never touched.
+    #
+    # Retired names (ccg5, ccg51, ccg52, ccg45air, ccf, ccx) stay in the list on
+    # purpose: a re-run must scrub aliases whose wrapper this version no longer
+    # ships, or they linger pointing at a deleted script.
+    $managedNames = 'ccg|ccgD|ccgDd|ccgA|ccg45|ccg45D|ccg45Dd|ccg45A|ccg45v|ccg45vD|ccg45vDd|ccg45vA|ccg45air|ccg45airD|ccg45airDd|ccg45airA|ccg46|ccg46D|ccg46Dd|ccg46A|ccg47|ccg47D|ccg47Dd|ccg47A|ccg5|ccg5D|ccg5Dd|ccg5A|ccg5t|ccg5tD|ccg5tDd|ccg5tA|ccg51|ccg51D|ccg51Dd|ccg51A|ccg52|ccg52D|ccg52Dd|ccg52A|ccg53|ccg53D|ccg53Dd|ccg53A|ccf|ccx'
+    $managedFlags = '--dangerously-skip-permissions( -d)?|--permission-mode auto'
+
+    # Comment headers this installer writes, plus the two generated line shapes:
+    #   Set-Alias NAME claude-glm-X
+    #   function NAME { BASE --flags @args }
     $installerOwnedPatterns = @(
-        "# Claude Code Model Switcher Aliases",
-        "# Claude-GLM Model Switcher Aliases",
-        "# Claude Code Danger Skip Aliases",
-        "# Claude-GLM Danger Skip Aliases",
-        "# Claude-GLM Auto Mode Aliases",
-        "# ccx multi-provider proxy function",
-        "Set-Alias ccg ",
-        "Set-Alias ccg51 ",
-        "Set-Alias ccg52 ",
-        "Set-Alias ccg5t ",
-        "Set-Alias ccg5 ",
-        "Set-Alias ccg47 ",
-        "Set-Alias ccg46 ",
-        "Set-Alias ccg45air ",
-        "Set-Alias ccg45v ",
-        "Set-Alias ccg45 ",
-        "Set-Alias ccf ",
+        "^# Claude Code Model Switcher Aliases$",
+        "^# Claude-GLM Model Switcher Aliases$",
+        "^# Claude Code Danger Skip Aliases$",
+        "^# Claude-GLM Danger Skip Aliases$",
+        "^# Claude-GLM Auto Mode Aliases$",
+        "^# ccx multi-provider proxy function$",
+        "^Set-Alias ($managedNames) (claude-glm[A-Za-z0-9._-]*|ccx[A-Za-z0-9._-]*)$",
+        "^\s*function\s+($managedNames)\s*\{\s*($managedNames) ($managedFlags) @args \}\s*$",
         '^\s*function\s+ccx\b',
-        '\\ccx\.ps1',
-        '^\s*function\s+ccgD\b',
-        '^\s*function\s+ccgDd\b',
-        '^\s*function\s+ccg45D\b',
-        '^\s*function\s+ccg45Dd\b',
-        '^\s*function\s+ccg45vD\b',
-        '^\s*function\s+ccg45vDd\b',
-        '^\s*function\s+ccg45airD\b',
-        '^\s*function\s+ccg45airDd\b',
-        '^\s*function\s+ccg46D\b',
-        '^\s*function\s+ccg46Dd\b',
-        '^\s*function\s+ccg47D\b',
-        '^\s*function\s+ccg47Dd\b',
-        '^\s*function\s+ccg5D\b',
-        '^\s*function\s+ccg5Dd\b',
-        '^\s*function\s+ccg5tD\b',
-        '^\s*function\s+ccg5tDd\b',
-        '^\s*function\s+ccg51D\b',
-        '^\s*function\s+ccg51Dd\b',
-        '^\s*function\s+ccg52D\b',
-        '^\s*function\s+ccg52Dd\b',
-        '^\s*function\s+ccgA\b',
-        '^\s*function\s+ccg45A\b',
-        '^\s*function\s+ccg45vA\b',
-        '^\s*function\s+ccg45airA\b',
-        '^\s*function\s+ccg46A\b',
-        '^\s*function\s+ccg47A\b',
-        '^\s*function\s+ccg5A\b',
-        '^\s*function\s+ccg5tA\b',
-        '^\s*function\s+ccg51A\b',
-        '^\s*function\s+ccg52A\b'
+        '\\ccx\.ps1'
     )
 
     # Legacy claude alias patterns - stripped only when fingerprint detected.
@@ -299,17 +273,13 @@ function Add-PowerShellAliases {
     $aliases = @"
 
 # Claude-GLM Model Switcher Aliases
-Set-Alias ccg claude-glm-5.2
-Set-Alias ccg5 claude-glm
+Set-Alias ccg claude-glm-5.3
 Set-Alias ccg5t claude-glm-5-turbo
-Set-Alias ccg51 claude-glm-5.1
-Set-Alias ccg52 claude-glm-5.2
+Set-Alias ccg53 claude-glm-5.3
 Set-Alias ccg47 claude-glm-4.7
 Set-Alias ccg46 claude-glm-4.6
 Set-Alias ccg45 claude-glm-4.5
 Set-Alias ccg45v claude-glm-4.5v
-Set-Alias ccg45air claude-glm-4.5-air
-Set-Alias ccf claude-glm-fast
 
 # Claude-GLM Danger Skip Aliases
 function ccgD { ccg --dangerously-skip-permissions @args }
@@ -318,32 +288,23 @@ function ccg45D { ccg45 --dangerously-skip-permissions @args }
 function ccg45Dd { ccg45 --dangerously-skip-permissions -d @args }
 function ccg45vD { ccg45v --dangerously-skip-permissions @args }
 function ccg45vDd { ccg45v --dangerously-skip-permissions -d @args }
-function ccg45airD { ccg45air --dangerously-skip-permissions @args }
-function ccg45airDd { ccg45air --dangerously-skip-permissions -d @args }
 function ccg46D { ccg46 --dangerously-skip-permissions @args }
 function ccg46Dd { ccg46 --dangerously-skip-permissions -d @args }
 function ccg47D { ccg47 --dangerously-skip-permissions @args }
 function ccg47Dd { ccg47 --dangerously-skip-permissions -d @args }
-function ccg5D { ccg5 --dangerously-skip-permissions @args }
-function ccg5Dd { ccg5 --dangerously-skip-permissions -d @args }
 function ccg5tD { ccg5t --dangerously-skip-permissions @args }
 function ccg5tDd { ccg5t --dangerously-skip-permissions -d @args }
-function ccg51D { ccg51 --dangerously-skip-permissions @args }
-function ccg51Dd { ccg51 --dangerously-skip-permissions -d @args }
-function ccg52D { ccg52 --dangerously-skip-permissions @args }
-function ccg52Dd { ccg52 --dangerously-skip-permissions -d @args }
+function ccg53D { ccg53 --dangerously-skip-permissions @args }
+function ccg53Dd { ccg53 --dangerously-skip-permissions -d @args }
 
 # Claude-GLM Auto Mode Aliases
 function ccgA { ccg --permission-mode auto @args }
 function ccg45A { ccg45 --permission-mode auto @args }
 function ccg45vA { ccg45v --permission-mode auto @args }
-function ccg45airA { ccg45air --permission-mode auto @args }
 function ccg46A { ccg46 --permission-mode auto @args }
 function ccg47A { ccg47 --permission-mode auto @args }
-function ccg5A { ccg5 --permission-mode auto @args }
 function ccg5tA { ccg5t --permission-mode auto @args }
-function ccg51A { ccg51 --permission-mode auto @args }
-function ccg52A { ccg52 --permission-mode auto @args }
+function ccg53A { ccg53 --permission-mode auto @args }
 "@
 
     $newContent = $filteredContent + $aliases
@@ -378,8 +339,36 @@ function Remove-DangerSkipArtifacts {
     # No longer removing danger-skip shims -- they are actively used
 }
 
+# Validate an API key before it is embedded into wrappers and settings JSON.
+# Only [A-Za-z0-9._-] is accepted: anything else (quote, backtick, $, ;,
+# whitespace) can break out of the generated assignment or JSON string and run
+# as code on every wrapper launch.
+function Test-ZaiApiKey {
+    param([string]$Key)
+
+    if ([string]::IsNullOrEmpty($Key)) {
+        return $false
+    }
+
+    # \z (absolute end of string), not $ -- in .NET regex $ also matches just
+    # before a trailing newline, which would let "key`n" slip through.
+    if ($Key -cnotmatch '^[A-Za-z0-9._-]+\z') {
+        Write-Host ""
+        Write-Host "ERROR: API key contains unexpected characters." -ForegroundColor Red
+        Write-Host "   Allowed: letters, digits, dot (.), underscore (_), hyphen (-)" -ForegroundColor Yellow
+        Write-Host "   The key was NOT saved and no files were changed." -ForegroundColor Yellow
+        Write-Host "   Re-run the installer and paste the key exactly as shown at:" -ForegroundColor Yellow
+        Write-Host "   https://z.ai/manage-apikey/apikey-list" -ForegroundColor Yellow
+        Write-Host ""
+        return $false
+    }
+
+    return $true
+}
+
 function Get-ExistingZaiApiKey {
     $wrapperPaths = @(
+        (Join-Path $UserBinDir "claude-glm-5.3.ps1"),
         (Join-Path $UserBinDir "claude-glm-5.2.ps1"),
         (Join-Path $UserBinDir "claude-glm-5.1.ps1"),
         (Join-Path $UserBinDir "claude-glm-5-turbo.ps1"),
@@ -405,6 +394,7 @@ function Get-ExistingZaiApiKey {
     }
 
     $settingsPaths = @(
+        (Join-Path $Glm53ConfigDir "settings.json"),
         (Join-Path $Glm52ConfigDir "settings.json"),
         (Join-Path $Glm51ConfigDir "settings.json"),
         (Join-Path $Glm5tConfigDir "settings.json"),
@@ -432,52 +422,55 @@ function Get-ExistingZaiApiKey {
     return $null
 }
 
-# Create the GLM-5 wrapper (latest)
-function New-ClaudeGlmWrapper {
-    $wrapperPath = Join-Path $UserBinDir "claude-glm.ps1"
+# Restrict a key-bearing file so only the current user can read it.
+# Mirrors the chmod 600/700 hardening install.sh applies on the Unix side.
+# Inheritance is disabled and every inherited/explicit rule dropped, leaving a
+# single FullControl ACE for the installing user. A failure (exotic filesystem,
+# redirected network home) warns rather than aborting the install.
+function Protect-KeyFile {
+    param([string]$Path)
 
-    # Build wrapper content using array and join to avoid nested here-strings
-    $wrapperContent = @(
-        '# Claude-GLM - Claude Code with Z.AI GLM-5 (Latest Model)',
-        '',
-        '# Set Z.AI environment variables',
-        '$env:ANTHROPIC_BASE_URL = "https://api.z.ai/api/anthropic"',
-        "`$env:ANTHROPIC_AUTH_TOKEN = `"$ZaiApiKey`"",
-        '$env:ANTHROPIC_DEFAULT_OPUS_MODEL = "glm-5"',
-        '$env:ANTHROPIC_DEFAULT_SONNET_MODEL = "glm-5"',
-        '$env:ANTHROPIC_DEFAULT_HAIKU_MODEL = "glm-4.5-air"',
-        '',
-        '# Use custom config directory to avoid conflicts',
-        "`$env:CLAUDE_HOME = `"$Glm5ConfigDir`"",
-        '',
-        '# Create config directory if it doesn''t exist',
-        'if (-not (Test-Path $env:CLAUDE_HOME)) {',
-        '    New-Item -ItemType Directory -Path $env:CLAUDE_HOME -Force | Out-Null',
-        '}',
-        '',
-        '# Create/update settings file with GLM configuration',
-        '$settingsJson = "{`"env`":{`"ANTHROPIC_BASE_URL`":`"https://api.z.ai/api/anthropic`",`"ANTHROPIC_AUTH_TOKEN`":`"' + $ZaiApiKey + '`",`"ANTHROPIC_DEFAULT_OPUS_MODEL`":`"glm-5`",`"ANTHROPIC_DEFAULT_SONNET_MODEL`":`"glm-5`",`"ANTHROPIC_DEFAULT_HAIKU_MODEL`":`"glm-4.5-air`"}}"',
-        'Set-Content -Path (Join-Path $env:CLAUDE_HOME "settings.json") -Value $settingsJson -Encoding UTF8',
-        '',
-        '# Launch Claude Code with custom config',
-        'Write-Host "LAUNCH: Starting Claude Code with GLM-5 (Latest Model)..."',
-        'Write-Host "CONFIG: Config directory: $env:CLAUDE_HOME"',
-        'Write-Host ""',
-        '',
-        '# Check if claude exists',
-        'if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {',
-        '    Write-Host "ERROR: ''claude'' command not found!"',
-        '    Write-Host "Please ensure Claude Code is installed and in your PATH"',
-        '    exit 1',
-        '}',
-        '',
-        '# Run the actual claude command',
-        '& claude $args'
-    ) -join "`n"
-
-    Set-Content -Path $wrapperPath -Value $wrapperContent
-    Write-Host "OK: Installed claude-glm at $wrapperPath" -ForegroundColor Green
+    try {
+        $acl = Get-Acl -Path $Path -ErrorAction Stop
+        $acl.SetAccessRuleProtection($true, $false)
+        foreach ($existingRule in @($acl.Access)) {
+            [void]$acl.RemoveAccessRule($existingRule)
+        }
+        $identity = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+        $rule = New-Object System.Security.AccessControl.FileSystemAccessRule($identity, "FullControl", "Allow")
+        $acl.SetAccessRule($rule)
+        Set-Acl -Path $Path -AclObject $acl -ErrorAction Stop
+    } catch {
+        Write-Host "WARNING: Could not restrict permissions on $Path" -ForegroundColor Yellow
+    }
 }
+
+# Wrapper-side settings.json write + ACL hardening.
+# A generated wrapper is a standalone script and cannot call Protect-KeyFile,
+# so the same logic is emitted inline into every wrapper. Defined once here and
+# spliced into each wrapper's content array as a single pre-joined string -- an
+# array literal does NOT flatten a nested array, so an unjoined array would be
+# stringified as "System.Object[]" by the outer -join.
+# This block runs on EVERY wrapper launch, not just at install time.
+$WrapperSettingsWriteBlock = @(
+    '$settingsPath = Join-Path $env:CLAUDE_HOME "settings.json"',
+    'Set-Content -Path $settingsPath -Value $settingsJson -Encoding UTF8',
+    '',
+    '# Restrict settings.json to the current user only (it holds the API key)',
+    'try {',
+    '    $acl = Get-Acl -Path $settingsPath -ErrorAction Stop',
+    '    $acl.SetAccessRuleProtection($true, $false)',
+    '    foreach ($existingRule in @($acl.Access)) {',
+    '        [void]$acl.RemoveAccessRule($existingRule)',
+    '    }',
+    '    $identity = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name',
+    '    $rule = New-Object System.Security.AccessControl.FileSystemAccessRule($identity, "FullControl", "Allow")',
+    '    $acl.SetAccessRule($rule)',
+    '    Set-Acl -Path $settingsPath -AclObject $acl -ErrorAction Stop',
+    '} catch {',
+    '    Write-Host "WARNING: Could not restrict permissions on $settingsPath" -ForegroundColor Yellow',
+    '}'
+) -join "`n"
 
 # Create the GLM-5-Turbo wrapper
 function New-ClaudeGlm5tWrapper {
@@ -491,7 +484,7 @@ function New-ClaudeGlm5tWrapper {
         "`$env:ANTHROPIC_AUTH_TOKEN = `"$ZaiApiKey`"",
         '$env:ANTHROPIC_DEFAULT_OPUS_MODEL = "glm-5-turbo"',
         '$env:ANTHROPIC_DEFAULT_SONNET_MODEL = "glm-5-turbo"',
-        '$env:ANTHROPIC_DEFAULT_HAIKU_MODEL = "glm-4.5-air"',
+        '$env:ANTHROPIC_DEFAULT_HAIKU_MODEL = "glm-4.7"',
         '',
         '# Use custom config directory to avoid conflicts',
         "`$env:CLAUDE_HOME = `"$Glm5tConfigDir`"",
@@ -502,8 +495,8 @@ function New-ClaudeGlm5tWrapper {
         '}',
         '',
         '# Create/update settings file with GLM configuration',
-        '$settingsJson = "{`"env`":{`"ANTHROPIC_BASE_URL`":`"https://api.z.ai/api/anthropic`",`"ANTHROPIC_AUTH_TOKEN`":`"' + $ZaiApiKey + '`",`"ANTHROPIC_DEFAULT_OPUS_MODEL`":`"glm-5-turbo`",`"ANTHROPIC_DEFAULT_SONNET_MODEL`":`"glm-5-turbo`",`"ANTHROPIC_DEFAULT_HAIKU_MODEL`":`"glm-4.5-air`"}}"',
-        'Set-Content -Path (Join-Path $env:CLAUDE_HOME "settings.json") -Value $settingsJson -Encoding UTF8',
+        '$settingsJson = "{`"env`":{`"ANTHROPIC_BASE_URL`":`"https://api.z.ai/api/anthropic`",`"ANTHROPIC_AUTH_TOKEN`":`"' + $ZaiApiKey + '`",`"ANTHROPIC_DEFAULT_OPUS_MODEL`":`"glm-5-turbo`",`"ANTHROPIC_DEFAULT_SONNET_MODEL`":`"glm-5-turbo`",`"ANTHROPIC_DEFAULT_HAIKU_MODEL`":`"glm-4.7`"}}"',
+        $WrapperSettingsWriteBlock,
         '',
         '# Launch Claude Code with custom config',
         'Write-Host "TURBO: Starting Claude Code with GLM-5-Turbo..."',
@@ -522,6 +515,7 @@ function New-ClaudeGlm5tWrapper {
     ) -join "`n"
 
     Set-Content -Path $wrapperPath -Value $wrapperContent
+    Protect-KeyFile -Path $wrapperPath
     Write-Host "OK: Installed claude-glm-5-turbo at $wrapperPath" -ForegroundColor Green
 }
 
@@ -538,7 +532,7 @@ function New-ClaudeGlm47Wrapper {
         "`$env:ANTHROPIC_AUTH_TOKEN = `"$ZaiApiKey`"",
         '$env:ANTHROPIC_DEFAULT_OPUS_MODEL = "glm-4.7"',
         '$env:ANTHROPIC_DEFAULT_SONNET_MODEL = "glm-4.7"',
-        '$env:ANTHROPIC_DEFAULT_HAIKU_MODEL = "glm-4.5-air"',
+        '$env:ANTHROPIC_DEFAULT_HAIKU_MODEL = "glm-4.7"',
         '',
         '# Use custom config directory to avoid conflicts',
         "`$env:CLAUDE_HOME = `"$Glm47ConfigDir`"",
@@ -549,8 +543,8 @@ function New-ClaudeGlm47Wrapper {
         '}',
         '',
         '# Create/update settings file with GLM configuration',
-        '$settingsJson = "{`"env`":{`"ANTHROPIC_BASE_URL`":`"https://api.z.ai/api/anthropic`",`"ANTHROPIC_AUTH_TOKEN`":`"' + $ZaiApiKey + '`",`"ANTHROPIC_DEFAULT_OPUS_MODEL`":`"glm-4.7`",`"ANTHROPIC_DEFAULT_SONNET_MODEL`":`"glm-4.7`",`"ANTHROPIC_DEFAULT_HAIKU_MODEL`":`"glm-4.5-air`"}}"',
-        'Set-Content -Path (Join-Path $env:CLAUDE_HOME "settings.json") -Value $settingsJson -Encoding UTF8',
+        '$settingsJson = "{`"env`":{`"ANTHROPIC_BASE_URL`":`"https://api.z.ai/api/anthropic`",`"ANTHROPIC_AUTH_TOKEN`":`"' + $ZaiApiKey + '`",`"ANTHROPIC_DEFAULT_OPUS_MODEL`":`"glm-4.7`",`"ANTHROPIC_DEFAULT_SONNET_MODEL`":`"glm-4.7`",`"ANTHROPIC_DEFAULT_HAIKU_MODEL`":`"glm-4.7`"}}"',
+        $WrapperSettingsWriteBlock,
         '',
         '# Launch Claude Code with custom config',
         'Write-Host "LAUNCH: Starting Claude Code with GLM-4.7 (Standard Model)..."',
@@ -569,6 +563,7 @@ function New-ClaudeGlm47Wrapper {
     ) -join "`n"
 
     Set-Content -Path $wrapperPath -Value $wrapperContent
+    Protect-KeyFile -Path $wrapperPath
     Write-Host "OK: Installed claude-glm-4.7 at $wrapperPath" -ForegroundColor Green
 }
 
@@ -584,7 +579,7 @@ function New-ClaudeGlm45Wrapper {
         "`$env:ANTHROPIC_AUTH_TOKEN = `"$ZaiApiKey`"",
         '$env:ANTHROPIC_DEFAULT_OPUS_MODEL = "glm-4.5"',
         '$env:ANTHROPIC_DEFAULT_SONNET_MODEL = "glm-4.5"',
-        '$env:ANTHROPIC_DEFAULT_HAIKU_MODEL = "glm-4.5-air"',
+        '$env:ANTHROPIC_DEFAULT_HAIKU_MODEL = "glm-4.7"',
         '',
         '# Use custom config directory to avoid conflicts',
         "`$env:CLAUDE_HOME = `"$Glm45ConfigDir`"",
@@ -595,8 +590,8 @@ function New-ClaudeGlm45Wrapper {
         '}',
         '',
         '# Create/update settings file with GLM configuration',
-        '$settingsJson = "{`"env`":{`"ANTHROPIC_BASE_URL`":`"https://api.z.ai/api/anthropic`",`"ANTHROPIC_AUTH_TOKEN`":`"' + $ZaiApiKey + '`",`"ANTHROPIC_DEFAULT_OPUS_MODEL`":`"glm-4.5`",`"ANTHROPIC_DEFAULT_SONNET_MODEL`":`"glm-4.5`",`"ANTHROPIC_DEFAULT_HAIKU_MODEL`":`"glm-4.5-air`"}}"',
-        'Set-Content -Path (Join-Path $env:CLAUDE_HOME "settings.json") -Value $settingsJson -Encoding UTF8',
+        '$settingsJson = "{`"env`":{`"ANTHROPIC_BASE_URL`":`"https://api.z.ai/api/anthropic`",`"ANTHROPIC_AUTH_TOKEN`":`"' + $ZaiApiKey + '`",`"ANTHROPIC_DEFAULT_OPUS_MODEL`":`"glm-4.5`",`"ANTHROPIC_DEFAULT_SONNET_MODEL`":`"glm-4.5`",`"ANTHROPIC_DEFAULT_HAIKU_MODEL`":`"glm-4.7`"}}"',
+        $WrapperSettingsWriteBlock,
         '',
         '# Launch Claude Code with custom config',
         'Write-Host "LAUNCH: Starting Claude Code with GLM-4.5..."',
@@ -615,6 +610,7 @@ function New-ClaudeGlm45Wrapper {
     ) -join "`n"
 
     Set-Content -Path $wrapperPath -Value $wrapperContent
+    Protect-KeyFile -Path $wrapperPath
     Write-Host "OK: Installed claude-glm-4.5 at $wrapperPath" -ForegroundColor Green
 }
 
@@ -630,7 +626,7 @@ function New-ClaudeGlm45vWrapper {
         "`$env:ANTHROPIC_AUTH_TOKEN = `"$ZaiApiKey`"",
         '$env:ANTHROPIC_DEFAULT_OPUS_MODEL = "glm-4.5v"',
         '$env:ANTHROPIC_DEFAULT_SONNET_MODEL = "glm-4.5v"',
-        '$env:ANTHROPIC_DEFAULT_HAIKU_MODEL = "glm-4.5-air"',
+        '$env:ANTHROPIC_DEFAULT_HAIKU_MODEL = "glm-4.7"',
         '',
         '# Use custom config directory to avoid conflicts',
         "`$env:CLAUDE_HOME = `"$Glm45vConfigDir`"",
@@ -641,8 +637,8 @@ function New-ClaudeGlm45vWrapper {
         '}',
         '',
         '# Create/update settings file with GLM configuration',
-        '$settingsJson = "{`"env`":{`"ANTHROPIC_BASE_URL`":`"https://api.z.ai/api/anthropic`",`"ANTHROPIC_AUTH_TOKEN`":`"' + $ZaiApiKey + '`",`"ANTHROPIC_DEFAULT_OPUS_MODEL`":`"glm-4.5v`",`"ANTHROPIC_DEFAULT_SONNET_MODEL`":`"glm-4.5v`",`"ANTHROPIC_DEFAULT_HAIKU_MODEL`":`"glm-4.5-air`"}}"',
-        'Set-Content -Path (Join-Path $env:CLAUDE_HOME "settings.json") -Value $settingsJson -Encoding UTF8',
+        '$settingsJson = "{`"env`":{`"ANTHROPIC_BASE_URL`":`"https://api.z.ai/api/anthropic`",`"ANTHROPIC_AUTH_TOKEN`":`"' + $ZaiApiKey + '`",`"ANTHROPIC_DEFAULT_OPUS_MODEL`":`"glm-4.5v`",`"ANTHROPIC_DEFAULT_SONNET_MODEL`":`"glm-4.5v`",`"ANTHROPIC_DEFAULT_HAIKU_MODEL`":`"glm-4.7`"}}"',
+        $WrapperSettingsWriteBlock,
         '',
         '# Launch Claude Code with custom config',
         'Write-Host "VISION: Starting Claude Code with GLM-4.5V (Vision)..."',
@@ -661,53 +657,8 @@ function New-ClaudeGlm45vWrapper {
     ) -join "`n"
 
     Set-Content -Path $wrapperPath -Value $wrapperContent
+    Protect-KeyFile -Path $wrapperPath
     Write-Host "OK: Installed claude-glm-4.5v at $wrapperPath" -ForegroundColor Green
-}
-
-# Create the GLM-4.5-Air wrapper
-function New-ClaudeGlm45airWrapper {
-    $wrapperPath = Join-Path $UserBinDir "claude-glm-4.5-air.ps1"
-
-    $wrapperContent = @(
-        '# Claude-GLM-4.5-Air - Claude Code with Z.AI GLM-4.5-Air',
-        '',
-        '# Set Z.AI environment variables',
-        '$env:ANTHROPIC_BASE_URL = "https://api.z.ai/api/anthropic"',
-        "`$env:ANTHROPIC_AUTH_TOKEN = `"$ZaiApiKey`"",
-        '$env:ANTHROPIC_DEFAULT_OPUS_MODEL = "glm-4.5-air"',
-        '$env:ANTHROPIC_DEFAULT_SONNET_MODEL = "glm-4.5-air"',
-        '$env:ANTHROPIC_DEFAULT_HAIKU_MODEL = "glm-4.5-air"',
-        '',
-        '# Use custom config directory to avoid conflicts',
-        "`$env:CLAUDE_HOME = `"$Glm45airConfigDir`"",
-        '',
-        '# Create config directory if it doesn''t exist',
-        'if (-not (Test-Path $env:CLAUDE_HOME)) {',
-        '    New-Item -ItemType Directory -Path $env:CLAUDE_HOME -Force | Out-Null',
-        '}',
-        '',
-        '# Create/update settings file with GLM configuration',
-        '$settingsJson = "{`"env`":{`"ANTHROPIC_BASE_URL`":`"https://api.z.ai/api/anthropic`",`"ANTHROPIC_AUTH_TOKEN`":`"' + $ZaiApiKey + '`",`"ANTHROPIC_DEFAULT_OPUS_MODEL`":`"glm-4.5-air`",`"ANTHROPIC_DEFAULT_SONNET_MODEL`":`"glm-4.5-air`",`"ANTHROPIC_DEFAULT_HAIKU_MODEL`":`"glm-4.5-air`"}}"',
-        'Set-Content -Path (Join-Path $env:CLAUDE_HOME "settings.json") -Value $settingsJson -Encoding UTF8',
-        '',
-        '# Launch Claude Code with custom config',
-        'Write-Host "AIR: Starting Claude Code with GLM-4.5-Air..."',
-        'Write-Host "CONFIG: Config directory: $env:CLAUDE_HOME"',
-        'Write-Host ""',
-        '',
-        '# Check if claude exists',
-        'if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {',
-        '    Write-Host "ERROR: ''claude'' command not found!"',
-        '    Write-Host "Please ensure Claude Code is installed and in your PATH"',
-        '    exit 1',
-        '}',
-        '',
-        '# Run the actual claude command',
-        '& claude $args'
-    ) -join "`n"
-
-    Set-Content -Path $wrapperPath -Value $wrapperContent
-    Write-Host "OK: Installed claude-glm-4.5-air at $wrapperPath" -ForegroundColor Green
 }
 
 # Create the GLM-4.6 wrapper
@@ -722,7 +673,7 @@ function New-ClaudeGlm46Wrapper {
         "`$env:ANTHROPIC_AUTH_TOKEN = `"$ZaiApiKey`"",
         '$env:ANTHROPIC_DEFAULT_OPUS_MODEL = "glm-4.6"',
         '$env:ANTHROPIC_DEFAULT_SONNET_MODEL = "glm-4.6"',
-        '$env:ANTHROPIC_DEFAULT_HAIKU_MODEL = "glm-4.5-air"',
+        '$env:ANTHROPIC_DEFAULT_HAIKU_MODEL = "glm-4.7"',
         '',
         '# Use custom config directory to avoid conflicts',
         "`$env:CLAUDE_HOME = `"$Glm46ConfigDir`"",
@@ -733,8 +684,8 @@ function New-ClaudeGlm46Wrapper {
         '}',
         '',
         '# Create/update settings file with GLM configuration',
-        '$settingsJson = "{`"env`":{`"ANTHROPIC_BASE_URL`":`"https://api.z.ai/api/anthropic`",`"ANTHROPIC_AUTH_TOKEN`":`"' + $ZaiApiKey + '`",`"ANTHROPIC_DEFAULT_OPUS_MODEL`":`"glm-4.6`",`"ANTHROPIC_DEFAULT_SONNET_MODEL`":`"glm-4.6`",`"ANTHROPIC_DEFAULT_HAIKU_MODEL`":`"glm-4.5-air`"}}"',
-        'Set-Content -Path (Join-Path $env:CLAUDE_HOME "settings.json") -Value $settingsJson -Encoding UTF8',
+        '$settingsJson = "{`"env`":{`"ANTHROPIC_BASE_URL`":`"https://api.z.ai/api/anthropic`",`"ANTHROPIC_AUTH_TOKEN`":`"' + $ZaiApiKey + '`",`"ANTHROPIC_DEFAULT_OPUS_MODEL`":`"glm-4.6`",`"ANTHROPIC_DEFAULT_SONNET_MODEL`":`"glm-4.6`",`"ANTHROPIC_DEFAULT_HAIKU_MODEL`":`"glm-4.7`"}}"',
+        $WrapperSettingsWriteBlock,
         '',
         '# Launch Claude Code with custom config',
         'Write-Host "LAUNCH: Starting Claude Code with GLM-4.6..."',
@@ -753,72 +704,27 @@ function New-ClaudeGlm46Wrapper {
     ) -join "`n"
 
     Set-Content -Path $wrapperPath -Value $wrapperContent
+    Protect-KeyFile -Path $wrapperPath
     Write-Host "OK: Installed claude-glm-4.6 at $wrapperPath" -ForegroundColor Green
 }
 
-# Create the GLM-5.1 wrapper
-function New-ClaudeGlm51Wrapper {
-    $wrapperPath = Join-Path $UserBinDir "claude-glm-5.1.ps1"
+# Create the GLM-5.3 wrapper (1M context)
+function New-ClaudeGlm53Wrapper {
+    $wrapperPath = Join-Path $UserBinDir "claude-glm-5.3.ps1"
 
     $wrapperContent = @(
-        '# Claude-GLM-5.1 - Claude Code with Z.AI GLM-5.1 (Latest Model)',
+        '# Claude-GLM-5.3 - Claude Code with Z.AI GLM-5.3 (1M context)',
         '',
         '# Set Z.AI environment variables',
         '$env:ANTHROPIC_BASE_URL = "https://api.z.ai/api/anthropic"',
         "`$env:ANTHROPIC_AUTH_TOKEN = `"$ZaiApiKey`"",
-        '$env:ANTHROPIC_DEFAULT_OPUS_MODEL = "glm-5.1"',
-        '$env:ANTHROPIC_DEFAULT_SONNET_MODEL = "glm-5.1"',
-        '$env:ANTHROPIC_DEFAULT_HAIKU_MODEL = "glm-4.5-air"',
-        '',
-        '# Use custom config directory to avoid conflicts',
-        "`$env:CLAUDE_HOME = `"$Glm51ConfigDir`"",
-        '',
-        '# Create config directory if it doesn''t exist',
-        'if (-not (Test-Path $env:CLAUDE_HOME)) {',
-        '    New-Item -ItemType Directory -Path $env:CLAUDE_HOME -Force | Out-Null',
-        '}',
-        '',
-        '# Create/update settings file with GLM configuration',
-        '$settingsJson = "{`"env`":{`"ANTHROPIC_BASE_URL`":`"https://api.z.ai/api/anthropic`",`"ANTHROPIC_AUTH_TOKEN`":`"' + $ZaiApiKey + '`",`"ANTHROPIC_DEFAULT_OPUS_MODEL`":`"glm-5.1`",`"ANTHROPIC_DEFAULT_SONNET_MODEL`":`"glm-5.1`",`"ANTHROPIC_DEFAULT_HAIKU_MODEL`":`"glm-4.5-air`"}}"',
-        'Set-Content -Path (Join-Path $env:CLAUDE_HOME "settings.json") -Value $settingsJson -Encoding UTF8',
-        '',
-        '# Launch Claude Code with custom config',
-        'Write-Host "LAUNCH: Starting Claude Code with GLM-5.1 (Latest Model)..."',
-        'Write-Host "CONFIG: Config directory: $env:CLAUDE_HOME"',
-        'Write-Host ""',
-        '',
-        '# Check if claude exists',
-        'if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {',
-        '    Write-Host "ERROR: ''claude'' command not found!"',
-        '    Write-Host "Please ensure Claude Code is installed and in your PATH"',
-        '    exit 1',
-        '}',
-        '',
-        '# Run the actual claude command',
-        '& claude $args'
-    ) -join "`n"
-
-    Set-Content -Path $wrapperPath -Value $wrapperContent
-    Write-Host "OK: Installed claude-glm-5.1 at $wrapperPath" -ForegroundColor Green
-}
-
-# Create the GLM-5.2 wrapper (default, 1M context)
-function New-ClaudeGlm52Wrapper {
-    $wrapperPath = Join-Path $UserBinDir "claude-glm-5.2.ps1"
-
-    $wrapperContent = @(
-        '# Claude-GLM-5.2 - Claude Code with Z.AI GLM-5.2 (Default, 1M context)',
-        '',
-        '# Set Z.AI environment variables',
-        '$env:ANTHROPIC_BASE_URL = "https://api.z.ai/api/anthropic"',
-        "`$env:ANTHROPIC_AUTH_TOKEN = `"$ZaiApiKey`"",
-        '$env:ANTHROPIC_DEFAULT_OPUS_MODEL = "glm-5.2[1m]"',
-        '$env:ANTHROPIC_DEFAULT_SONNET_MODEL = "glm-5.2[1m]"',
-        '$env:ANTHROPIC_DEFAULT_HAIKU_MODEL = "glm-4.5-air"',
+        '$env:ANTHROPIC_DEFAULT_OPUS_MODEL = "glm-5.3[1m]"',
+        '$env:ANTHROPIC_DEFAULT_SONNET_MODEL = "glm-5.3[1m]"',
+        '$env:ANTHROPIC_DEFAULT_HAIKU_MODEL = "glm-4.7"',
         '$env:CLAUDE_CODE_AUTO_COMPACT_WINDOW = "900000"',
         '',
         '# Use custom config directory to avoid conflicts',
-        "`$env:CLAUDE_HOME = `"$Glm52ConfigDir`"",
+        "`$env:CLAUDE_HOME = `"$Glm53ConfigDir`"",
         '',
         '# Create config directory if it doesn''t exist',
         'if (-not (Test-Path $env:CLAUDE_HOME)) {',
@@ -826,11 +732,11 @@ function New-ClaudeGlm52Wrapper {
         '}',
         '',
         '# Create/update settings file with GLM configuration',
-        '$settingsJson = "{`"env`":{`"ANTHROPIC_BASE_URL`":`"https://api.z.ai/api/anthropic`",`"ANTHROPIC_AUTH_TOKEN`":`"' + $ZaiApiKey + '`",`"ANTHROPIC_DEFAULT_OPUS_MODEL`":`"glm-5.2[1m]`",`"ANTHROPIC_DEFAULT_SONNET_MODEL`":`"glm-5.2[1m]`",`"ANTHROPIC_DEFAULT_HAIKU_MODEL`":`"glm-4.5-air`",`"CLAUDE_CODE_AUTO_COMPACT_WINDOW`":`"900000`"}}"',
-        'Set-Content -Path (Join-Path $env:CLAUDE_HOME "settings.json") -Value $settingsJson -Encoding UTF8',
+        '$settingsJson = "{`"env`":{`"ANTHROPIC_BASE_URL`":`"https://api.z.ai/api/anthropic`",`"ANTHROPIC_AUTH_TOKEN`":`"' + $ZaiApiKey + '`",`"ANTHROPIC_DEFAULT_OPUS_MODEL`":`"glm-5.3[1m]`",`"ANTHROPIC_DEFAULT_SONNET_MODEL`":`"glm-5.3[1m]`",`"ANTHROPIC_DEFAULT_HAIKU_MODEL`":`"glm-4.7`",`"CLAUDE_CODE_AUTO_COMPACT_WINDOW`":`"900000`"}}"',
+        $WrapperSettingsWriteBlock,
         '',
         '# Launch Claude Code with custom config',
-        'Write-Host "LAUNCH: Starting Claude Code with GLM-5.2 (Default, 1M context)..."',
+        'Write-Host "LAUNCH: Starting Claude Code with GLM-5.3 (1M context)..."',
         'Write-Host "CONFIG: Config directory: $env:CLAUDE_HOME"',
         'Write-Host ""',
         '',
@@ -846,54 +752,8 @@ function New-ClaudeGlm52Wrapper {
     ) -join "`n"
 
     Set-Content -Path $wrapperPath -Value $wrapperContent
-    Write-Host "OK: Installed claude-glm-5.2 at $wrapperPath" -ForegroundColor Green
-}
-
-# Create the fast GLM-4.5-Air wrapper
-function New-ClaudeGlmFastWrapper {
-    $wrapperPath = Join-Path $UserBinDir "claude-glm-fast.ps1"
-
-    # Build wrapper content using array and join to avoid nested here-strings
-    $wrapperContent = @(
-        '# Claude-GLM-Fast - Claude Code with Z.AI GLM-4.5-Air (Fast Model)',
-        '',
-        '# Set Z.AI environment variables',
-        '$env:ANTHROPIC_BASE_URL = "https://api.z.ai/api/anthropic"',
-        "`$env:ANTHROPIC_AUTH_TOKEN = `"$ZaiApiKey`"",
-        '$env:ANTHROPIC_DEFAULT_OPUS_MODEL = "glm-4.5-air"',
-        '$env:ANTHROPIC_DEFAULT_SONNET_MODEL = "glm-4.5-air"',
-        '$env:ANTHROPIC_DEFAULT_HAIKU_MODEL = "glm-4.5-air"',
-        '',
-        '# Use custom config directory to avoid conflicts',
-        "`$env:CLAUDE_HOME = `"$GlmFastConfigDir`"",
-        '',
-        '# Create config directory if it doesn''t exist',
-        'if (-not (Test-Path $env:CLAUDE_HOME)) {',
-        '    New-Item -ItemType Directory -Path $env:CLAUDE_HOME -Force | Out-Null',
-        '}',
-        '',
-        '# Create/update settings file with GLM configuration',
-        '$settingsJson = "{`"env`":{`"ANTHROPIC_BASE_URL`":`"https://api.z.ai/api/anthropic`",`"ANTHROPIC_AUTH_TOKEN`":`"' + $ZaiApiKey + '`",`"ANTHROPIC_DEFAULT_OPUS_MODEL`":`"glm-4.5-air`",`"ANTHROPIC_DEFAULT_SONNET_MODEL`":`"glm-4.5-air`",`"ANTHROPIC_DEFAULT_HAIKU_MODEL`":`"glm-4.5-air`"}}"',
-        'Set-Content -Path (Join-Path $env:CLAUDE_HOME "settings.json") -Value $settingsJson -Encoding UTF8',
-        '',
-        '# Launch Claude Code with custom config',
-        'Write-Host "FAST: Starting Claude Code with GLM-4.5-Air (Fast Model)..."',
-        'Write-Host "CONFIG: Config directory: $env:CLAUDE_HOME"',
-        'Write-Host ""',
-        '',
-        '# Check if claude exists',
-        'if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {',
-        '    Write-Host "ERROR: ''claude'' command not found!"',
-        '    Write-Host "Please ensure Claude Code is installed and in your PATH"',
-        '    exit 1',
-        '}',
-        '',
-        '# Run the actual claude command',
-        '& claude $args'
-    ) -join "`n"
-
-    Set-Content -Path $wrapperPath -Value $wrapperContent
-    Write-Host "OK: Installed claude-glm-fast at $wrapperPath" -ForegroundColor Green
+    Protect-KeyFile -Path $wrapperPath
+    Write-Host "OK: Installed claude-glm-5.3 at $wrapperPath" -ForegroundColor Green
 }
 
 # Remove deprecated GLM wrappers and command shims
@@ -961,32 +821,87 @@ function New-CmdShim {
     }
 }
 
+# Remove wrappers and shims this version no longer ships.
+#
+# Z.AI retired these model IDs: a request for them is silently served by a
+# different model (glm-5 / glm-5.1 / glm-5.2 -> glm-5.3, glm-4.5-air -> glm-4.7),
+# so a wrapper named after one no longer does what its name says. Deleting the
+# script and its .cmd shim is what makes the retirement real -- the matching
+# profile aliases are stripped separately by Add-PowerShellAliases.
+#
+# Called AFTER the wrappers are (re)created, so Get-ExistingZaiApiKey can still
+# recover a key from an old wrapper on an upgrading machine.
+#
+# Config directories (~\.claude-glm-52 etc.) are deliberately NOT deleted: they
+# hold the user's own Claude Code session state, not installer output.
+function Remove-RetiredWrappers {
+    $retiredScripts = @(
+        "claude-glm.ps1",
+        "claude-glm-5.1.ps1",
+        "claude-glm-5.2.ps1",
+        "claude-glm-4.5-air.ps1",
+        "claude-glm-fast.ps1"
+    )
+    $retiredShims = @(
+        "ccg5", "ccg5D", "ccg5Dd", "ccg5A",
+        "ccg51", "ccg51D", "ccg51Dd", "ccg51A",
+        "ccg52", "ccg52D", "ccg52Dd", "ccg52A",
+        "ccg45air", "ccg45airD", "ccg45airDd", "ccg45airA",
+        "ccf"
+    )
+
+    $removed = 0
+    foreach ($name in $retiredScripts) {
+        $path = Join-Path $UserBinDir $name
+        if (Test-Path $path) {
+            # A failed removal must not stop the install, and must not pass
+            # silently either: the wrapper left behind still carries the user's
+            # API key and still points at a name Z.AI no longer serves.
+            Remove-Item $path -Force -ErrorAction SilentlyContinue
+            if (Test-Path $path) {
+                Write-Host "WARNING: Could not remove retired wrapper: $path" -ForegroundColor Yellow
+                Write-Host "   Delete it manually - it still holds your API key." -ForegroundColor Yellow
+            } else {
+                $removed++
+            }
+        }
+    }
+    foreach ($name in $retiredShims) {
+        $path = Join-Path $CmdShimDir "$name.cmd"
+        if (Test-Path $path) {
+            Remove-Item $path -Force -ErrorAction SilentlyContinue
+            if (Test-Path $path) {
+                Write-Host "WARNING: Could not remove retired CMD shim: $path" -ForegroundColor Yellow
+                Write-Host "   Delete it manually - it still launches a model name that is no longer served." -ForegroundColor Yellow
+            } else {
+                $removed++
+            }
+        }
+    }
+
+    if ($removed -gt 0) {
+        Write-Host "CLEANUP: Removed $removed retired wrapper/shim file(s) - that model is no longer served under its own name" -ForegroundColor Yellow
+    }
+}
+
 function Add-CmdShims {
     Remove-DeprecatedGlmArtifacts
     Remove-DangerSkipArtifacts
     # Ensure the main wrappers exist before creating shims
-    New-CmdShim -Name "ccg"      -TargetScript (Join-Path $UserBinDir "claude-glm-5.2.ps1")
-    New-CmdShim -Name "ccg5"     -TargetScript (Join-Path $UserBinDir "claude-glm.ps1")
+    New-CmdShim -Name "ccg"      -TargetScript (Join-Path $UserBinDir "claude-glm-5.3.ps1")
     New-CmdShim -Name "ccg5t"    -TargetScript (Join-Path $UserBinDir "claude-glm-5-turbo.ps1")
-    New-CmdShim -Name "ccg51"    -TargetScript (Join-Path $UserBinDir "claude-glm-5.1.ps1")
-    New-CmdShim -Name "ccg52"    -TargetScript (Join-Path $UserBinDir "claude-glm-5.2.ps1")
+    New-CmdShim -Name "ccg53"    -TargetScript (Join-Path $UserBinDir "claude-glm-5.3.ps1")
     New-CmdShim -Name "ccg47"    -TargetScript (Join-Path $UserBinDir "claude-glm-4.7.ps1")
     New-CmdShim -Name "ccg46"    -TargetScript (Join-Path $UserBinDir "claude-glm-4.6.ps1")
     New-CmdShim -Name "ccg45"    -TargetScript (Join-Path $UserBinDir "claude-glm-4.5.ps1")
     New-CmdShim -Name "ccg45v"   -TargetScript (Join-Path $UserBinDir "claude-glm-4.5v.ps1")
-    New-CmdShim -Name "ccg45air" -TargetScript (Join-Path $UserBinDir "claude-glm-4.5-air.ps1")
-    New-CmdShim -Name "ccf"      -TargetScript (Join-Path $UserBinDir "claude-glm-fast.ps1")
 
-    New-CmdShim -Name "ccgD"       -TargetScript (Join-Path $UserBinDir "claude-glm-5.2.ps1")      -ExtraArgs "--dangerously-skip-permissions"
-    New-CmdShim -Name "ccgDd"      -TargetScript (Join-Path $UserBinDir "claude-glm-5.2.ps1")      -ExtraArgs "--dangerously-skip-permissions -d"
-    New-CmdShim -Name "ccg5D"      -TargetScript (Join-Path $UserBinDir "claude-glm.ps1")          -ExtraArgs "--dangerously-skip-permissions"
-    New-CmdShim -Name "ccg5Dd"     -TargetScript (Join-Path $UserBinDir "claude-glm.ps1")          -ExtraArgs "--dangerously-skip-permissions -d"
+    New-CmdShim -Name "ccgD"       -TargetScript (Join-Path $UserBinDir "claude-glm-5.3.ps1")      -ExtraArgs "--dangerously-skip-permissions"
+    New-CmdShim -Name "ccgDd"      -TargetScript (Join-Path $UserBinDir "claude-glm-5.3.ps1")      -ExtraArgs "--dangerously-skip-permissions -d"
     New-CmdShim -Name "ccg5tD"     -TargetScript (Join-Path $UserBinDir "claude-glm-5-turbo.ps1")  -ExtraArgs "--dangerously-skip-permissions"
     New-CmdShim -Name "ccg5tDd"    -TargetScript (Join-Path $UserBinDir "claude-glm-5-turbo.ps1")  -ExtraArgs "--dangerously-skip-permissions -d"
-    New-CmdShim -Name "ccg51D"     -TargetScript (Join-Path $UserBinDir "claude-glm-5.1.ps1")      -ExtraArgs "--dangerously-skip-permissions"
-    New-CmdShim -Name "ccg51Dd"    -TargetScript (Join-Path $UserBinDir "claude-glm-5.1.ps1")      -ExtraArgs "--dangerously-skip-permissions -d"
-    New-CmdShim -Name "ccg52D"     -TargetScript (Join-Path $UserBinDir "claude-glm-5.2.ps1")      -ExtraArgs "--dangerously-skip-permissions"
-    New-CmdShim -Name "ccg52Dd"    -TargetScript (Join-Path $UserBinDir "claude-glm-5.2.ps1")      -ExtraArgs "--dangerously-skip-permissions -d"
+    New-CmdShim -Name "ccg53D"     -TargetScript (Join-Path $UserBinDir "claude-glm-5.3.ps1")      -ExtraArgs "--dangerously-skip-permissions"
+    New-CmdShim -Name "ccg53Dd"    -TargetScript (Join-Path $UserBinDir "claude-glm-5.3.ps1")      -ExtraArgs "--dangerously-skip-permissions -d"
     New-CmdShim -Name "ccg47D"     -TargetScript (Join-Path $UserBinDir "claude-glm-4.7.ps1")      -ExtraArgs "--dangerously-skip-permissions"
     New-CmdShim -Name "ccg47Dd"    -TargetScript (Join-Path $UserBinDir "claude-glm-4.7.ps1")      -ExtraArgs "--dangerously-skip-permissions -d"
     New-CmdShim -Name "ccg46D"     -TargetScript (Join-Path $UserBinDir "claude-glm-4.6.ps1")      -ExtraArgs "--dangerously-skip-permissions"
@@ -995,19 +910,14 @@ function Add-CmdShims {
     New-CmdShim -Name "ccg45Dd"    -TargetScript (Join-Path $UserBinDir "claude-glm-4.5.ps1")      -ExtraArgs "--dangerously-skip-permissions -d"
     New-CmdShim -Name "ccg45vD"    -TargetScript (Join-Path $UserBinDir "claude-glm-4.5v.ps1")     -ExtraArgs "--dangerously-skip-permissions"
     New-CmdShim -Name "ccg45vDd"   -TargetScript (Join-Path $UserBinDir "claude-glm-4.5v.ps1")     -ExtraArgs "--dangerously-skip-permissions -d"
-    New-CmdShim -Name "ccg45airD"  -TargetScript (Join-Path $UserBinDir "claude-glm-4.5-air.ps1")  -ExtraArgs "--dangerously-skip-permissions"
-    New-CmdShim -Name "ccg45airDd" -TargetScript (Join-Path $UserBinDir "claude-glm-4.5-air.ps1")  -ExtraArgs "--dangerously-skip-permissions -d"
 
-    New-CmdShim -Name "ccgA"       -TargetScript (Join-Path $UserBinDir "claude-glm-5.2.ps1")      -ExtraArgs "--permission-mode auto"
+    New-CmdShim -Name "ccgA"       -TargetScript (Join-Path $UserBinDir "claude-glm-5.3.ps1")      -ExtraArgs "--permission-mode auto"
     New-CmdShim -Name "ccg45A"     -TargetScript (Join-Path $UserBinDir "claude-glm-4.5.ps1")      -ExtraArgs "--permission-mode auto"
     New-CmdShim -Name "ccg45vA"    -TargetScript (Join-Path $UserBinDir "claude-glm-4.5v.ps1")     -ExtraArgs "--permission-mode auto"
-    New-CmdShim -Name "ccg45airA"  -TargetScript (Join-Path $UserBinDir "claude-glm-4.5-air.ps1")  -ExtraArgs "--permission-mode auto"
     New-CmdShim -Name "ccg46A"     -TargetScript (Join-Path $UserBinDir "claude-glm-4.6.ps1")      -ExtraArgs "--permission-mode auto"
     New-CmdShim -Name "ccg47A"     -TargetScript (Join-Path $UserBinDir "claude-glm-4.7.ps1")      -ExtraArgs "--permission-mode auto"
-    New-CmdShim -Name "ccg5A"      -TargetScript (Join-Path $UserBinDir "claude-glm.ps1")          -ExtraArgs "--permission-mode auto"
     New-CmdShim -Name "ccg5tA"     -TargetScript (Join-Path $UserBinDir "claude-glm-5-turbo.ps1")  -ExtraArgs "--permission-mode auto"
-    New-CmdShim -Name "ccg51A"     -TargetScript (Join-Path $UserBinDir "claude-glm-5.1.ps1")      -ExtraArgs "--permission-mode auto"
-    New-CmdShim -Name "ccg52A"     -TargetScript (Join-Path $UserBinDir "claude-glm-5.2.ps1")      -ExtraArgs "--permission-mode auto"
+    New-CmdShim -Name "ccg53A"     -TargetScript (Join-Path $UserBinDir "claude-glm-5.3.ps1")      -ExtraArgs "--permission-mode auto"
 }
 
 # Check Claude Code availability
@@ -1252,6 +1162,7 @@ function Install-ClaudeGlm {
     $glm5tWrapper = Join-Path $UserBinDir "claude-glm-5-turbo.ps1"
     $glm51Wrapper = Join-Path $UserBinDir "claude-glm-5.1.ps1"
     $glm52Wrapper = Join-Path $UserBinDir "claude-glm-5.2.ps1"
+    $glm53Wrapper = Join-Path $UserBinDir "claude-glm-5.3.ps1"
     $glm47Wrapper = Join-Path $UserBinDir "claude-glm-4.7.ps1"
     $glm46Wrapper = Join-Path $UserBinDir "claude-glm-4.6.ps1"
     $glm45vWrapper = Join-Path $UserBinDir "claude-glm-4.5v.ps1"
@@ -1259,7 +1170,7 @@ function Install-ClaudeGlm {
     $glm45Wrapper = Join-Path $UserBinDir "claude-glm-4.5.ps1"
     $glmFastWrapper = Join-Path $UserBinDir "claude-glm-fast.ps1"
 
-    if ((Test-Path $glmWrapper) -or (Test-Path $glm5tWrapper) -or (Test-Path $glm51Wrapper) -or (Test-Path $glm52Wrapper) -or (Test-Path $glm47Wrapper) -or (Test-Path $glm46Wrapper) -or (Test-Path $glm45vWrapper) -or (Test-Path $glm45airWrapper) -or (Test-Path $glm45Wrapper) -or (Test-Path $glmFastWrapper)) {
+    if ((Test-Path $glmWrapper) -or (Test-Path $glm5tWrapper) -or (Test-Path $glm51Wrapper) -or (Test-Path $glm52Wrapper) -or (Test-Path $glm53Wrapper) -or (Test-Path $glm47Wrapper) -or (Test-Path $glm46Wrapper) -or (Test-Path $glm45vWrapper) -or (Test-Path $glm45airWrapper) -or (Test-Path $glm45Wrapper) -or (Test-Path $glmFastWrapper)) {
         Write-Host ""
         Write-Host "OK: Existing installation detected!"
         Write-Host "1. Update API key only"
@@ -1272,17 +1183,17 @@ function Install-ClaudeGlm {
             "1" {
                 $inputKey = Read-Host "Enter your Z.AI API key"
                 if ($inputKey) {
+                    if (-not (Test-ZaiApiKey $inputKey)) {
+                        exit 1
+                    }
                     $script:ZaiApiKey = $inputKey
-                    New-ClaudeGlmWrapper
                     New-ClaudeGlm5tWrapper
-                    New-ClaudeGlm51Wrapper
-                    New-ClaudeGlm52Wrapper
+                    New-ClaudeGlm53Wrapper
                     New-ClaudeGlm47Wrapper
                     New-ClaudeGlm46Wrapper
                     New-ClaudeGlm45vWrapper
-                    New-ClaudeGlm45airWrapper
                     New-ClaudeGlm45Wrapper
-                    New-ClaudeGlmFastWrapper
+                    Remove-RetiredWrappers
                     Add-PowerShellAliases
                     Add-CmdShims
                     Write-Host "OK: API key updated!"
@@ -1299,17 +1210,22 @@ function Install-ClaudeGlm {
                     $existingKey = $inputKey
                 }
 
+                # Also covers a key recovered from an on-disk wrapper: a wrapper
+                # poisoned by an earlier install must not be re-injected here.
+                if (-not (Test-ZaiApiKey $existingKey)) {
+                    Write-Host "   If this key came from an existing wrapper, choose" -ForegroundColor Yellow
+                    Write-Host "   option 1 (Update API key only) and enter a clean key." -ForegroundColor Yellow
+                    exit 1
+                }
+
                 $script:ZaiApiKey = $existingKey
-                New-ClaudeGlmWrapper
                 New-ClaudeGlm5tWrapper
-                New-ClaudeGlm51Wrapper
-                New-ClaudeGlm52Wrapper
+                New-ClaudeGlm53Wrapper
                 New-ClaudeGlm47Wrapper
                 New-ClaudeGlm46Wrapper
                 New-ClaudeGlm45vWrapper
-                New-ClaudeGlm45airWrapper
                 New-ClaudeGlm45Wrapper
-                New-ClaudeGlmFastWrapper
+                Remove-RetiredWrappers
                 Add-PowerShellAliases
                 Add-CmdShims
                 Write-Host "OK: Reset complete!"
@@ -1330,34 +1246,30 @@ function Install-ClaudeGlm {
     $inputKey = Read-Host "API Key"
 
     if ($inputKey) {
+        if (-not (Test-ZaiApiKey $inputKey)) {
+            exit 1
+        }
         $script:ZaiApiKey = $inputKey
         $keyLength = $inputKey.Length
         Write-Host "OK: API key received ($keyLength characters)"
     } else {
         Write-Host "WARNING: No API key provided. Add it manually later to:"
-        Write-Host "   $UserBinDir\claude-glm.ps1"
         Write-Host "   $UserBinDir\claude-glm-5-turbo.ps1"
-        Write-Host "   $UserBinDir\claude-glm-5.1.ps1"
-        Write-Host "   $UserBinDir\claude-glm-5.2.ps1"
+        Write-Host "   $UserBinDir\claude-glm-5.3.ps1"
         Write-Host "   $UserBinDir\claude-glm-4.5.ps1"
         Write-Host "   $UserBinDir\claude-glm-4.5v.ps1"
-        Write-Host "   $UserBinDir\claude-glm-4.5-air.ps1"
         Write-Host "   $UserBinDir\claude-glm-4.6.ps1"
         Write-Host "   $UserBinDir\claude-glm-4.7.ps1"
-        Write-Host "   $UserBinDir\claude-glm-fast.ps1"
     }
 
     # Create wrappers
-    New-ClaudeGlmWrapper
     New-ClaudeGlm5tWrapper
-    New-ClaudeGlm51Wrapper
-    New-ClaudeGlm52Wrapper
+    New-ClaudeGlm53Wrapper
     New-ClaudeGlm47Wrapper
     New-ClaudeGlm46Wrapper
     New-ClaudeGlm45vWrapper
-    New-ClaudeGlm45airWrapper
     New-ClaudeGlm45Wrapper
-    New-ClaudeGlmFastWrapper
+    Remove-RetiredWrappers
     Add-PowerShellAliases
     Add-CmdShims
 
@@ -1376,51 +1288,39 @@ function Install-ClaudeGlm {
     Write-Host "INFO: After reloading, you can use:"
     Write-Host ""
     Write-Host "Commands:"
-    Write-Host "   claude-glm         - GLM-5"
     Write-Host "   claude-glm-5-turbo - GLM-5-Turbo"
-    Write-Host "   claude-glm-5.1     - GLM-5.1"
-    Write-Host "   claude-glm-5.2     - GLM-5.2 (default, 1M context)"
+    Write-Host "   claude-glm-5.3     - GLM-5.3 (default, 1M context)"
     Write-Host "   claude-glm-4.7     - GLM-4.7"
     Write-Host "   claude-glm-4.6     - GLM-4.6"
     Write-Host "   claude-glm-4.5     - GLM-4.5"
     Write-Host "   claude-glm-4.5v    - GLM-4.5V (vision)"
-    Write-Host "   claude-glm-4.5-air - GLM-4.5-Air"
-    Write-Host "   claude-glm-fast    - GLM-4.5-Air (fast, alias for ccg45air)"
     Write-Host ""
     Write-Host "Aliases (GLM only -- your 'claude' command is left untouched):"
-    Write-Host "   ccg      - claude-glm-5.2 (GLM-5.2, default, 1M context)"
+    Write-Host "   ccg      - claude-glm-5.3 (GLM-5.3, default, 1M context)"
     Write-Host "   ccgD     - ccg --dangerously-skip-permissions"
     Write-Host "   ccgDd    - ccg --dangerously-skip-permissions -d"
     Write-Host "   ccgA     - ccg --permission-mode auto"
     Write-Host "   ccg45    - claude-glm-4.5 (GLM-4.5)"
     Write-Host "   ccg45v   - claude-glm-4.5v (GLM-4.5V, vision)"
-    Write-Host "   ccg45air - claude-glm-4.5-air (GLM-4.5-Air)"
     Write-Host "   ccg46    - claude-glm-4.6 (GLM-4.6)"
     Write-Host "   ccg47    - claude-glm-4.7 (GLM-4.7)"
-    Write-Host "   ccg5     - claude-glm (GLM-5)"
     Write-Host "   ccg5t    - claude-glm-5-turbo (GLM-5-Turbo)"
-    Write-Host "   ccg51    - claude-glm-5.1 (GLM-5.1)"
-    Write-Host "   ccg52    - claude-glm-5.2 (GLM-5.2, same as ccg)"
-    Write-Host "   ccf      - claude-glm-fast"
+    Write-Host "   ccg53    - claude-glm-5.3 (GLM-5.3, same as ccg)"
     Write-Host ""
 
     if ($ZaiApiKey -eq "YOUR_ZAI_API_KEY_HERE") {
         Write-Host "WARNING: Do not forget to add your API key to:"
-        Write-Host "   $UserBinDir\claude-glm.ps1"
         Write-Host "   $UserBinDir\claude-glm-5-turbo.ps1"
-        Write-Host "   $UserBinDir\claude-glm-5.1.ps1"
-        Write-Host "   $UserBinDir\claude-glm-5.2.ps1"
+        Write-Host "   $UserBinDir\claude-glm-5.3.ps1"
         Write-Host "   $UserBinDir\claude-glm-4.5.ps1"
         Write-Host "   $UserBinDir\claude-glm-4.5v.ps1"
-        Write-Host "   $UserBinDir\claude-glm-4.5-air.ps1"
         Write-Host "   $UserBinDir\claude-glm-4.6.ps1"
         Write-Host "   $UserBinDir\claude-glm-4.7.ps1"
-        Write-Host "   $UserBinDir\claude-glm-fast.ps1"
     }
 
     Write-Host ""
     Write-Host "LOCATION: Installation location: $UserBinDir"
-    Write-Host "LOCATION: Config directories: $Glm45ConfigDir, $Glm45vConfigDir, $Glm45airConfigDir, $Glm46ConfigDir, $Glm47ConfigDir, $Glm5ConfigDir, $Glm5tConfigDir, $Glm51ConfigDir, $Glm52ConfigDir, $GlmFastConfigDir"
+    Write-Host "LOCATION: Config directories: $Glm45ConfigDir, $Glm45vConfigDir, $Glm46ConfigDir, $Glm47ConfigDir, $Glm5tConfigDir, $Glm53ConfigDir"
 }
 
 # Test error functionality if requested

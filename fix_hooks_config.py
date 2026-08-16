@@ -111,9 +111,8 @@ def fix_hooks_config(settings_path: Path) -> bool:
 
 def main():
     """Main entry point."""
-    # Get the script's directory
-    script_dir = Path(__file__).parent
-    settings_path = script_dir / '.claude' / 'settings.json'
+    # Get the current working directory
+    settings_path = Path.cwd() / '.claude' / 'settings.json'
 
     # Check if settings.json exists
     if not settings_path.exists():

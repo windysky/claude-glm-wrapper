@@ -51,8 +51,16 @@ GLM_5_CONFIG_DIR="$HOME/.claude-glm-5"
 GLM_5T_CONFIG_DIR="$HOME/.claude-glm-5-turbo"
 GLM_51_CONFIG_DIR="$HOME/.claude-glm-51"
 GLM_52_CONFIG_DIR="$HOME/.claude-glm-52"
+GLM_53_CONFIG_DIR="$HOME/.claude-glm-53"
 GLM_FAST_CONFIG_DIR="$HOME/.claude-glm-fast"
 ZAI_API_KEY="YOUR_ZAI_API_KEY_HERE"
+
+# Every file this installer writes is private to the user: the wrappers embed
+# the Z.AI API key, the rc temp file holds the user's shell rc. `cat >` creates
+# under the ambient umask (644 with the usual 022), so without this they exist
+# world-readable for the instant before the chmod that follows. The chmod calls
+# stay in place as defence in depth.
+umask 077
 
 # Report installation errors to GitHub
 report_error() {
@@ -76,6 +84,14 @@ report_error() {
         -e 's/ANTHROPIC_AUTH_TOKEN="[^"]*"/ANTHROPIC_AUTH_TOKEN="[REDACTED]"/g' \
         -e 's/ZAI_API_KEY="[^"]*"/ZAI_API_KEY="[REDACTED]"/g' \
         -e 's/\$ZAI_API_KEY="[^"]*"/\$ZAI_API_KEY="[REDACTED]"/g')
+
+    # The patterns above only match NAME="value". The key is also stored bare —
+    # as a settings.json value, in a request header, in an unquoted assignment —
+    # so redact the value itself too. Skipped while the key is still the
+    # placeholder, which would otherwise redact a harmless literal.
+    if [ -n "$ZAI_API_KEY" ] && [ "$ZAI_API_KEY" != "YOUR_ZAI_API_KEY_HERE" ]; then
+        sanitized_error="${sanitized_error//"$ZAI_API_KEY"/[REDACTED]}"
+    fi
 
     # Display error details to user
     echo "Error Details:"
@@ -286,9 +302,38 @@ cleanup_old_wrappers() {
     echo ""
 }
 
+# Validate an API key before it is embedded into wrappers and settings.json.
+# Only [A-Za-z0-9._-] is accepted: anything else (quote, $, ;, backtick,
+# backslash, whitespace) can break out of the generated shell assignment or
+# JSON string and run as code on every wrapper launch.
+validate_zai_api_key() {
+    local key="$1"
+    local LC_ALL=C  # byte-wise matching so the charset stays strictly ASCII
+
+    if [ -z "$key" ]; then
+        return 1
+    fi
+
+    case "$key" in
+        *[!A-Za-z0-9._-]*)
+            echo ""
+            echo "❌ API key contains unexpected characters."
+            echo "   Allowed: letters, digits, dot (.), underscore (_), hyphen (-)"
+            echo "   The key was NOT saved and no files were changed."
+            echo "   Re-run the installer and paste the key exactly as shown at:"
+            echo "   https://z.ai/manage-apikey/apikey-list"
+            echo ""
+            return 1
+            ;;
+    esac
+
+    return 0
+}
+
 detect_existing_zai_api_key() {
     local candidate=""
     local wrapper_files=(
+        "$USER_BIN_DIR/claude-glm-5.3"
         "$USER_BIN_DIR/claude-glm-5.2"
         "$USER_BIN_DIR/claude-glm-5.1"
         "$USER_BIN_DIR/claude-glm-5-turbo"
@@ -312,6 +357,7 @@ detect_existing_zai_api_key() {
     done
 
     local settings_files=(
+        "$GLM_53_CONFIG_DIR/settings.json"
         "$GLM_52_CONFIG_DIR/settings.json"
         "$GLM_51_CONFIG_DIR/settings.json"
         "$GLM_5T_CONFIG_DIR/settings.json"
@@ -376,20 +422,48 @@ bash_profile_sources_bashrc() {
 
 # Ensure user bin directory exists and is in PATH
 setup_user_bin() {
-    # Create user bin directory
+    # Create user bin directory.
+    #
+    # The umask 077 set at the top of this script exists to close the window
+    # where a key-bearing file is world-readable between `cat >` and its chmod.
+    # It is process-global though, so it would also create ~/.local and
+    # ~/.local/bin at 0700 — and ~/.local is a shared XDG directory this
+    # installer does not own (other tooling populates ~/.local/share, lib, ...).
+    # Restore the conventional mode; the wrappers inside stay 700 regardless.
+    # Only affects a directory this run creates — an existing one is untouched.
+    local bin_dir_existed=0
+    [ -d "$USER_BIN_DIR" ] && bin_dir_existed=1
     mkdir -p "$USER_BIN_DIR"
+    if [ "$bin_dir_existed" = "0" ]; then
+        chmod 755 "$USER_BIN_DIR" 2>/dev/null || true
+        chmod 755 "$(dirname "$USER_BIN_DIR")" 2>/dev/null || true
+    fi
 
     local rc_file=$(detect_shell_rc)
 
     # Check if PATH includes user bin
     if [[ ":$PATH:" != *":$USER_BIN_DIR:"* ]]; then
-        echo "📝 Adding $USER_BIN_DIR to PATH in $rc_file"
-
-        # Add to PATH based on shell type
+        # Build the PATH line for this shell type
+        local path_line
         if [[ "$rc_file" == *".cshrc" ]]; then
-            echo "setenv PATH \$PATH:$USER_BIN_DIR" >> "$rc_file"
+            path_line="setenv PATH \$PATH:$USER_BIN_DIR"
         else
-            echo "export PATH=\"\$PATH:$USER_BIN_DIR\"" >> "$rc_file"
+            path_line="export PATH=\"\$PATH:$USER_BIN_DIR\""
+        fi
+
+        # $PATH stays stale until the user sources the rc, so a second run lands
+        # in this branch again. Append only when our line is not already there,
+        # otherwise every re-run stacks another identical export.
+        if grep -qxF "$path_line" "$rc_file" 2>/dev/null; then
+            echo "📝 $USER_BIN_DIR already added to PATH in $rc_file"
+        elif [ -e "$rc_file" ] && [ ! -w "$rc_file" ]; then
+            # Same rule as the alias block: a write-protected rc is left alone,
+            # and the failed append must not abort the install via the ERR trap.
+            echo "⚠️  $rc_file is write-protected — PATH line not added."
+            echo "   Add this line by hand: $path_line"
+        else
+            echo "📝 Adding $USER_BIN_DIR to PATH in $rc_file"
+            echo "$path_line" >> "$rc_file"
         fi
 
         echo ""
@@ -424,7 +498,7 @@ export ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic"
 export ANTHROPIC_AUTH_TOKEN="$ZAI_API_KEY"
 export ANTHROPIC_DEFAULT_OPUS_MODEL="glm-4.7"
 export ANTHROPIC_DEFAULT_SONNET_MODEL="glm-4.7"
-export ANTHROPIC_DEFAULT_HAIKU_MODEL="glm-4.5-air"
+export ANTHROPIC_DEFAULT_HAIKU_MODEL="glm-4.7"
 
 # Use custom config directory to avoid conflicts
 export CLAUDE_HOME="\$HOME/.claude-glm-47"
@@ -433,17 +507,21 @@ export CLAUDE_HOME="\$HOME/.claude-glm-47"
 mkdir -p "\$CLAUDE_HOME"
 
 # Create/update settings file with GLM configuration
-cat > "\$CLAUDE_HOME/settings.json" << SETTINGS
+# umask 077 keeps this key-bearing file out of the world-readable window
+# between creation and the chmod below. Scoped to a subshell so the claude
+# session launched further down still runs under the user's own umask.
+(umask 077; cat > "\$CLAUDE_HOME/settings.json" << SETTINGS
 {
   "env": {
     "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
     "ANTHROPIC_AUTH_TOKEN": "$ZAI_API_KEY",
     "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.7",
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.7",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.5-air"
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.7"
   }
 }
 SETTINGS
+)
 
 chmod 600 "\$CLAUDE_HOME/settings.json"
 
@@ -480,7 +558,7 @@ export ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic"
 export ANTHROPIC_AUTH_TOKEN="$ZAI_API_KEY"
 export ANTHROPIC_DEFAULT_OPUS_MODEL="glm-4.5"
 export ANTHROPIC_DEFAULT_SONNET_MODEL="glm-4.5"
-export ANTHROPIC_DEFAULT_HAIKU_MODEL="glm-4.5-air"
+export ANTHROPIC_DEFAULT_HAIKU_MODEL="glm-4.7"
 
 # Use custom config directory to avoid conflicts
 export CLAUDE_HOME="\$HOME/.claude-glm-45"
@@ -489,17 +567,21 @@ export CLAUDE_HOME="\$HOME/.claude-glm-45"
 mkdir -p "\$CLAUDE_HOME"
 
 # Create/update settings file with GLM configuration
-cat > "\$CLAUDE_HOME/settings.json" << SETTINGS
+# umask 077 keeps this key-bearing file out of the world-readable window
+# between creation and the chmod below. Scoped to a subshell so the claude
+# session launched further down still runs under the user's own umask.
+(umask 077; cat > "\$CLAUDE_HOME/settings.json" << SETTINGS
 {
   "env": {
     "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
     "ANTHROPIC_AUTH_TOKEN": "$ZAI_API_KEY",
     "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.5",
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.5",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.5-air"
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.7"
   }
 }
 SETTINGS
+)
 
 chmod 600 "\$CLAUDE_HOME/settings.json"
 
@@ -536,7 +618,7 @@ export ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic"
 export ANTHROPIC_AUTH_TOKEN="$ZAI_API_KEY"
 export ANTHROPIC_DEFAULT_OPUS_MODEL="glm-4.5v"
 export ANTHROPIC_DEFAULT_SONNET_MODEL="glm-4.5v"
-export ANTHROPIC_DEFAULT_HAIKU_MODEL="glm-4.5-air"
+export ANTHROPIC_DEFAULT_HAIKU_MODEL="glm-4.7"
 
 # Use custom config directory to avoid conflicts
 export CLAUDE_HOME="\$HOME/.claude-glm-45v"
@@ -545,17 +627,21 @@ export CLAUDE_HOME="\$HOME/.claude-glm-45v"
 mkdir -p "\$CLAUDE_HOME"
 
 # Create/update settings file with GLM configuration
-cat > "\$CLAUDE_HOME/settings.json" << SETTINGS
+# umask 077 keeps this key-bearing file out of the world-readable window
+# between creation and the chmod below. Scoped to a subshell so the claude
+# session launched further down still runs under the user's own umask.
+(umask 077; cat > "\$CLAUDE_HOME/settings.json" << SETTINGS
 {
   "env": {
     "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
     "ANTHROPIC_AUTH_TOKEN": "$ZAI_API_KEY",
     "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.5v",
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.5v",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.5-air"
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.7"
   }
 }
 SETTINGS
+)
 
 chmod 600 "\$CLAUDE_HOME/settings.json"
 
@@ -579,62 +665,6 @@ EOF
     echo "✅ Installed claude-glm-4.5v at $wrapper_path"
 }
 
-# Create GLM-4.5-Air wrapper
-create_claude_glm_45air_wrapper() {
-    local wrapper_path="$USER_BIN_DIR/claude-glm-4.5-air"
-
-    cat > "$wrapper_path" << EOF
-#!/bin/bash
-# Claude-GLM-4.5-Air - Claude Code with Z.AI GLM-4.5-Air
-
-# Set Z.AI environment variables
-export ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic"
-export ANTHROPIC_AUTH_TOKEN="$ZAI_API_KEY"
-export ANTHROPIC_DEFAULT_OPUS_MODEL="glm-4.5-air"
-export ANTHROPIC_DEFAULT_SONNET_MODEL="glm-4.5-air"
-export ANTHROPIC_DEFAULT_HAIKU_MODEL="glm-4.5-air"
-
-# Use custom config directory to avoid conflicts
-export CLAUDE_HOME="\$HOME/.claude-glm-45-air"
-
-# Create config directory if it doesn't exist
-mkdir -p "\$CLAUDE_HOME"
-
-# Create/update settings file with GLM configuration
-cat > "\$CLAUDE_HOME/settings.json" << SETTINGS
-{
-  "env": {
-    "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
-    "ANTHROPIC_AUTH_TOKEN": "$ZAI_API_KEY",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.5-air",
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.5-air",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.5-air"
-  }
-}
-SETTINGS
-
-chmod 600 "\$CLAUDE_HOME/settings.json"
-
-# Launch Claude Code with custom config
-echo "🪁 Starting Claude Code with GLM-4.5-Air..."
-echo "📁 Config directory: \$CLAUDE_HOME"
-echo ""
-
-# Check if claude exists
-if ! command -v claude &> /dev/null; then
-    echo "❌ Error: 'claude' command not found!"
-    echo "Please ensure Claude Code is installed and in your PATH"
-    exit 1
-fi
-
-# Run actual claude command
-claude "\$@"
-EOF
-
-    chmod 700 "$wrapper_path"
-    echo "✅ Installed claude-glm-4.5-air at $wrapper_path"
-}
-
 # Create GLM-4.6 wrapper
 create_claude_glm_46_wrapper() {
     local wrapper_path="$USER_BIN_DIR/claude-glm-4.6"
@@ -648,7 +678,7 @@ export ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic"
 export ANTHROPIC_AUTH_TOKEN="$ZAI_API_KEY"
 export ANTHROPIC_DEFAULT_OPUS_MODEL="glm-4.6"
 export ANTHROPIC_DEFAULT_SONNET_MODEL="glm-4.6"
-export ANTHROPIC_DEFAULT_HAIKU_MODEL="glm-4.5-air"
+export ANTHROPIC_DEFAULT_HAIKU_MODEL="glm-4.7"
 
 # Use custom config directory to avoid conflicts
 export CLAUDE_HOME="\$HOME/.claude-glm-46"
@@ -657,17 +687,21 @@ export CLAUDE_HOME="\$HOME/.claude-glm-46"
 mkdir -p "\$CLAUDE_HOME"
 
 # Create/update settings file with GLM configuration
-cat > "\$CLAUDE_HOME/settings.json" << SETTINGS
+# umask 077 keeps this key-bearing file out of the world-readable window
+# between creation and the chmod below. Scoped to a subshell so the claude
+# session launched further down still runs under the user's own umask.
+(umask 077; cat > "\$CLAUDE_HOME/settings.json" << SETTINGS
 {
   "env": {
     "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
     "ANTHROPIC_AUTH_TOKEN": "$ZAI_API_KEY",
     "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.6",
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.6",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.5-air"
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.7"
   }
 }
 SETTINGS
+)
 
 chmod 600 "\$CLAUDE_HOME/settings.json"
 
@@ -691,62 +725,6 @@ EOF
     echo "✅ Installed claude-glm-4.6 at $wrapper_path"
 }
 
-# Create GLM-5 wrapper
-create_claude_glm_5_wrapper() {
-    local wrapper_path="$USER_BIN_DIR/claude-glm-5"
-
-    cat > "$wrapper_path" << EOF
-#!/bin/bash
-# Claude-GLM-5 - Claude Code with Z.AI GLM-5 (Latest Model)
-
-# Set Z.AI environment variables
-export ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic"
-export ANTHROPIC_AUTH_TOKEN="$ZAI_API_KEY"
-export ANTHROPIC_DEFAULT_OPUS_MODEL="glm-5"
-export ANTHROPIC_DEFAULT_SONNET_MODEL="glm-5"
-export ANTHROPIC_DEFAULT_HAIKU_MODEL="glm-4.5-air"
-
-# Use custom config directory to avoid conflicts
-export CLAUDE_HOME="\$HOME/.claude-glm-5"
-
-# Create config directory if it doesn't exist
-mkdir -p "\$CLAUDE_HOME"
-
-# Create/update settings file with GLM configuration
-cat > "\$CLAUDE_HOME/settings.json" << SETTINGS
-{
-  "env": {
-    "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
-    "ANTHROPIC_AUTH_TOKEN": "$ZAI_API_KEY",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5",
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-5",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.5-air"
-  }
-}
-SETTINGS
-
-chmod 600 "\$CLAUDE_HOME/settings.json"
-
-# Launch Claude Code with custom config
-echo "🚀 Starting Claude Code with GLM-5 (Latest Model)..."
-echo "📁 Config directory: \$CLAUDE_HOME"
-echo ""
-
-# Check if claude exists
-if ! command -v claude &> /dev/null; then
-    echo "❌ Error: 'claude' command not found!"
-    echo "Please ensure Claude Code is installed and in your PATH"
-    exit 1
-fi
-
-# Run actual claude command
-claude "\$@"
-EOF
-
-    chmod 700 "$wrapper_path"
-    echo "✅ Installed claude-glm-5 at $wrapper_path"
-}
-
 # Create GLM-5-Turbo wrapper
 create_claude_glm_5t_wrapper() {
     local wrapper_path="$USER_BIN_DIR/claude-glm-5-turbo"
@@ -760,7 +738,7 @@ export ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic"
 export ANTHROPIC_AUTH_TOKEN="$ZAI_API_KEY"
 export ANTHROPIC_DEFAULT_OPUS_MODEL="glm-5-turbo"
 export ANTHROPIC_DEFAULT_SONNET_MODEL="glm-5-turbo"
-export ANTHROPIC_DEFAULT_HAIKU_MODEL="glm-4.5-air"
+export ANTHROPIC_DEFAULT_HAIKU_MODEL="glm-4.7"
 
 # Use custom config directory to avoid conflicts
 export CLAUDE_HOME="\$HOME/.claude-glm-5-turbo"
@@ -769,17 +747,21 @@ export CLAUDE_HOME="\$HOME/.claude-glm-5-turbo"
 mkdir -p "\$CLAUDE_HOME"
 
 # Create/update settings file with GLM configuration
-cat > "\$CLAUDE_HOME/settings.json" << SETTINGS
+# umask 077 keeps this key-bearing file out of the world-readable window
+# between creation and the chmod below. Scoped to a subshell so the claude
+# session launched further down still runs under the user's own umask.
+(umask 077; cat > "\$CLAUDE_HOME/settings.json" << SETTINGS
 {
   "env": {
     "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
     "ANTHROPIC_AUTH_TOKEN": "$ZAI_API_KEY",
     "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5-turbo",
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-5-turbo",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.5-air"
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.7"
   }
 }
 SETTINGS
+)
 
 chmod 600 "\$CLAUDE_HOME/settings.json"
 
@@ -803,102 +785,50 @@ EOF
     echo "✅ Installed claude-glm-5-turbo at $wrapper_path"
 }
 
-# Create GLM-5.1 wrapper
-create_claude_glm_51_wrapper() {
-    local wrapper_path="$USER_BIN_DIR/claude-glm-5.1"
+# Create GLM-5.3 wrapper (1M context)
+create_claude_glm_53_wrapper() {
+    local wrapper_path="$USER_BIN_DIR/claude-glm-5.3"
 
     cat > "$wrapper_path" << EOF
 #!/bin/bash
-# Claude-GLM-5.1 - Claude Code with Z.AI GLM-5.1 (Latest Model)
+# Claude-GLM-5.3 - Claude Code with Z.AI GLM-5.3 (1M context)
 
 # Set Z.AI environment variables
 export ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic"
 export ANTHROPIC_AUTH_TOKEN="$ZAI_API_KEY"
-export ANTHROPIC_DEFAULT_OPUS_MODEL="glm-5.1"
-export ANTHROPIC_DEFAULT_SONNET_MODEL="glm-5.1"
-export ANTHROPIC_DEFAULT_HAIKU_MODEL="glm-4.5-air"
-
-# Use custom config directory to avoid conflicts
-export CLAUDE_HOME="\$HOME/.claude-glm-51"
-
-# Create config directory if it doesn't exist
-mkdir -p "\$CLAUDE_HOME"
-
-# Create/update settings file with GLM configuration
-cat > "\$CLAUDE_HOME/settings.json" << SETTINGS
-{
-  "env": {
-    "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
-    "ANTHROPIC_AUTH_TOKEN": "$ZAI_API_KEY",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5.1",
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-5.1",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.5-air"
-  }
-}
-SETTINGS
-
-chmod 600 "\$CLAUDE_HOME/settings.json"
-
-# Launch Claude Code with custom config
-echo "🚀 Starting Claude Code with GLM-5.1 (Latest Model)..."
-echo "📁 Config directory: \$CLAUDE_HOME"
-echo ""
-
-# Check if claude exists
-if ! command -v claude &> /dev/null; then
-    echo "❌ Error: 'claude' command not found!"
-    echo "Please ensure Claude Code is installed and in your PATH"
-    exit 1
-fi
-
-# Run actual claude command
-claude "\$@"
-EOF
-
-    chmod 700 "$wrapper_path"
-    echo "✅ Installed claude-glm-5.1 at $wrapper_path"
-}
-
-# Create GLM-5.2 wrapper (default, 1M context)
-create_claude_glm_52_wrapper() {
-    local wrapper_path="$USER_BIN_DIR/claude-glm-5.2"
-
-    cat > "$wrapper_path" << EOF
-#!/bin/bash
-# Claude-GLM-5.2 - Claude Code with Z.AI GLM-5.2 (Default, 1M context)
-
-# Set Z.AI environment variables
-export ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic"
-export ANTHROPIC_AUTH_TOKEN="$ZAI_API_KEY"
-export ANTHROPIC_DEFAULT_OPUS_MODEL="glm-5.2[1m]"
-export ANTHROPIC_DEFAULT_SONNET_MODEL="glm-5.2[1m]"
-export ANTHROPIC_DEFAULT_HAIKU_MODEL="glm-4.5-air"
+export ANTHROPIC_DEFAULT_OPUS_MODEL="glm-5.3[1m]"
+export ANTHROPIC_DEFAULT_SONNET_MODEL="glm-5.3[1m]"
+export ANTHROPIC_DEFAULT_HAIKU_MODEL="glm-4.7"
 export CLAUDE_CODE_AUTO_COMPACT_WINDOW="900000"
 
 # Use custom config directory to avoid conflicts
-export CLAUDE_HOME="\$HOME/.claude-glm-52"
+export CLAUDE_HOME="\$HOME/.claude-glm-53"
 
 # Create config directory if it doesn't exist
 mkdir -p "\$CLAUDE_HOME"
 
 # Create/update settings file with GLM configuration
-cat > "\$CLAUDE_HOME/settings.json" << SETTINGS
+# umask 077 keeps this key-bearing file out of the world-readable window
+# between creation and the chmod below. Scoped to a subshell so the claude
+# session launched further down still runs under the user's own umask.
+(umask 077; cat > "\$CLAUDE_HOME/settings.json" << SETTINGS
 {
   "env": {
     "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
     "ANTHROPIC_AUTH_TOKEN": "$ZAI_API_KEY",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5.2[1m]",
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-5.2[1m]",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.5-air",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5.3[1m]",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-5.3[1m]",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.7",
     "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "900000"
   }
 }
 SETTINGS
+)
 
 chmod 600 "\$CLAUDE_HOME/settings.json"
 
 # Launch Claude Code with custom config
-echo "🚀 Starting Claude Code with GLM-5.2 (Default, 1M context)..."
+echo "🚀 Starting Claude Code with GLM-5.3 (1M context)..."
 echo "📁 Config directory: \$CLAUDE_HOME"
 echo ""
 
@@ -914,63 +844,78 @@ claude "\$@"
 EOF
 
     chmod 700 "$wrapper_path"
-    echo "✅ Installed claude-glm-5.2 at $wrapper_path"
+    echo "✅ Installed claude-glm-5.3 at $wrapper_path"
 }
 
-# Create fast GLM-4.5-Air wrapper
-create_claude_glm_fast_wrapper() {
-    local wrapper_path="$USER_BIN_DIR/claude-glm-fast"
-
-    cat > "$wrapper_path" << EOF
-#!/bin/bash
-# Claude-GLM-Fast - Claude Code with Z.AI GLM-4.5-Air (Fast Model)
-
-# Set Z.AI environment variables
-export ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic"
-export ANTHROPIC_AUTH_TOKEN="$ZAI_API_KEY"
-export ANTHROPIC_DEFAULT_OPUS_MODEL="glm-4.5-air"
-export ANTHROPIC_DEFAULT_SONNET_MODEL="glm-4.5-air"
-export ANTHROPIC_DEFAULT_HAIKU_MODEL="glm-4.5-air"
-
-# Use custom config directory to avoid conflicts
-export CLAUDE_HOME="\$HOME/.claude-glm-fast"
-
-# Create config directory if it doesn't exist
-mkdir -p "\$CLAUDE_HOME"
-
-# Create/update settings file with GLM-Air configuration
-cat > "\$CLAUDE_HOME/settings.json" << SETTINGS
-{
-  "env": {
-    "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
-    "ANTHROPIC_AUTH_TOKEN": "$ZAI_API_KEY",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.5-air",
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.5-air",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.5-air"
-  }
+# Remove wrappers this version no longer ships.
+#
+# Z.AI retired these model IDs: a request for them is silently served by a
+# different model (glm-5 / glm-5.1 / glm-5.2 -> glm-5.3, glm-4.5-air -> glm-4.7),
+# so a wrapper named after one no longer does what its name says. Deleting the
+# script is what makes the retirement real -- the matching shell aliases are
+# stripped separately by remove_aliases_from_rc.
+#
+# Called AFTER the wrappers are (re)created, so that detect_existing_zai_api_key
+# can still recover a key from an old wrapper on an upgrading machine.
+#
+# Config directories (~/.claude-glm-52 etc.) are deliberately NOT deleted: they
+# hold the user's own Claude Code session state, not installer output.
+remove_retired_wrappers() {
+    local retired=(
+        "claude-glm-5"
+        "claude-glm-5.1"
+        "claude-glm-5.2"
+        "claude-glm-4.5-air"
+        "claude-glm-fast"
+        # Pre-tier-scheme orphan: the bare "claude-glm" wrapper still exported
+        # the retired ANTHROPIC_MODEL / ANTHROPIC_SMALL_FAST_MODEL pair. No
+        # current installer version creates it, so it only lingers on machines
+        # upgraded from before the tier-mapping migration.
+        "claude-glm"
+    )
+    local removed=0
+    local name
+    for name in "${retired[@]}"; do
+        # Only delete files this installer actually wrote. One retired name is
+        # the generic "claude-glm", so a filename match alone would silently
+        # remove a user's own unrelated script of that name — and unlike
+        # cleanup_old_wrappers, this path never asks. Every wrapper this
+        # installer generates points at the Z.AI endpoint, so require that
+        # fingerprint before removing anything.
+        if [ -f "$USER_BIN_DIR/$name" ] && \
+           grep -q 'api\.z\.ai/api/anthropic' "$USER_BIN_DIR/$name" 2>/dev/null; then
+            # A failed removal must not stop the install, and must not pass
+            # silently either: the wrapper left behind still carries the user's
+            # API key and still points at a name Z.AI no longer serves.
+            if rm -f "$USER_BIN_DIR/$name" 2>/dev/null; then
+                removed=$((removed + 1))
+            else
+                echo "  ⚠️  Could not remove retired wrapper: $USER_BIN_DIR/$name"
+                echo "     Delete it manually — it still holds your API key."
+            fi
+        fi
+    done
+    if [ "$removed" -gt 0 ]; then
+        echo "🧹 Removed $removed retired wrapper(s) — that model is no longer served under its own name"
+    fi
 }
-SETTINGS
 
-chmod 600 "\$CLAUDE_HOME/settings.json"
-
-# Launch Claude Code with custom config
-echo "⚡ Starting Claude Code with GLM-4.5-Air (Fast Model)..."
-echo "📁 Config directory: \$CLAUDE_HOME"
-echo ""
-
-# Check if claude exists
-if ! command -v claude &> /dev/null; then
-    echo "❌ Error: 'claude' command not found!"
-    echo "Please ensure Claude Code is installed and in your PATH"
-    exit 1
-fi
-
-# Run actual claude command
-claude "\$@"
-EOF
-
-    chmod 700 "$wrapper_path"
-    echo "✅ Installed claude-glm-fast at $wrapper_path"
+# ---- Staged rc rewrite cleanup ----
+# Paths of the temp + backup files for the rc rewrite currently in flight.
+# Tracked at script scope so the trap can remove them when the run is
+# interrupted (Ctrl-C) or aborts through the ERR path, not only when
+# remove_aliases_from_rc returns normally. Cleared as soon as a path has been
+# dealt with, so the trap never removes a backup we deliberately kept.
+RC_TMP=""
+RC_BAK=""
+cleanup_rc_staging() {
+    if [ -n "$RC_TMP" ]; then
+        rm -f "$RC_TMP" 2>/dev/null || true
+    fi
+    if [ -n "$RC_BAK" ]; then
+        rm -f "$RC_BAK" 2>/dev/null || true
+    fi
+    return 0
 }
 
 # Create shell aliases
@@ -982,11 +927,41 @@ create_shell_aliases() {
         return
     fi
 
+    # Every refusal below leaves the OLD alias block in the file, and
+    # remove_retired_wrappers already deleted the wrappers it names earlier in
+    # this same run — so those aliases now resolve to files that are gone. Say
+    # that, rather than only reporting which permission or write failed.
+    stale_block_warning() {
+        local remedy="$1"
+        echo "   Your rc still contains an alias block pointing at wrappers this"
+        echo "   version removed, so those aliases no longer resolve."
+        echo "   $remedy and re-run, or delete the block by hand."
+    }
+
     remove_aliases_from_rc() {
         local target_rc="$1"
 
         if [ -z "$target_rc" ] || [ ! -f "$target_rc" ]; then
             return
+        fi
+
+        # A write-protected rc is a deliberate choice, so refuse instead of
+        # rewriting it. The old `mv` replaced the file wholesale, which dropped
+        # the protection and still reported success.
+        if [ ! -w "$target_rc" ]; then
+            echo "⚠️  $target_rc is write-protected — leaving it untouched."
+            stale_block_warning "Make the file writable"
+            return 1
+        fi
+
+        # Writable but unreadable (mode 200) passes the check above, yet the
+        # header grep below cannot read the file and returns 2, so removal is
+        # skipped while the append still runs — producing a second alias block
+        # alongside the stale one. Refuse instead.
+        if [ ! -r "$target_rc" ]; then
+            echo "⚠️  $target_rc is not readable — leaving it untouched."
+            stale_block_warning "Fix its permissions"
+            return 1
         fi
 
         # Remove old aliases if they exist.
@@ -1010,71 +985,170 @@ create_shell_aliases() {
                 legacy_claude_filter='grep -vE "^alias (ccd|ccdD|ccdDd|claudeD|claudeDd)="'
             fi
 
-            # Use temp file for compatibility
+            # --- Full-line alias matching ---------------------------------
+            # A managed alias is removed ONLY when the alias NAME *and* its
+            # ENTIRE value match a form this installer generates. Matching the
+            # whole line (anchored ^...$) instead of an "alias NAME=" prefix
+            # means a user's own alias of the same name, pointing at anything
+            # else, keeps its LINE in the rc verbatim.
+            #
+            # That guarantee is textual, not behavioural. The managed block is
+            # appended after the user's line and the last definition wins, so a
+            # user alias whose NAME collides with a managed one survives in the
+            # file while resolving to the managed target at runtime. Renaming
+            # the colliding alias is the only way to keep its binding.
+            #
+            # Retired names (ccg5, ccg51, ccg52, ccg45air, ccf, ccx) stay in the
+            # list on purpose: a re-run must scrub aliases whose wrapper this
+            # version no longer ships, or they linger pointing at a deleted file.
+            local managed_names='ccg|ccgD|ccgDd|ccgA|ccg45|ccg45D|ccg45Dd|ccg45A|ccg45v|ccg45vD|ccg45vDd|ccg45vA|ccg45air|ccg45airD|ccg45airDd|ccg45airA|ccg46|ccg46D|ccg46Dd|ccg46A|ccg47|ccg47D|ccg47Dd|ccg47A|ccg5|ccg5D|ccg5Dd|ccg5A|ccg5t|ccg5tD|ccg5tDd|ccg5tA|ccg51|ccg51D|ccg51Dd|ccg51A|ccg52|ccg52D|ccg52Dd|ccg52A|ccg53|ccg53D|ccg53Dd|ccg53A|ccf|ccx'
+            local managed_flags='--dangerously-skip-permissions( -d)?|--permission-mode auto'
+            # Every value this installer has ever written: a claude-glm* wrapper
+            # (optionally with our own flags), a managed base alias plus our
+            # flags, or a legacy ccx / claude-proxy target.
+            # `ccx` is matched exactly, not `ccx[A-Za-z0-9._-]*`: the historical
+            # value this installer wrote was the bare string `ccx`, and the
+            # trailing wildcard additionally deleted a user's own line such as
+            # `alias ccx='ccx-my-tool'` — contradicting the promise above that a
+            # user's alias is never touched. `claude-proxy` is gone entirely: it
+            # appears in the project's history only as a directory and npm
+            # package name, never as an alias value, so it matched nothing this
+            # installer ever wrote and only widened the deletion surface.
+            local managed_value="claude-glm[A-Za-z0-9._-]*( (${managed_flags}))?|(${managed_names}) (${managed_flags})|ccx"
+            # bash/zsh:  alias NAME='VALUE'      csh:  alias NAME 'VALUE'
+            # The trailing [[:space:]]* is load-bearing. grep strips only \n, so
+            # on a CRLF rc file every managed line ends in \r and a bare `$`
+            # anchor fails to match it — the aliases then survive forever while
+            # this same run deletes the wrappers they point at, leaving
+            # "command not found". Trailing spaces failed identically. CRLF rc
+            # files are plausible for this project's WSL/Windows audience.
+            local bash_alias_re="^alias (${managed_names})=['\"]?(${managed_value})['\"]?[[:space:]]*$"
+            local csh_alias_re="^alias (${managed_names}) ['\"]?(${managed_value})['\"]?[[:space:]]*$"
+
+            # Use temp file for compatibility. Registered with the cleanup trap
+            # first, so a Ctrl-C between here and the rm below does not leave it.
+            RC_TMP="$target_rc.tmp"
             grep -vE "^# (Claude Code|Claude-GLM) Model Switcher Aliases" "$target_rc" | \
             grep -v "^#  manage those manually in your shell rc)" | \
             grep -v "^# (claude itself and any claude-only aliases are intentionally left untouched" | \
             eval "$legacy_claude_filter" | \
-            grep -v "alias ccg=" | \
-            grep -v "alias ccgD=" | \
-            grep -v "alias ccgDd=" | \
-            grep -v "alias ccg45=" | \
-            grep -v "alias ccg45D=" | \
-            grep -v "alias ccg45Dd=" | \
-            grep -v "alias ccg45v=" | \
-            grep -v "alias ccg45vD=" | \
-            grep -v "alias ccg45vDd=" | \
-            grep -v "alias ccg45air=" | \
-            grep -v "alias ccg45airD=" | \
-            grep -v "alias ccg45airDd=" | \
-            grep -v "alias ccg46=" | \
-            grep -v "alias ccg46D=" | \
-            grep -v "alias ccg46Dd=" | \
-            grep -v "alias ccg47=" | \
-            grep -v "alias ccg47D=" | \
-            grep -v "alias ccg47Dd=" | \
-            grep -v "alias ccg5=" | \
-            grep -v "alias ccg5D=" | \
-            grep -v "alias ccg5Dd=" | \
-            grep -v "alias ccg5t=" | \
-            grep -v "alias ccg5tD=" | \
-            grep -v "alias ccg5tDd=" | \
-            grep -v "alias ccg51=" | \
-            grep -v "alias ccg51D=" | \
-            grep -v "alias ccg51Dd=" | \
-            grep -v "alias ccg52=" | \
-            grep -v "alias ccg52D=" | \
-            grep -v "alias ccg52Dd=" | \
-            grep -v "alias ccgA=" | \
-            grep -v "alias ccg45A=" | \
-            grep -v "alias ccg45vA=" | \
-            grep -v "alias ccg45airA=" | \
-            grep -v "alias ccg46A=" | \
-            grep -v "alias ccg47A=" | \
-            grep -v "alias ccg5A=" | \
-            grep -v "alias ccg5tA=" | \
-            grep -v "alias ccg51A=" | \
-            grep -v "alias ccg52A=" | \
-            grep -v "alias ccf=" | \
-            grep -v "alias ccx=" | \
-            grep -vE "^alias (ccg|ccgD|ccgDd|ccgA|ccg45|ccg45D|ccg45Dd|ccg45A|ccg45v|ccg45vD|ccg45vDd|ccg45vA|ccg45air|ccg45airD|ccg45airDd|ccg45airA|ccg46|ccg46D|ccg46Dd|ccg46A|ccg47|ccg47D|ccg47Dd|ccg47A|ccg5|ccg5D|ccg5Dd|ccg5A|ccg5t|ccg5tD|ccg5tDd|ccg5tA|ccg51|ccg51D|ccg51Dd|ccg51A|ccg52|ccg52D|ccg52Dd|ccg52A|ccf|ccx) " > "$target_rc.tmp"
-            mv "$target_rc.tmp" "$target_rc"
+            grep -vE "$bash_alias_re" | \
+            grep -vE "$csh_alias_re" > "$target_rc.tmp" || [ $? -eq 1 ]
+            # An rc holding nothing but managed content filters down to zero
+            # lines, and grep exits 1 when it selects none. A pipeline reports
+            # its last command's status, so without this guard `set -e` aborts
+            # here — leaving the stale block in place and a stray .tmp.
+            # Only exit 1 is tolerated: a real grep failure (exit 2) would write
+            # an empty .tmp over the rc, so it must still reach the ERR trap.
+
+            # That status alone is NOT enough to proceed on. The redirect itself
+            # also fails with status 1 when the .tmp cannot be created (an rc
+            # inside a non-writable directory), which is indistinguishable from
+            # grep's "selected no lines". Require the file to EXIST before going
+            # anywhere near the rc — testing for non-empty would be wrong, since
+            # an rc holding only managed content legitimately filters to zero
+            # bytes. Without this check the redirect below truncates the rc
+            # first and only then discovers it has nothing to write.
+            if [ ! -e "$target_rc.tmp" ]; then
+                echo "⚠️  Could not stage a rewrite of $target_rc — it is unchanged."
+                stale_block_warning "Free up disk space or fix the directory's permissions"
+                RC_TMP=""
+                return 1
+            fi
+
+            # Write back *through* the existing file instead of mv'ing over it.
+            # mv replaces the inode: it reset the mode to the umask default (a
+            # 600 rc silently became 644) and turned an rc symlinked into a
+            # dotfiles repo into a regular file, so the repo stopped receiving
+            # the change. A redirect follows the symlink and keeps the mode.
+            #
+            # A redirect is not atomic the way mv was: `>` truncates the rc
+            # before cat writes a byte, so a write that dies partway (disk full,
+            # quota) would leave the user's rc gutted. Keep a backup across the
+            # write and restore it on failure, so the rc is either fully updated
+            # or byte-identical to what it was.
+            #
+            # The backup only protects the rc if it is a COMPLETE copy, and the
+            # truncating redirect must not run unless it is. Under the very
+            # condition the backup exists for — a full disk or an exceeded quota
+            # — `cp` competes for the same exhausted resource and dies partway,
+            # leaving a truncated but non-empty .bak; a plain `[ -s ]` cannot
+            # tell that apart from a good copy, so restoring it would destroy
+            # exactly what it was meant to save. `cp` failing outright is worse
+            # still: with its status discarded the redirect gutted the rc with no
+            # copy to fall back on. Check both, and refuse before touching the rc
+            # — the same verify-before-you-write discipline the .tmp guard above
+            # already applies.
+            RC_BAK="$target_rc.bak"
+            if ! cp -p "$target_rc" "$target_rc.bak" 2>/dev/null \
+               || [ "$(wc -c < "$target_rc.bak" 2>/dev/null)" != "$(wc -c < "$target_rc" 2>/dev/null)" ]; then
+                echo "⚠️  Could not back up $target_rc — it is unchanged."
+                stale_block_warning "Free up disk space or fix the directory's permissions"
+                rm -f "$target_rc.tmp" "$target_rc.bak"
+                RC_TMP=""
+                RC_BAK=""
+                return 1
+            fi
+
+            if ! cat "$target_rc.tmp" > "$target_rc"; then
+                # Verify the restore landed instead of asserting it: a restore
+                # that hit the same limit leaves the rc short, and reporting
+                # success there hides the loss it was supposed to report.
+                cat "$target_rc.bak" > "$target_rc" 2>/dev/null
+                if [ "$(wc -c < "$target_rc" 2>/dev/null)" = "$(wc -c < "$target_rc.bak" 2>/dev/null)" ]; then
+                    echo "⚠️  Could not rewrite $target_rc — restored it from backup."
+                    stale_block_warning "Free up disk space"
+                    rm -f "$target_rc.bak"
+                else
+                    echo "❌ $target_rc may be incomplete — a backup copy is at $target_rc.bak"
+                    echo "   Restore it by hand:  cp $target_rc.bak $target_rc"
+                    # Keep the .bak, and unregister it from the cleanup trap:
+                    # it is the only surviving complete copy of the user's rc.
+                fi
+                RC_BAK=""
+                rm -f "$target_rc.tmp"
+                RC_TMP=""
+                return 1
+            fi
+            rm -f "$target_rc.tmp" "$target_rc.bak"
+            RC_TMP=""
+            RC_BAK=""
         fi
+
+        return 0
     }
 
     add_aliases_to_rc() {
         local target_rc="$1"
         local shell_style="$2"
 
+        # Every path that does NOT append the block returns non-zero, so the
+        # caller can tell a refusal from a success and skip its "✅ Added
+        # aliases" line. Bare `return` here would inherit the status of the
+        # preceding test and report success for work that never happened.
         if [ -z "$target_rc" ]; then
-            return
+            return 1
         fi
 
         if [ ! -f "$target_rc" ]; then
-            touch "$target_rc" 2>/dev/null || return
+            touch "$target_rc" 2>/dev/null || return 1
         fi
 
-        remove_aliases_from_rc "$target_rc"
+        # Checked before remove_aliases_from_rc so the write-protected rc is
+        # reported once, and so the append below cannot fail into the ERR trap.
+        if [ ! -w "$target_rc" ]; then
+            echo "⚠️  $target_rc is write-protected — aliases not added."
+            echo "   Add them by hand, or make the file writable and re-run."
+            return 1
+        fi
+
+        # A refused or failed removal leaves the OLD block in the file. Appending
+        # on top of it would produce two alias blocks — the stale one still
+        # pointing at wrappers this version deletes — so stop instead.
+        if ! remove_aliases_from_rc "$target_rc"; then
+            echo "   Aliases not added, to avoid leaving two alias blocks behind."
+            return 1
+        fi
 
         if [ "$shell_style" = "csh" ]; then
             cat >> "$target_rc" << 'EOF'
@@ -1082,7 +1156,7 @@ create_shell_aliases() {
 # Claude-GLM Model Switcher Aliases
 # (claude itself and any claude-only aliases are intentionally left untouched —
 #  manage those manually in your shell rc)
-alias ccg 'claude-glm-5.2'
+alias ccg 'claude-glm-5.3'
 alias ccgD 'ccg --dangerously-skip-permissions'
 alias ccgDd 'ccg --dangerously-skip-permissions -d'
 alias ccgA 'ccg --permission-mode auto'
@@ -1094,10 +1168,6 @@ alias ccg45v 'claude-glm-4.5v'
 alias ccg45vD 'ccg45v --dangerously-skip-permissions'
 alias ccg45vDd 'ccg45v --dangerously-skip-permissions -d'
 alias ccg45vA 'ccg45v --permission-mode auto'
-alias ccg45air 'claude-glm-4.5-air'
-alias ccg45airD 'ccg45air --dangerously-skip-permissions'
-alias ccg45airDd 'ccg45air --dangerously-skip-permissions -d'
-alias ccg45airA 'ccg45air --permission-mode auto'
 alias ccg46 'claude-glm-4.6'
 alias ccg46D 'ccg46 --dangerously-skip-permissions'
 alias ccg46Dd 'ccg46 --dangerously-skip-permissions -d'
@@ -1106,23 +1176,14 @@ alias ccg47 'claude-glm-4.7'
 alias ccg47D 'ccg47 --dangerously-skip-permissions'
 alias ccg47Dd 'ccg47 --dangerously-skip-permissions -d'
 alias ccg47A 'ccg47 --permission-mode auto'
-alias ccg5 'claude-glm-5'
-alias ccg5D 'ccg5 --dangerously-skip-permissions'
-alias ccg5Dd 'ccg5 --dangerously-skip-permissions -d'
-alias ccg5A 'ccg5 --permission-mode auto'
 alias ccg5t 'claude-glm-5-turbo'
 alias ccg5tD 'ccg5t --dangerously-skip-permissions'
 alias ccg5tDd 'ccg5t --dangerously-skip-permissions -d'
 alias ccg5tA 'ccg5t --permission-mode auto'
-alias ccg51 'claude-glm-5.1'
-alias ccg51D 'ccg51 --dangerously-skip-permissions'
-alias ccg51Dd 'ccg51 --dangerously-skip-permissions -d'
-alias ccg51A 'ccg51 --permission-mode auto'
-alias ccg52 'claude-glm-5.2'
-alias ccg52D 'ccg52 --dangerously-skip-permissions'
-alias ccg52Dd 'ccg52 --dangerously-skip-permissions -d'
-alias ccg52A 'ccg52 --permission-mode auto'
-alias ccf 'claude-glm-fast'
+alias ccg53 'claude-glm-5.3'
+alias ccg53D 'ccg53 --dangerously-skip-permissions'
+alias ccg53Dd 'ccg53 --dangerously-skip-permissions -d'
+alias ccg53A 'ccg53 --permission-mode auto'
 EOF
         else
             cat >> "$target_rc" << 'EOF'
@@ -1130,7 +1191,7 @@ EOF
 # Claude-GLM Model Switcher Aliases
 # (claude itself and any claude-only aliases are intentionally left untouched —
 #  manage those manually in your shell rc)
-alias ccg='claude-glm-5.2'
+alias ccg='claude-glm-5.3'
 alias ccgD='ccg --dangerously-skip-permissions'
 alias ccgDd='ccg --dangerously-skip-permissions -d'
 alias ccgA='ccg --permission-mode auto'
@@ -1142,10 +1203,6 @@ alias ccg45v='claude-glm-4.5v'
 alias ccg45vD='ccg45v --dangerously-skip-permissions'
 alias ccg45vDd='ccg45v --dangerously-skip-permissions -d'
 alias ccg45vA='ccg45v --permission-mode auto'
-alias ccg45air='claude-glm-4.5-air'
-alias ccg45airD='ccg45air --dangerously-skip-permissions'
-alias ccg45airDd='ccg45air --dangerously-skip-permissions -d'
-alias ccg45airA='ccg45air --permission-mode auto'
 alias ccg46='claude-glm-4.6'
 alias ccg46D='ccg46 --dangerously-skip-permissions'
 alias ccg46Dd='ccg46 --dangerously-skip-permissions -d'
@@ -1154,36 +1211,36 @@ alias ccg47='claude-glm-4.7'
 alias ccg47D='ccg47 --dangerously-skip-permissions'
 alias ccg47Dd='ccg47 --dangerously-skip-permissions -d'
 alias ccg47A='ccg47 --permission-mode auto'
-alias ccg5='claude-glm-5'
-alias ccg5D='ccg5 --dangerously-skip-permissions'
-alias ccg5Dd='ccg5 --dangerously-skip-permissions -d'
-alias ccg5A='ccg5 --permission-mode auto'
 alias ccg5t='claude-glm-5-turbo'
 alias ccg5tD='ccg5t --dangerously-skip-permissions'
 alias ccg5tDd='ccg5t --dangerously-skip-permissions -d'
 alias ccg5tA='ccg5t --permission-mode auto'
-alias ccg51='claude-glm-5.1'
-alias ccg51D='ccg51 --dangerously-skip-permissions'
-alias ccg51Dd='ccg51 --dangerously-skip-permissions -d'
-alias ccg51A='ccg51 --permission-mode auto'
-alias ccg52='claude-glm-5.2'
-alias ccg52D='ccg52 --dangerously-skip-permissions'
-alias ccg52Dd='ccg52 --dangerously-skip-permissions -d'
-alias ccg52A='ccg52 --permission-mode auto'
-alias ccf='claude-glm-fast'
+alias ccg53='claude-glm-5.3'
+alias ccg53D='ccg53 --dangerously-skip-permissions'
+alias ccg53Dd='ccg53 --dangerously-skip-permissions -d'
+alias ccg53A='ccg53 --permission-mode auto'
 EOF
         fi
+
+        return 0
     }
 
+    # Each "✅ Added aliases" below is conditional on the append having actually
+    # happened. Announcing it unconditionally contradicted the refusal message
+    # printed a line earlier, telling the user their aliases were installed when
+    # the rc had deliberately been left untouched.
     case "$rc_file" in
         *".cshrc")
-            add_aliases_to_rc "$rc_file" "csh"
-            echo "✅ Added aliases to $rc_file"
+            if add_aliases_to_rc "$rc_file" "csh"; then
+                echo "✅ Added aliases to $rc_file"
+            fi
             ;;
         "$HOME/.bashrc"|"$HOME/.bash_profile")
             # bash: ~/.bashrc is the canonical home for interactive aliases.
-            add_aliases_to_rc "$HOME/.bashrc" "bash"
-            local written="$HOME/.bashrc"
+            local written=""
+            if add_aliases_to_rc "$HOME/.bashrc" "bash"; then
+                written="$HOME/.bashrc"
+            fi
 
             # Only keep a second copy in ~/.bash_profile when it does NOT already
             # source ~/.bashrc. If it bridges to ~/.bashrc, the copy is redundant —
@@ -1191,23 +1248,39 @@ EOF
             # on re-run). This avoids the alias block living in two files at once.
             if [ -f "$HOME/.bash_profile" ]; then
                 if bash_profile_sources_bashrc; then
-                    remove_aliases_from_rc "$HOME/.bash_profile"
-                else
-                    add_aliases_to_rc "$HOME/.bash_profile" "bash"
-                    written="$written and $HOME/.bash_profile"
+                    # De-duplication is a nicety, not the install. A refusal here
+                    # (an unwritable ~/.bash_profile) already reports itself, and
+                    # its non-zero status must not reach the ERR trap and fail an
+                    # install whose aliases landed in ~/.bashrc just fine.
+                    remove_aliases_from_rc "$HOME/.bash_profile" || true
+                elif add_aliases_to_rc "$HOME/.bash_profile" "bash"; then
+                    if [ -n "$written" ]; then
+                        written="$written and $HOME/.bash_profile"
+                    else
+                        written="$HOME/.bash_profile"
+                    fi
                 fi
             fi
 
-            echo "✅ Added aliases to $written"
+            if [ -n "$written" ]; then
+                echo "✅ Added aliases to $written"
+            fi
             ;;
         *)
             # zsh / ksh / other: write the detected rc plus ~/.bashrc as a fallback
             # (unchanged behavior for non-bash shells).
-            add_aliases_to_rc "$rc_file" "bash"
-            if [ "$HOME/.bashrc" != "$rc_file" ]; then
-                add_aliases_to_rc "$HOME/.bashrc" "bash"
+            local added_primary=0
+            if add_aliases_to_rc "$rc_file" "bash"; then
+                added_primary=1
             fi
-            echo "✅ Added aliases to $rc_file"
+            if [ "$HOME/.bashrc" != "$rc_file" ]; then
+                # Fallback copy: its refusal is reported by the function itself
+                # and must not abort an otherwise-successful install.
+                add_aliases_to_rc "$HOME/.bashrc" "bash" || true
+            fi
+            if [ "$added_primary" = "1" ]; then
+                echo "✅ Added aliases to $rc_file"
+            fi
             ;;
     esac
 }
@@ -1260,7 +1333,7 @@ main() {
     rm -f "$USER_BIN_DIR/ccx" 2>/dev/null || true
 
     # Check if already installed
-    if [ -f "$USER_BIN_DIR/claude-glm-5.2" ] || [ -f "$USER_BIN_DIR/claude-glm-5.1" ] || [ -f "$USER_BIN_DIR/claude-glm-5-turbo" ] || [ -f "$USER_BIN_DIR/claude-glm-5" ] || [ -f "$USER_BIN_DIR/claude-glm-4.7" ] || [ -f "$USER_BIN_DIR/claude-glm-4.6" ] || [ -f "$USER_BIN_DIR/claude-glm-4.5v" ] || [ -f "$USER_BIN_DIR/claude-glm-4.5-air" ] || [ -f "$USER_BIN_DIR/claude-glm-4.5" ] || [ -f "$USER_BIN_DIR/claude-glm-fast" ]; then
+    if [ -f "$USER_BIN_DIR/claude-glm-5.3" ] || [ -f "$USER_BIN_DIR/claude-glm-5.2" ] || [ -f "$USER_BIN_DIR/claude-glm-5.1" ] || [ -f "$USER_BIN_DIR/claude-glm-5-turbo" ] || [ -f "$USER_BIN_DIR/claude-glm-5" ] || [ -f "$USER_BIN_DIR/claude-glm-4.7" ] || [ -f "$USER_BIN_DIR/claude-glm-4.6" ] || [ -f "$USER_BIN_DIR/claude-glm-4.5v" ] || [ -f "$USER_BIN_DIR/claude-glm-4.5-air" ] || [ -f "$USER_BIN_DIR/claude-glm-4.5" ] || [ -f "$USER_BIN_DIR/claude-glm-fast" ]; then
         echo ""
         echo "✅ Existing installation detected!"
         echo "1) Update API key only"
@@ -1274,17 +1347,17 @@ main() {
                 read -rs -p "Enter your Z.AI API key: " input_key
                 echo
                 if [ -n "$input_key" ]; then
+                    if ! validate_zai_api_key "$input_key"; then
+                        exit 1
+                    fi
                     ZAI_API_KEY="$input_key"
                     create_claude_glm_45_wrapper
                     create_claude_glm_45v_wrapper
-                    create_claude_glm_45air_wrapper
                     create_claude_glm_46_wrapper
                     create_claude_glm_47_wrapper
-                    create_claude_glm_5_wrapper
                     create_claude_glm_5t_wrapper
-                    create_claude_glm_51_wrapper
-                    create_claude_glm_52_wrapper
-                    create_claude_glm_fast_wrapper
+                    create_claude_glm_53_wrapper
+                    remove_retired_wrappers
                     create_shell_aliases
                     echo "✅ API key updated!"
                     exit 0
@@ -1302,17 +1375,22 @@ main() {
                     existing_key="$input_key"
                 fi
 
+                # Also covers a key recovered from an on-disk wrapper: a wrapper
+                # poisoned by an earlier install must not be re-injected here.
+                if ! validate_zai_api_key "$existing_key"; then
+                    echo "   If this key came from an existing wrapper, choose"
+                    echo "   option 1 (Update API key only) and enter a clean key."
+                    exit 1
+                fi
+
                 ZAI_API_KEY="$existing_key"
                 create_claude_glm_45_wrapper
                 create_claude_glm_45v_wrapper
-                create_claude_glm_45air_wrapper
                 create_claude_glm_46_wrapper
                 create_claude_glm_47_wrapper
-                create_claude_glm_5_wrapper
                 create_claude_glm_5t_wrapper
-                create_claude_glm_51_wrapper
-                create_claude_glm_52_wrapper
-                create_claude_glm_fast_wrapper
+                create_claude_glm_53_wrapper
+                remove_retired_wrappers
                 create_shell_aliases
                 echo "✅ Reset complete!"
                 exit 0
@@ -1333,33 +1411,29 @@ main() {
     echo
 
     if [ -n "$input_key" ]; then
+        if ! validate_zai_api_key "$input_key"; then
+            exit 1
+        fi
         ZAI_API_KEY="$input_key"
         echo "✅ API key received (${#input_key} characters)"
     else
         echo "⚠️  No API key provided. Add it manually later to:"
         echo "   $USER_BIN_DIR/claude-glm-4.5"
         echo "   $USER_BIN_DIR/claude-glm-4.5v"
-        echo "   $USER_BIN_DIR/claude-glm-4.5-air"
         echo "   $USER_BIN_DIR/claude-glm-4.6"
         echo "   $USER_BIN_DIR/claude-glm-4.7"
-        echo "   $USER_BIN_DIR/claude-glm-5"
         echo "   $USER_BIN_DIR/claude-glm-5-turbo"
-        echo "   $USER_BIN_DIR/claude-glm-5.1"
-        echo "   $USER_BIN_DIR/claude-glm-5.2"
-        echo "   $USER_BIN_DIR/claude-glm-fast"
+        echo "   $USER_BIN_DIR/claude-glm-5.3"
     fi
 
     # Create wrappers
     create_claude_glm_45_wrapper
     create_claude_glm_45v_wrapper
-    create_claude_glm_45air_wrapper
     create_claude_glm_46_wrapper
     create_claude_glm_47_wrapper
-    create_claude_glm_5_wrapper
     create_claude_glm_5t_wrapper
-    create_claude_glm_51_wrapper
-    create_claude_glm_52_wrapper
-    create_claude_glm_fast_wrapper
+    create_claude_glm_53_wrapper
+    remove_retired_wrappers
     create_shell_aliases
 
     # Final instructions
@@ -1381,49 +1455,37 @@ main() {
     echo "Commands:"
     echo "   claude-glm-4.5     - GLM-4.5"
     echo "   claude-glm-4.5v    - GLM-4.5V (vision)"
-    echo "   claude-glm-4.5-air - GLM-4.5-Air"
     echo "   claude-glm-4.6     - GLM-4.6"
     echo "   claude-glm-4.7     - GLM-4.7"
-    echo "   claude-glm-5       - GLM-5"
     echo "   claude-glm-5-turbo - GLM-5-Turbo"
-    echo "   claude-glm-5.1     - GLM-5.1"
-    echo "   claude-glm-5.2     - GLM-5.2 (default, 1M context)"
-    echo "   claude-glm-fast    - GLM-4.5-Air (fast, alias for ccg45air)"
+    echo "   claude-glm-5.3     - GLM-5.3 (default, 1M context)"
     echo ""
     echo "Aliases (GLM only — your 'claude' command is left untouched):"
-    echo "   ccg      - claude-glm-5.2 (GLM-5.2, default, 1M context)"
+    echo "   ccg      - claude-glm-5.3 (GLM-5.3, default, 1M context)"
     echo "   ccgD     - ccg --dangerously-skip-permissions"
     echo "   ccgDd    - ccg --dangerously-skip-permissions -d"
     echo "   ccgA     - ccg --permission-mode auto"
     echo "   ccg45    - claude-glm-4.5 (GLM-4.5)"
     echo "   ccg45v   - claude-glm-4.5v (GLM-4.5V, vision)"
-    echo "   ccg45air - claude-glm-4.5-air (GLM-4.5-Air)"
     echo "   ccg46    - claude-glm-4.6 (GLM-4.6)"
     echo "   ccg47    - claude-glm-4.7 (GLM-4.7)"
-    echo "   ccg5     - claude-glm-5 (GLM-5)"
     echo "   ccg5t    - claude-glm-5-turbo (GLM-5-Turbo)"
-    echo "   ccg51    - claude-glm-5.1 (GLM-5.1)"
-    echo "   ccg52    - claude-glm-5.2 (GLM-5.2, same as ccg)"
-    echo "   ccf      - claude-glm-fast (alias for GLM-4.5-Air)"
+    echo "   ccg53    - claude-glm-5.3 (GLM-5.3, same as ccg)"
     echo ""
 
     if [ "$ZAI_API_KEY" = "YOUR_ZAI_API_KEY_HERE" ]; then
         echo "⚠️  Don't forget to add your API key to:"
         echo "   $USER_BIN_DIR/claude-glm-4.5"
         echo "   $USER_BIN_DIR/claude-glm-4.5v"
-        echo "   $USER_BIN_DIR/claude-glm-4.5-air"
         echo "   $USER_BIN_DIR/claude-glm-4.6"
         echo "   $USER_BIN_DIR/claude-glm-4.7"
-        echo "   $USER_BIN_DIR/claude-glm-5"
         echo "   $USER_BIN_DIR/claude-glm-5-turbo"
-        echo "   $USER_BIN_DIR/claude-glm-5.1"
-        echo "   $USER_BIN_DIR/claude-glm-5.2"
-        echo "   $USER_BIN_DIR/claude-glm-fast"
+        echo "   $USER_BIN_DIR/claude-glm-5.3"
     fi
 
     echo ""
     echo "📁 Installation location: $USER_BIN_DIR"
-    echo "📁 Config directories: ~/.claude-glm-45, ~/.claude-glm-45v, ~/.claude-glm-45-air, ~/.claude-glm-46, ~/.claude-glm-47, ~/.claude-glm-5, ~/.claude-glm-5-turbo, ~/.claude-glm-51, ~/.claude-glm-52, ~/.claude-glm-fast"
+    echo "📁 Config directories: ~/.claude-glm-45, ~/.claude-glm-45v, ~/.claude-glm-46, ~/.claude-glm-47, ~/.claude-glm-5-turbo, ~/.claude-glm-53"
 }
 
 # Error handler
@@ -1482,6 +1544,13 @@ fi
 # Set up error handling
 set -eE  # Exit on error, inherit ERR trap in functions
 trap 'handle_error ${LINENO} "$BASH_COMMAND"' ERR
+
+# The rc rewrite stages a .tmp and a .bak around a non-atomic write. Neither is
+# removed if the run is interrupted between staging and cleanup, so clear them
+# on every exit path — including Ctrl-C, which the ERR trap above never sees.
+trap cleanup_rc_staging EXIT
+trap 'cleanup_rc_staging; exit 130' INT
+trap 'cleanup_rc_staging; exit 143' TERM
 
 # Only run installation if not in test mode
 if [ "$TEST_ERROR" != true ]; then

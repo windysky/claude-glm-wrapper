@@ -7,10 +7,20 @@ const fs = require('fs');
 
 const platform = os.platform();
 const rootDir = path.join(__dirname, '..');
+const userArgs = process.argv.slice(2);
 
 console.log('🔧 Claude-GLM Cross-Platform Installer');
 console.log('=======================================\n');
 console.log(`Detected OS: ${platform}\n`);
+
+function showHelp() {
+  console.log('📖 Usage: npx claude-glm-installer [options]\n');
+  console.log('Options:');
+  console.log('  -h, --help      Show this help message and exit');
+  console.log('  --debug         Enable debug mode');
+  console.log('  --test-error    Test error reporting');
+  console.log('\nAny other options are passed through to the platform installer.');
+}
 
 function runInstaller() {
   let command, args, scriptPath;
@@ -29,7 +39,8 @@ function runInstaller() {
     args = [
       '-NoProfile',
       '-ExecutionPolicy', 'Bypass',
-      '-File', scriptPath
+      '-File', scriptPath,
+      ...userArgs
     ];
 
   } else if (platform === 'darwin' || platform === 'linux') {
@@ -43,7 +54,7 @@ function runInstaller() {
     }
 
     command = 'bash';
-    args = [scriptPath];
+    args = [scriptPath, ...userArgs];
 
   } else {
     console.error(`❌ Unsupported platform: ${platform}`);
@@ -69,6 +80,12 @@ function runInstaller() {
     }
     console.log('\n✅ Installation completed successfully!');
   });
+}
+
+// Show help and exit without running the installer
+if (userArgs.includes('--help') || userArgs.includes('-h')) {
+  showHelp();
+  process.exit(0);
 }
 
 // Run the installer
