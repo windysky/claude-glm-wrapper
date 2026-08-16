@@ -2,10 +2,11 @@
 
 ## 1. Project Overview
 - Purpose: Local wrapper/installer scripts to run Claude Code against Z.AI GLM models via per-model `CLAUDE_HOME` directories.
-- Scope: Cross-platform install scripts + docs for `ccg` (GLM-5.2, default, 1M context), `ccg52` (GLM-5.2), `ccg51` (GLM-5.1), `ccg5t` (GLM-5-Turbo), `ccg5` (GLM-5), `ccg47` (GLM-4.7), `ccg46` (GLM-4.6), `ccg45` (GLM-4.5), `ccg45v` (GLM-4.5V vision), `ccg45air` (GLM-4.5-Air), and `ccf` (alias for GLM-4.5-Air). Each wrapper uses Z.AI's opus/sonnet/haiku tier scheme (opus+sonnet = its own model, haiku = glm-4.5-air). Installer manages GLM aliases only — the bare `claude` command and any user-curated `ccd`/`ccdD`/`claudeD` aliases are intentionally untouched.
-- Last updated: 2026-07-04 15:00 CDT
-- Last coding CLI used (informational): Claude Code
-- Current version: 2.4.2 (package.json)
+- Scope: Cross-platform install scripts + docs for `ccg` (GLM-5.3, default, 1M context), `ccg53` (GLM-5.3), `ccg5t` (GLM-5-Turbo), `ccg47` (GLM-4.7), `ccg46` (GLM-4.6), `ccg45` (GLM-4.5), and `ccg45v` (GLM-4.5V vision) — **6 wrappers, each verified to serve the model its name claims**. Each wrapper uses Z.AI's opus/sonnet/haiku tier scheme (opus+sonnet = its own model, haiku = glm-4.7). Installer manages GLM aliases only — the bare `claude` command and any user-curated `ccd`/`ccdD`/`claudeD` aliases are intentionally untouched.
+- **Retired in Phase 17** (Z.AI silently reroutes these IDs while still returning HTTP 200): `ccg52`/`ccg51`/`ccg5` (served by glm-5.3), `ccg45air`/`ccf` (served by glm-4.7). The installer now deletes their wrapper scripts and strips their aliases on re-run.
+- Last updated: 2026-08-16 08:50 CDT
+- Last coding CLI used (informational): Claude Code (Opus 5)
+- Current version: 2.5.0 (package.json)
 - Latest commit on `main`: `a103f0b` (Phase 16: harness code review — settings.json chmod 600 + set-e guard + csh dedup, v2.4.2), pushed to origin. Recent lineage: `a103f0b` (Phase 16 review fixes) ← `a29600e` (Phase 15 auto-compact 900K) ← `d8c936d` (A variants) ← `7b2d009`/`92164c0` (remove redundant ./install bootstrap) ← `5e1eb62` (Phase 14 smart-dedup) ← `502411d` (Phase 13 GLM-5.2 + tier scheme). NOTE: the prior handoff incorrectly recorded `25ff837` as the tip; git history between that and Phase 13 also has `072a9c9` (Phase 11+12) plus a run of install.ps1 PS5.1 hardening commits (`ec387cb`, `4399507`, `03e7dfb`, `657b2c9`, `70ff1ff`) that were never logged in PROJECT_LOG.md. Those are pre-existing and left as-is.
 
 ## 2. Current State
@@ -45,6 +46,9 @@
   - Completed in Session 2026-07-02 10:01 CDT
 - Harness code review (harness-hur-code-review-and-fix) — 3 install.sh defects fixed: (SEC) `chmod 600` on the runtime-generated settings.json in all 10 wrappers (the plaintext API key was world-readable at 644 while wrappers were already 700); (BUG) `check_claude_installation || true` so the "continue anyway" path without `claude` no longer false-aborts under `set -eE`+ERR trap; (IDEMPOTENCY) csh space-format alias cleanup so `.cshrc` re-runs stop duplicating the alias block. install.ps1 unaffected (Unix-only exposure; PS path returns $false without throwing). v2.4.2; independently reviewed (evaluator-active) APPROVED: Completed (commit `a103f0b`)
   - Completed in Session 2026-07-03 00:57 CDT
+
+- Add GLM-5.3 wrapper (`ccg53` + D/Dd/A) and consolidate the wrapper set to the 6 models that genuinely serve themselves; retire `ccg52`/`ccg51`/`ccg5`/`ccg45air`/`ccf`; haiku tier `glm-4.5-air` → `glm-4.7`; installer-side alias cleanup rewritten to full-line value-anchored matching; smoke test now detects silent model substitution; v2.5.0: Completed (uncommitted — see §7)
+  - Completed in Session 2026-08-16 08:50 CDT
 
 ## 3. Execution Plan Status
 - Phase 1: Add GLM-5 / adjust GLM-4.7 directories and mappings
@@ -97,11 +101,25 @@
   - Last updated: 2026-07-03 00:57 CDT
   - SPEC: `.moai/specs/SPEC_HARNESS_CODE_REVIEW_2026_07_02.md` (gitignored, local)
 
+- Phase 17: GLM-5.3 wrapper + consolidation to genuinely-serving models + full-line alias matching + reroute-aware smoke test
+  - Status: Completed (implemented, tested end-to-end in a sandbox HOME, redeployed to this machine, runtime-verified). **Not yet committed.**
+  - Last updated: 2026-08-16 08:50 CDT
+
+- Phase 18 harness code review + fix — 17 defects across 6 files, found by 3 independent reviewers + 10 Implementers. Includes 3 HIGH security fixes (API-key command injection in both installers; curl config injection introduced by our own argv fix; rc data-loss introduced by our own symlink fix), PowerShell ACL hardening at 12 sites, and a CRLF alias regression that silently defeated Phase 17's central purpose on Windows-style rc files: Completed (uncommitted — see §7)
+  - Completed in Session 2026-08-16 (Phase 18)
+
 ## 4. Outstanding Work
-- Windows-side verification of install.ps1 (5.2 wrapper + tier scheme + ccg52 shims) on a real Windows host.
-  - Status: Open (no Windows host in this environment) — standing gap across all phases.
-  - Last updated: 2026-06-16 15:36 CDT
-  - Reference: PROJECT_LOG.md Session 2026-06-16 (Phase 13)
+- Windows-side verification of install.ps1 (now: 5.3 wrapper + tier scheme + ccg53 shims + Remove-RetiredWrappers) on a real Windows host.
+  - Status: Open — standing gap across all phases.
+  - **Correction (2026-08-16)**: the previous note "no Windows host in this environment" is wrong. Windows IS this same machine — `/mnt/c` is mounted, PowerShell 5.1 is at its standard path, and PowerShell 7 is installed at `C:\Program Files\PowerShell\7`.
+  - **Correction to the correction (2026-08-16, Phase 18)**: an earlier claim in this file that "WSL interop is disabled" was ALSO wrong — it came from a bad probe. Verified: `/proc/sys/fs/binfmt_misc/WSLInterop` reads `enabled`, and invoking `powershell.exe` directly returns `5.1.26100.9168`. Windows PowerShell **is executable from this WSL session**; only `pwsh`/`powershell.exe` are absent from `PATH`.
+  - **What this actually unblocks, and what it does not**: `install.ps1` can now be **parsed** safely (parsing does not execute) — done in Phase 18 via `[System.Management.Automation.Language.Parser]::ParseFile`, result **0 syntax errors, 4631 tokens**. First mechanical validation of install.ps1 in the project's history. **Running** it remains unsafe here: `install.ps1:29-36` anchors every path to `$env:USERPROFILE`, which resolves to the real Windows profile (`C:\Users\jung.hur`), and a bash-side `HOME` override cannot redirect it — so there is no safe sandbox for a full execution test. Full end-to-end Windows verification therefore stays OPEN.
+  - Last updated: 2026-08-16 (Phase 18 code review)
+  - Reference: PROJECT_LOG.md Session 2026-08-16 (Phase 17, Phase 18)
+- The `[1m]` bracket model form cannot be validated against the raw Z.AI API.
+  - Status: Open (structural — not fixable by testing harder)
+  - Both `glm-5.2[1m]` and `glm-5.3[1m]` return HTTP 400 "modelCode does not exist" on `/v1/messages`; the bracket is a Claude-Code-side routing convention the client translates before sending. Reroute behavior for the bracket form is therefore INFERRED from the base model id, not observed.
+  - Last updated: 2026-08-16 08:50 CDT
 - Runtime confirmation that `glm-5.2[1m]` resolves inside a real Claude Code launch.
   - Status: Open
   - Last updated: 2026-06-16 15:36 CDT
@@ -126,6 +144,17 @@
   - Current assumption: Verification relies on installer script syntax checks and text search, not `npm` builds.
 
 ## 6. Verification Status
+- Verified (Session 2026-08-16 08:50 CDT, Phase 17 GLM-5.3 + consolidation):
+  - Live API, requested-vs-served comparison (3 confirmations each, deterministic): `glm-5.2`/`glm-5.1`/`glm-5` → served by **glm-5.3**; `glm-4.5-air` → served by **glm-4.7**. Serving themselves: glm-5.3, glm-5-turbo, glm-4.7, glm-4.6, glm-4.5, glm-4.5v. v5 namespace sweep (15 candidates): only 5/5.1/5.2/5.3/5-turbo exist; the rest HTTP 400.
+  - `bash -n install.sh` => OK; `bash -n smoke_test_models.sh` => OK; `json.load(package.json)` => 2.5.0
+  - install.sh counts: 6 wrapper functions, 18 call sites (6×3 paths), 12 haiku=glm-4.7 (6×2), 0 residual glm-4.5-air haiku, 0 retired wrapper functions, 0 generated retired aliases
+  - install.ps1 counts (structural parity; PowerShell execution NOT run): 6 wrapper functions, 18 call sites, 7 `Set-Alias`, 28 `New-CmdShim`, 12 haiku=glm-4.7, 4 `Remove-RetiredWrappers` references
+  - Alias-cleanup regexes extracted verbatim from install.sh and exercised in a child bash process (real /usr/bin/grep) against a fixture: all 12 installer-generated lines removed in both bash and csh format, while user-owned `ccg` / `ccg52` / `ccg53` aliases pointing elsewhere ALL survived. The superseded substring logic was run on the identical fixture and destroyed all three — contrast recorded.
+  - End-to-end installer run in a sandboxed HOME: 11 pre-existing wrappers → 6; 5 retired deleted; 28 aliases written; user-owned colliding aliases preserved; idempotent over 3 consecutive runs (1 block header, no duplication)
+  - Real redeploy (option 2, dotfiles backed up to `~/.bashrc.bak.glm53-*`): `~/.bashrc` diff vs backup shows ONLY 18 installer-generated retired alias lines removed + 5 added; no user alias touched. `~/.local/bin` wrappers 11 → 6
+  - Deployed 5.3 wrapper runtime check (`claude` masked): settings.json is valid JSON with `glm-5.3[1m]` opus/sonnet, `glm-4.7` haiku, 900000 window; mode **600** on settings.json, **700** on the wrapper
+  - Post-change smoke test: 6 shipped models PASS with matching served-by; 4 retired IDs flagged REROUTED; `glm-4.7-flashx` FAIL 429 (not plan-covered) as the control
+  - Smoke-test defect found and fixed: at the old 15s timeout `glm-5.3` returned HTTP 000 and was reported as a **false FAIL** (it emits a thinking block before content). Raised to 60s; 3/3 HTTP 200 at 90s confirmed the model was always fine.
 - Verified (Session 2026-07-03 00:57 CDT, Phase 16 harness review fixes):
   - `bash -n install.sh` => OK; `git diff` = install.sh only, +23/-2 (minimal)
   - FIX-1: 10 `chmod 600 "$CLAUDE_HOME/settings.json"` runtime lines (one per wrapper, after each SETTINGS heredoc); `chmod 700` on wrappers unchanged (10). Redeployed + launched the 5.2 wrapper (claude masked) → `~/.claude-glm-52/settings.json` went 644 → **600**, JSON still valid (6 keys, token present). Proactively chmod 600 on all remaining config dirs (now all 600)
@@ -180,7 +209,8 @@
 
 ## 7. Restart Instructions
 - Starting point:
-  1. Working tree is clean. Latest substantive commit on `main` is `a103f0b` (Phase 16 harness review fixes; pushed to origin; a docs commit for handoff/log follows it). Project version 2.4.2.
+  0. **Phase 17 is implemented, verified, and redeployed but NOT COMMITTED.** `git status` will show modified: install.sh, install.ps1, smoke_test_models.sh, README.md, package.json, PROJECT_HANDOFF.md, PROJECT_LOG.md. Backups of the pre-change installers are in the session scratchpad and dotfile backups at `~/.bashrc.bak.glm53-*`. Also still untracked from a prior MoAI tooling update: `.claudeignore`, `.git_hooks/`, `.github/` (unrelated to Phase 17; decision pending).
+  1. Latest commit on `main` is `347801f` (docs end-of-session for Phase 16); the last substantive code commit is `a103f0b`. Project version now 2.5.0 in the working tree.
      - Phase 16 (harness review: settings.json chmod 600 + set-e guard + csh dedup, v2.4.2) → `a103f0b`
      - Phase 15 (GLM-5.2 auto-compact window 1000000 → 900000, v2.4.1) → `a29600e`
      - Phase 13 (GLM-5.2 default + tier-scheme migration) → `502411d`

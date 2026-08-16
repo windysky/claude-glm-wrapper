@@ -6,6 +6,8 @@ Bounded active log for the claude-glm-wrapper installer (Claude Code wrappers fo
 - logs/PROJECT_LOG_2026-H1.md — 10 sessions (2026-02 … 2026-04)
 
 ## Session Index (active, newest first)
+- 2026-08-16 (Phase 18 harness code review — 4-agent adversarial review + 10 Implementers)
+- 2026-08-16 08:50 CDT (Phase 17 GLM-5.3 + consolidation to genuinely-serving models)
 - 2026-07-03 00:57 CDT (Phase 16 harness review)
 - 2026-07-02 10:01 CDT
 - 2026-06-16 16:23 CDT (session close)
@@ -16,6 +18,90 @@ Bounded active log for the claude-glm-wrapper installer (Claude Code wrappers fo
 - 2026-06-16
 
 ---
+
+## Session 2026-08-16 (Phase 18 harness code review + fix)
+- Coding CLI used: Claude Code CLI (Opus 5, 1M context)
+- Invocation: `/harness-hur-code-review-and-fix` — autonomous review, then fix everything real found. "Fix only what is broken."
+- Team: Orchestrator + 3 persistent members (Reviewer, QA Agent, Security Auditor) + 10 disposable Implementers. No web UI → Playwright mandate N/A. No test suite and no CI existed, so QA established a baseline from zero.
+
+### Headline
+17 defects fixed across 6 files. **Every finding that mattered came from an agent other than the one who wrote the code** — the harness's never-self-review rule did real work here, twice catching regressions the fixes themselves introduced.
+
+### The three reviewers found disjoint defect classes
+| Reviewer | Found what nobody else did |
+|---|---|
+| Security Auditor | The original API-key command injection (3 vectors × 2 languages); later, the curl-config injection that our own M-3 fix introduced |
+| QA Agent | The rc data-loss regression introduced by the DEF-1 fix; later, the incomplete-backup hole in the orchestrator's own fix |
+| Reviewer | The CRLF alias regression — invisible to both auditors across two full re-gates |
+
+### Fixes landed (17)
+**Security (HIGH)** — (1) API-key command injection: an unvalidated key was interpolated into an *unquoted* heredoc, so `x";touch /tmp/PWNED;#` broke out of `export ANTHROPIC_AUTH_TOKEN="…"` and executed on **every wrapper launch**; a `$(…)` key substituted at runtime; a `"},"hooks":{…` key injected executable Claude Code hooks into settings.json. Closed by a charset guard (`^[A-Za-z0-9._-]+$`) at all 3 key-assignment sites in each installer, including the key *recovered from an existing wrapper* (the laundering path). Verified against 19 bypass probes in both languages. (2) curl config injection — the fix that moved the key off argv put it into curl's `-K -` config *parser*; a newline injected `output =`/`url =`, achieving arbitrary file write with attacker-controlled content. Closed by applying the same guard to `detect_key`'s result, covering all four key sources. (3) rc data-loss — `> "$rc"` truncated before `cat` ran, destroying user rc files while exiting 0.
+
+**Correctness/robustness** — rc rewrite preserves inode/mode/symlink (was `mv`, which silently turned 600→644 and destroyed symlinked dotfiles); backup verified complete before the rc is touched; write-protected and unreadable rc refused rather than clobbered; refusal no longer leaves two alias blocks; `.bash_profile` refusal no longer aborts a successful install; **CRLF/trailing-whitespace alias matching** (managed aliases survived forever on CRLF rc files while their wrappers were deleted → permanent "command not found"); `ccx*`/`claude-proxy` over-match deleting user aliases; retired wrappers gated on a Z.AI fingerprint (the generic `claude-glm` name could delete a user's own script); PATH line idempotent; `umask 077` for the key-file creation window, with `~/.local` restored to 755; value-keyed redaction in `report_error`; EXIT/INT/TERM traps.
+
+**PowerShell** — ACL hardening at all 12 key-bearing sites (`Protect-KeyFile` ×6 + a spliced wrapper-side block ×6). On this machine the "before" ACL showed a `CodexSandboxUsers` group and an unresolved foreign SID both holding **Modify** — M-2 was a live exposure, not hypothetical. Also: removal over-count reporting success for files still on disk.
+
+**Other** — `bin/cli.js --help` performed a live install and forwarded no args; stale orphan `package-lock.json` (declared v2.0.0 + fastify/dotenv against a zero-dependency v2.5.0; 5 vulns); `fix_hooks_config.py` resolved its target from the script's directory rather than cwd — and because this repo *has* a `.claude/settings.json`, the old code silently rewrote **this repo's** local settings while reporting success and leaving the user's real project untouched; smoke test's green PASS when the served model was never determined (now UNKNOWN).
+
+### Corrections recorded (things we got wrong and fixed)
+- Orchestrator claimed WSL interop was disabled. **Wrong** — `powershell.exe` runs (5.1.26100.9168). Consequence: `install.ps1` was **AST-parsed for the first time in the project's history** (0 errors, 5055 tokens). Full execution remains impossible — it anchors to the real `%USERPROFILE%` with no sandbox.
+- Security Auditor retracted its own L-3 first half as a false positive (`claude-glm-5.ps1` never existed in any revision).
+- Orchestrator nearly filed a false "incomplete fix" against the ACL work from a bad grep; caught by verifying.
+- ImplH caught a bug in its **own** first attempt: an unflattened PowerShell array would have emitted the literal `System.Object[]` in place of every wrapper's settings.json write — worse than the defect it was fixing, and invisible to AST parsing.
+- Reviewer's prescribed fix for the README claim (probe `glm-5.3[1m]`) was rejected with evidence: the raw API rejects the bracket form (`400 [1214][modelCode: does not exist]`) because it is a client-side routing convention. Remedy redirected to documentation.
+
+### Verification performed
+`bash -n` on both shell scripts, `node --check` ×2, `ast.parse`, `package.json` parse, PowerShell AST (0 errors). Clean install → 6 wrappers / 28 aliases; 3-run idempotency; user-owned colliding aliases survive in LF **and** CRLF; mode-600 rc keeps mode *and inode*; symlinked rc stays a symlink and the dotfiles target receives the block; 444 rc byte-identical; unreadable rc → 1 header; injection payload → 0 wrappers, no marker; retired-wrapper fingerprint gate; `~/.local` 755 / wrappers 700 / settings.json 600; live Z.AI smoke test (6 shipped models PASS with matching served-by, 4 retired REROUTED, flashx 429 control); `moai gate` exit 0.
+
+### Known remaining (not fixed, deliberately)
+- **M-6** unpinned `EndBug/label-sync@v2` + `actions/checkout@v4` with `issues:write`. `.github/` is **untracked** — whether it ships is the user's decision, so it was not modified. Per the auditor's refinement: a workflow goes live the moment it is committed, so the SHA pins must land **in the same commit** that adds `.github/`, not as a follow-up.
+- Blank line accumulates 1/run in the rc (pre-existing, cosmetic; the tidy fix risks eating a user's own blank line).
+- `install.ps1` never executed end-to-end (no sandbox for `%USERPROFILE%`). Its only review is close reading + AST + isolated function tests.
+- Colliding user alias is preserved textually but shadowed at runtime (documented in code and README, not changed).
+- L-2 unquoted `all_wrappers=($(…))`; L-4 printed pipe-to-bash hint; N-6 empty key accepted by smoke test (unreachable); N-7 `.bak` symlink following (same-user, no privilege gain).
+
+### Process note
+The last 4 of 17 fixes were implemented by the Orchestrator directly: two Implementers died on an account session limit and the final three agents on `SSL certificate hostname mismatch`. Those four were **diagnosed** by the independent Reviewer, so the finding is independent; the implementation is not independently reviewed and is verified behaviourally only. Stated for the record rather than glossed.
+
+## Session 2026-08-16 08:50 CDT (Phase 17 GLM-5.3 + consolidation)
+- Coding CLI used: Claude Code CLI (Opus 5, 1M context)
+- Phase(s) worked on
+  - Phase 17: add a GLM-5.3 wrapper (`ccg53`), then — on evidence found mid-task — consolidate the wrapper set down to the models that genuinely serve themselves.
+- Motivation and the finding that reshaped the task
+  - The task began as "add ccg53 + variants", mirroring Phase 13's GLM-5.2 work. Live probes of the Z.AI API showed `glm-5.3` reachable (HTTP 200) and, per Z.AI docs, a 1M-context model using the same `[1m]` Claude-Code-side route convention as 5.2.
+  - **Key discovery**: the API response body echoes the model that actually served the request. Comparing requested vs served (3 independent confirmations each, deterministic) showed Z.AI **silently reroutes retired IDs while still returning HTTP 200**:
+    - `glm-5.2` → `glm-5.3`; `glm-5.1` → `glm-5.3`; `glm-5` → `glm-5.3`; `glm-4.5-air` → `glm-4.7`
+    - Genuinely serving themselves: `glm-5.3`, `glm-5-turbo`, `glm-4.7`, `glm-4.6`, `glm-4.5`, `glm-4.5v`
+  - Consequence 1: a wrapper named after a rerouted ID no longer does what its name says. Consequence 2: `ANTHROPIC_DEFAULT_HAIKU_MODEL="glm-4.5-air"` in *every* wrapper meant the "small/fast" tier was actually being served by glm-4.7.
+  - Full v5 namespace sweep (15 candidates): only `glm-5`, `glm-5.1`, `glm-5.2`, `glm-5.3`, `glm-5-turbo` exist. `glm-5.3-turbo`, `glm-5-air`, `glm-5.3-air`, `glm-5-flash`, `glm-5v`, `glm-6` all HTTP 400 "modelCode does not exist". `glm-5-turbo` is the exception that is NOT rerouted — turbo stayed at the v5 generation.
+  - Metering: no rate-limit headers are returned at all (only nginx/x-log-id/x-process-time). Plan metering is prompt-count per rolling 5h window with quota multipliers (5-Turbo ~2-3x), not per-model accounting. Which multiplier applies to a rerouted request is not externally observable — an added reason to request the model you actually want.
+- User decisions taken during the session
+  - `ccg` repoint: initially "keep on 5.2"; reversed to 5.3 after the reroute evidence showed 5.2 no longer exists as a distinct servable model.
+  - Scope: "consolidate to what is real" — retire the wrappers whose name no longer matches what serves.
+  - Retirement semantics (user-specified): the installer must scrub retired aliases from the shell rc, and must **match the full alias line, not a name prefix**, so a user's own alias of the same name is never removed accidentally.
+- Concrete changes implemented
+  - install.sh: added `create_claude_glm_53_wrapper` (`glm-5.3[1m]`, 900000 auto-compact window); removed 5 retired wrapper functions (45air, 5, 51, 52, fast) + their 15 call sites + 34 generated alias lines + 20 summary lines; `ccg` → `claude-glm-5.3`; haiku tier `glm-4.5-air` → `glm-4.7` across all 6 wrappers; new `remove_retired_wrappers()` deletes orphaned wrapper scripts (incl. the pre-tier-scheme bare `claude-glm`), wired into all 3 install paths.
+  - install.sh alias cleanup rewritten: 46 unanchored `grep -v "alias X="` substring filters replaced by 2 anchored, value-constrained regexes (`bash_alias_re` / `csh_alias_re`). A line is removed only when the alias NAME *and* its ENTIRE value match a form this installer generates. Retired names deliberately stay in the name list so re-runs scrub them.
+  - install.ps1: full parity — `New-ClaudeGlm53Wrapper`, 5 retired functions removed (+15 call sites, 17 alias/function lines, 17 cmd shims), `Remove-RetiredWrappers` (deletes .ps1 wrappers *and* .cmd shims), `$installerOwnedPatterns` rewritten to the same anchored full-line form, ccg + its D/Dd/A shims repointed to 5.3, haiku → glm-4.7.
+  - smoke_test_models.sh: now compares requested vs served model and reports PASS / REROUTED / FAIL. Timeout raised 15s → 60s (glm-5.3 emits a thinking block before content; at 15s it returned HTTP 000 and was reported as a **false FAIL**). Default model list reorganized into shipped / retired-expect-REROUTED / not-plan-covered control.
+  - README.md: model list, alias table, examples, tier note, and a new "Retired aliases (and why)" section with the requested→served table and migration mapping. package.json 2.4.2 → 2.5.0.
+- Files/modules/functions touched
+  - Modified: install.sh, install.ps1, smoke_test_models.sh, README.md, package.json, PROJECT_HANDOFF.md, PROJECT_LOG.md
+- Verification performed
+  - `bash -n` OK on install.sh and smoke_test_models.sh. install.ps1 structural parity verified by count (6 wrapper functions, 18 call sites, 7 Set-Alias, 28 cmd shims, 12 haiku=4.7, 4 Remove-RetiredWrappers refs) — PowerShell execution still unverified (no pwsh; WSL interop disabled).
+  - Alias-cleanup regexes tested against a fixture in a child bash process (real /usr/bin/grep): all 12 installer-generated lines removed (bash + csh format), while user-owned `ccg`, `ccg52`, `ccg53` aliases pointing elsewhere all survived. The old substring logic was run on the same fixture for contrast and destroyed all three.
+  - End-to-end installer run in a sandboxed HOME: 6 wrappers created, 5 retired deleted, 28 aliases written, user-owned colliding aliases preserved. Idempotent across 3 consecutive runs (1 block header, no duplication, no growth).
+  - Real redeploy (`bash install.sh` option 2, dotfiles backed up first). `~/.bashrc` diff vs backup shows ONLY the 18 installer-generated retired alias lines removed and 5 added — no user alias touched. Wrappers on disk reduced 11 → 6.
+  - Runtime check of the deployed 5.3 wrapper (`claude` masked): settings.json is valid JSON with `glm-5.3[1m]` opus/sonnet, `glm-4.7` haiku, 900000 window; mode 600 on settings.json, 700 on the wrapper.
+  - Live smoke test post-change: 6 shipped models PASS with matching served-by; 4 retired IDs correctly flagged REROUTED; `glm-4.7-flashx` FAIL 429 (not plan-covered) as the control.
+- Items explicitly completed / resolved / superseded this session
+  - Completed: GLM-5.3 wrapper + `ccg53`/`ccg53D`/`ccg53Dd`/`ccg53A`; consolidation to 6 genuinely-serving models; full-line alias matching; retired-wrapper file cleanup; smoke-test reroute detection; v2.5.0; redeployed.
+  - Superseded: `ccg` → GLM-5.2 (now 5.3); haiku tier `glm-4.5-air` (now `glm-4.7`); the 46-filter substring alias cleanup (now 2 anchored regexes); status-code-only smoke test.
+  - Resolved: stale `~/.local/bin/claude-glm-5.2.bak-1000000` no longer present; the pre-tier-scheme bare `claude-glm` orphan is now removed by the installer.
+- Remaining open issues
+  - Windows `install.ps1` execution unverified on a real Windows host (standing gap). Note: Windows IS present on this machine (`/mnt/c`, PS 5.1 + PS 7 both installed) — the blocker is that **WSL interop is disabled**, not the absence of Windows. Enabling it (`/etc/wsl.conf` `[interop] enabled=true` + `wsl --shutdown`) would make the gap closable.
+  - The `[1m]` bracket form could not be tested against the raw API: both `glm-5.2[1m]` and `glm-5.3[1m]` return HTTP 400 "modelCode does not exist" because the bracket is a Claude-Code-side convention translated by the client. Reroute behavior for the bracket form is therefore inferred from the base model, not observed.
+  - Residual risk: the reroute could be launch-window behavior that Z.AI later reverses. The smoke test will show a retired ID flipping REROUTED → PASS if that happens.
 
 ## Session 2026-07-03 00:57 CDT (Phase 16 harness review)
 - Coding CLI used: Claude Code CLI (Opus 4.8)
