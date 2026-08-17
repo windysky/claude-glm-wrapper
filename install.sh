@@ -241,7 +241,22 @@ find_all_installations() {
 # Clean up old wrapper installations
 cleanup_old_wrappers() {
     local current_location="$USER_BIN_DIR"
-    local all_wrappers=($(find_all_installations))
+    # Read one path per line instead of an unquoted $(...) inside ( ), which
+    # re-splits on $IFS — spaces included — so a wrapper path containing a space
+    # became several array entries and the delete loop below reached `rm` with a
+    # relative fragment. The [ -n ] guard drops the single blank line that
+    # find_all_installations' `printf '%s\n' "${found_files[@]}"` emits on an
+    # empty array, preserving the -eq 0 early return on a fresh install.
+    # Deliberately NOT the bash 4.0+ array-read builtins: macOS ships bash 3.2.57
+    # and is a supported platform, and under `set -eE` a missing builtin exits
+    # 127 into the ERR trap — a file-a-bug prompt instead of an install. This
+    # loop mirrors the one the producer itself uses above.
+    # See SPEC_LOW_DEFECTS_CLEANUP.md §1a for both reproduced failures.
+    local all_wrappers=()
+    local wrapper_line
+    while IFS= read -r wrapper_line; do
+        [ -n "$wrapper_line" ] && all_wrappers+=("$wrapper_line")
+    done < <(find_all_installations)
 
     if [ ${#all_wrappers[@]} -eq 0 ]; then
         return 0
@@ -1080,6 +1095,12 @@ create_shell_aliases() {
             # — the same verify-before-you-write discipline the .tmp guard above
             # already applies.
             RC_BAK="$target_rc.bak"
+            # `cp -p` follows an existing symlink at the destination, so a
+            # pre-planted ~/.bashrc.bak symlink makes it write the user's rc
+            # THROUGH that link — to any path the user can write, including
+            # outside $HOME. Removing it first makes cp create a fresh regular
+            # file. Needs no induced failure to exploit, unlike the restore path.
+            rm -f "$target_rc.bak"
             if ! cp -p "$target_rc" "$target_rc.bak" 2>/dev/null \
                || [ "$(wc -c < "$target_rc.bak" 2>/dev/null)" != "$(wc -c < "$target_rc" 2>/dev/null)" ]; then
                 echo "⚠️  Could not back up $target_rc — it is unchanged."
@@ -1533,7 +1554,11 @@ if [ "$TEST_ERROR" = true ]; then
     echo "✅ Test complete. If a browser window opened, error reporting is working!"
     echo ""
     echo "To run normal installation, use:"
-    echo "   curl -fsSL https://raw.githubusercontent.com/windysky/claude-glm-wrapper/main/install.sh | bash"
+    # Process substitution, not a pipe: piping the script into bash puts its
+    # source on stdin, which is the same descriptor the `read -rs -p "API Key: "`
+    # prompt consumes — so the next line of the installer's own source is read as
+    # the key. This is also the form README.md:37 and this script's header use.
+    echo "   bash <(curl -fsSL https://raw.githubusercontent.com/windysky/claude-glm-wrapper/main/install.sh)"
     echo ""
     echo "Press Enter to finish (window will remain open)..."
     read

@@ -175,9 +175,26 @@
   - Date opened: 2026-08-16 (Phase 17)
   - Detection in effect: `smoke_test_models.sh` probes the retired IDs on purpose and reports REROUTED. If one ever flips back to PASS, Z.AI un-retired it and it may deserve a wrapper again.
 - Risk: three of the four final fixes carry no independent review.
-  - Status: Open (disclosed)
+  - Status: **Resolved** 2026-08-17 (Phase 19)
   - Date opened: 2026-08-17 (Phase 18 close)
   - Context: the Implementer agents died on an account session limit and then `SSL certificate hostname mismatch`, so the orchestrator implemented the last four itself. Each was *diagnosed* by an independent reviewer, and each was verified behaviourally with before/after evidence — but implementation and verification share an author, which the rest of this session deliberately avoided.
+  - Resolution: `SPEC_INDEPENDENT_REVIEW_ORCHESTRATOR_FIXES` executed by a non-author reviewer. All four fixes (R1 CRLF alias matching, R2 `managed_value` tightening, R3 fingerprint gate, R4 `umask`/`chmod`) **APPROVED** — each claim reproduced from scratch against the real code in sandboxed `HOME`s, both directions, with the named attack attempted and its outcome reported whether or not it succeeded. Verdict + evidence: `.moai/reports/review/SPEC_INDEPENDENT_REVIEW_ORCHESTRATOR_FIXES-verdict.md`; re-runnable harnesses under `.moai/tmp/review-phase18/`.
+- Risk: `install.sh:1333` deletes `~/.local/bin/ccx` unconditionally, including on the Cancel path.
+  - Status: Open — filed as `SPEC_CCX_UNCONDITIONAL_DELETE` (MEDIUM)
+  - Date opened: 2026-08-17 (Phase 19 review, finding F2)
+  - Context: no fingerprint gate, no prompt, no authorship check — the hazard class R3 fixed 450 lines earlier. The line sits above the existing-installation menu, so choosing "4) Cancel" deletes the user's file anyway; reproduced. The R3 gate could not be reused because the historical `ccx` wrapper pointed at `http://127.0.0.1:${PORT}` and is the only wrapper form in project history lacking the Z.AI fingerprint.
+- Risk: `managed_value`'s `claude-glm[A-Za-z0-9._-]*` wildcard deletes a user's own alias line.
+  - Status: Open — filed as `SPEC_ALIAS_GLM_WILDCARD_OVERMATCH` (LOW-MEDIUM)
+  - Date opened: 2026-08-17 (Phase 19 review, finding F1)
+  - Context: `alias ccg='claude-glm-wrapper-mine'` is removed, contradicting the guarantee at `install.sh:995-999`. Pre-dates R1 (verified by differential against the pre-R1 regex); R1 extended its reach to CRLF rc files, which is unavoidable when closing the under-match. **R1 must not be reverted** — reverting restores 28 permanently stale aliases on every CRLF rc.
+- Risk: the retired-wrapper fingerprint matches a comment, not only an executable reference.
+  - Status: Open — filed as `SPEC_FINGERPRINT_COMMENT_MATCH` (LOW; decision required, may close WONTFIX)
+  - Date opened: 2026-08-17 (Phase 19 review, finding F3)
+  - Context: `grep -q 'api\.z\.ai/api/anthropic'` matches anywhere in the file, so a user script carrying a retired name *and* mentioning the endpoint in a comment is deleted. Narrow precondition; tightening risks the worse failure of leaving a key-bearing retired wrapper undeletable.
+- Risk: the removal-failure warning path at `install.sh:889-890` cannot be exercised.
+  - Status: Open (informational — not filed as a SPEC)
+  - Date opened: 2026-08-17 (Phase 19 review, finding F4)
+  - Context: making a wrapper unremovable requires removing write permission from the *directory* (`rm -f` needs directory write, not file write), and that same change aborts the install earlier at wrapper creation (`install.sh:552`). Reaching the warning needs an immutable attribute or a foreign-owned sticky directory — root-only setups. The path is not shown defective, only untestable; do not rely on that warning as a safety net.
 
 ## 6. Verification Status
 - Verified (Session 2026-08-16 → closed 2026-08-17 06:50 CEST, Phase 18 adversarial code review):

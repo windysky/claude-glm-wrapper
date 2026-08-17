@@ -6,6 +6,7 @@ Bounded active log for the claude-glm-wrapper installer (Claude Code wrappers fo
 - logs/PROJECT_LOG_2026-H1.md — 10 sessions (2026-02 … 2026-04)
 
 ## Session Index (active, newest first)
+- 2026-08-17 14:xx CEST (Phase 19 execution — review SPEC verdict APPROVED ×4, 3 findings filed, LOW defects fixed)
 - 2026-08-17 11:43 CEST (Phase 19 planning — 3 SPECs queued for execution; ps1 e2e SPEC dropped)
 - 2026-08-16 → closed 2026-08-17 06:50 CEST (Phase 18 harness code review — 18 fixes, 6 commits pushed)
 - 2026-08-16 08:50 CDT (Phase 17 GLM-5.3 + consolidation to genuinely-serving models)
@@ -19,6 +20,64 @@ Bounded active log for the claude-glm-wrapper installer (Claude Code wrappers fo
 - 2026-06-16
 
 ---
+
+## Session 2026-08-17 (Phase 19 execution)
+- Coding CLI used: Claude Code CLI (Opus 5, 1M context)
+- Phase worked on: Phase 19 — execute the queued SPECs. Review SPEC completed; LOW defects fixed; shellcheck SPEC not started.
+
+### SPEC_INDEPENDENT_REVIEW_ORCHESTRATOR_FIXES — verdict: APPROVED ×4
+All four orchestrator-authored fixes reproduced from scratch by a non-author, both directions, in sandboxed `HOME`s. R1 (CRLF alias matching), R2 (`managed_value` tightening), R3 (fingerprint gate), R4 (`umask`/`chmod`) each do exactly what they claim. Verdict + evidence: `.moai/reports/review/SPEC_INDEPENDENT_REVIEW_ORCHESTRATOR_FIXES-verdict.md`; harnesses under `.moai/tmp/review-phase18/`. `PROJECT_HANDOFF.md` §5 risk marked **Resolved**.
+
+Three findings, none of them a defect in the four fixes — all in adjacent code, each filed as its own SPEC per the review SPEC's rule:
+
+| Finding | Site | Filed as |
+|---|---|---|
+| F2 — `rm -f ~/.local/bin/ccx` unconditional, ungated, runs **before** the Cancel branch | `install.sh:1333` | `SPEC_CCX_UNCONDITIONAL_DELETE` (MEDIUM) |
+| F1 — `claude-glm[A-Za-z0-9._-]*` deletes a user's own alias line | `install.sh:1017` | `SPEC_ALIAS_GLM_WILDCARD_OVERMATCH` (LOW-MEDIUM) |
+| F3 — fingerprint matches a comment, not only an executable reference | `install.sh:886` | `SPEC_FINGERPRINT_COMMENT_MATCH` (LOW, decision required) |
+
+F4 (informational, not filed): the removal-failure warning at `install.sh:889-890` is **effectively unreachable** — `rm -f` needs directory write, and removing that permission aborts the install earlier at `:552`. Not defective, untestable without root. Do not rely on it as a safety net.
+
+The R1 over-match attack succeeded, and the differential against the pre-R1 regex shows why it is not R1's defect: `user-glmprefix` reads `DEL/DEL same` in LF — already deleted before the fix. R1 extended its reach to CRLF only, which closing the under-match makes unavoidable. **R1 must not be reverted**; reverting restores 28 permanently stale aliases on every CRLF rc.
+
+### The round-2 review was recovered, and it overturned a verification in the entry below
+Two teammate panes (SPEC author + plan auditor) delivered findings to the screen and were then closed; the findings existed only in their transcripts. Recovered and each claim independently re-derived against the shipped code:
+
+- **Their F1 does not apply.** It criticises a `mapfile -t` prescription; the SPEC on disk already prescribes the bash-3.2-safe `while IFS= read -r` form and argues against `mapfile` by name. The auditor reviewed the brief or an earlier draft.
+- **Their F3 stands, and corrects this log.** The Phase 19 planning entry below records: *"Attempted to falsify the claim that defect 1c is unreachable, and failed … both `--key ""` and `ZAI_API_KEY=""` exit at the error path."* That test used the wrong input. `""` is indeed caught by `[ -n … ]`; a **lone newline** is not — it passes the guard as non-empty, `detect_key` returns 0 so the call site does not exit, and `$(…)` then strips the newline, delivering the empty string to `validate_key`. Reproduced on both branches. §1c is **live, not latent**; the "latent, not live" framing is withdrawn.
+- **Their F4 stands.** §1d's "grants no privilege the attacker did not already have" holds for injection (needs an induced disk-full) but not exfiltration: `cp -p` follows the symlink with nothing induced, writing the rc **outside `$HOME`** as the victim. Reproduced.
+
+Both SPEC sections were corrected in place with dated markers; the prescribed fixes were already right and did not change.
+
+### SPEC_LOW_DEFECTS_CLEANUP — all four fixed, reproduction-first
+RED (before): 1a two files → **4** array entries (three nonexistent); 1b pipe-to-bash hint present; 1c `validate_key` accepted `""`; 1d rc written through the `.bak` symlink to a path outside `$HOME`. GREEN (after): 0 failures.
+
+| Defect | Site | Fix |
+|---|---|---|
+| 1a | `install.sh:244` | `while IFS= read -r` + `[ -n ]` guard (bash-3.2-safe; producer untouched) |
+| 1b | `install.sh:1536` | printed hint → `bash <(curl -fsSL …)`, matching `README.md:37` |
+| 1c | `smoke_test_models.sh:152` | `[ -z "$key" ] && return 1` as the first check |
+| 1d | `install.sh:1083` | `rm -f "$target_rc.bak"` immediately before the `cp -p` |
+
+Verified before applying 1a, rather than assumed: the prescribed `[ -n … ] && arr+=(…)` form ends the loop body with a possibly-failing command under `set -eE`, which is the exact class the SPEC exists to prevent. Probed both that form and an `if`-guarded variant — both survive; the SPEC's prescription was used verbatim.
+
+No-regression bar: **0 failures** — 6 wrappers / 28 aliases; user-owned colliding aliases survive in LF *and* CRLF; mode-600 rc keeps mode **and inode**; symlinked rc stays a symlink and the target receives the block; no stray `.tmp`/`.bak`; 3-run idempotency (1 header, 1 PATH line, no alias growth); no phantom cleanup banner on a clean machine; `bash -n` on both scripts.
+
+### Preserved: the Windows `$PROFILE` measurement (auditor F2)
+`SPEC_INSTALLPS1_E2E_WINDOWS` was deleted by decision (recorded below), so this measurement — taken on the operator's real machine under PowerShell 5.1 — would otherwise survive only in a closed pane's transcript:
+
+```
+REAL USERPROFILE : C:\Users\jung.hur
+PROFILE (before) : C:\JHCloud\OneDrive - North Dakota University System\...\Microsoft.PowerShell_profile.ps1
+USERPROFILE now  : C:\Temp\scratchprofile
+PROFILE (after)  : C:\JHCloud\OneDrive - ...  (unchanged)
+VERDICT: PROFILE DID NOT FOLLOW override
+```
+
+`$PROFILE` is a PowerShell automatic variable fixed at session start, not derived from `$env:USERPROFILE` at use time, and `install.ps1:311` writes the 28 aliases via `Set-Content -Path $PROFILE`. So the sandbox option that relied on overriding `$env:USERPROFILE` is **falsified, not open**: wrappers would go to the scratch directory while 28 aliases landed in the operator's real, OneDrive-synced profile. Should that SPEC ever be revived, this closes its open question.
+
+### Gap, stated rather than glossed
+`SPEC_SHELLCHECK_BASELINE` was **not started** — `shellcheck` is still not installed, so no lint baseline exists. The three newly-filed finding SPECs are unexecuted by design (a finding is not fixed inside the review that found it).
 
 ## Session 2026-08-17 11:43 CEST (Phase 19 planning)
 - Coding CLI used: Claude Code CLI (Opus 5, 1M context)

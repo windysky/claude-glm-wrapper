@@ -153,6 +153,16 @@ validate_key() {
     local key="$1"
     local LC_ALL=C  # byte-wise matching so the charset stays strictly ASCII
 
+    # Reachable, not merely inconsistent with install.sh's sibling guard: every
+    # detect_key branch tests [ -n ... ] on the VARIABLE, but the call site passes
+    # $(detect_key), and command substitution strips trailing newlines AFTER that
+    # test. A key of "\n" therefore passes the guard, returns 0 so the call site
+    # does not exit, and arrives here empty. The charset glob does not match "".
+    if [ -z "$key" ]; then
+        echo "ERROR: API key is empty." >&2
+        return 1
+    fi
+
     case "$key" in
         *[!A-Za-z0-9._-]*)
             echo "ERROR: API key contains unexpected characters." >&2
