@@ -4,11 +4,10 @@
 - Purpose: Local wrapper/installer scripts to run Claude Code against Z.AI GLM models via per-model `CLAUDE_HOME` directories.
 - Scope: Cross-platform install scripts + docs for `ccg` (GLM-5.3, default, 1M context), `ccg53` (GLM-5.3), `ccg5t` (GLM-5-Turbo), `ccg47` (GLM-4.7), `ccg46` (GLM-4.6), `ccg45` (GLM-4.5), and `ccg45v` (GLM-4.5V vision) — **6 wrappers, each verified to serve the model its name claims**. Each wrapper uses Z.AI's opus/sonnet/haiku tier scheme (opus+sonnet = its own model, haiku = glm-4.7). Installer manages GLM aliases only — the bare `claude` command and any user-curated `ccd`/`ccdD`/`claudeD` aliases are intentionally untouched.
 - **Retired in Phase 17** (Z.AI silently reroutes these IDs while still returning HTTP 200): `ccg52`/`ccg51`/`ccg5` (served by glm-5.3), `ccg45air`/`ccf` (served by glm-4.7). The installer now deletes their wrapper scripts and strips their aliases on re-run.
-- Last updated: 2026-08-17 06:50 CEST
+- Last updated: 2026-08-17 11:43 CEST
 - Last coding CLI used (informational): Claude Code CLI (Opus 5, 1M context)
 - Current version: 2.5.0 (package.json)
-- Latest commit on `main`: `0919f90`, pushed to origin. Working tree **clean**. Phase 18 lineage: `0919f90` (tooling config) ← `18d49e6` (CI + SHA-pinned actions) ← `985d5d6` (.gitignore bin/ fix) ← `c7839e4` (Phase 18 docs) ← `02c4bd4` (17 review fixes, v2.5.0) ← `347801f` (Phase 16 docs).
-- Latest commit on `main`: `a103f0b` (Phase 16: harness code review — settings.json chmod 600 + set-e guard + csh dedup, v2.4.2), pushed to origin. Recent lineage: `a103f0b` (Phase 16 review fixes) ← `a29600e` (Phase 15 auto-compact 900K) ← `d8c936d` (A variants) ← `7b2d009`/`92164c0` (remove redundant ./install bootstrap) ← `5e1eb62` (Phase 14 smart-dedup) ← `502411d` (Phase 13 GLM-5.2 + tier scheme). NOTE: the prior handoff incorrectly recorded `25ff837` as the tip; git history between that and Phase 13 also has `072a9c9` (Phase 11+12) plus a run of install.ps1 PS5.1 hardening commits (`ec387cb`, `4399507`, `03e7dfb`, `657b2c9`, `70ff1ff`) that were never logged in PROJECT_LOG.md. Those are pre-existing and left as-is.
+- Latest commit on `main`: `b0ff602`, pushed to origin. Working tree **clean**. Lineage: `b0ff602` (Phase 18 end-of-session docs) ← `0919f90` (tooling config) ← `18d49e6` (CI + SHA-pinned actions) ← `985d5d6` (.gitignore bin/ fix) ← `c7839e4` (Phase 18 docs) ← `02c4bd4` (17 review fixes, v2.5.0) ← `347801f` (Phase 16 docs).
 
 ## 2. Current State
 - GLM-5 wrapper (`ccg5`): Completed
@@ -48,8 +47,12 @@
 - Harness code review (harness-hur-code-review-and-fix) — 3 install.sh defects fixed: (SEC) `chmod 600` on the runtime-generated settings.json in all 10 wrappers (the plaintext API key was world-readable at 644 while wrappers were already 700); (BUG) `check_claude_installation || true` so the "continue anyway" path without `claude` no longer false-aborts under `set -eE`+ERR trap; (IDEMPOTENCY) csh space-format alias cleanup so `.cshrc` re-runs stop duplicating the alias block. install.ps1 unaffected (Unix-only exposure; PS path returns $false without throwing). v2.4.2; independently reviewed (evaluator-active) APPROVED: Completed (commit `a103f0b`)
   - Completed in Session 2026-07-03 00:57 CDT
 
-- Add GLM-5.3 wrapper (`ccg53` + D/Dd/A) and consolidate the wrapper set to the 6 models that genuinely serve themselves; retire `ccg52`/`ccg51`/`ccg5`/`ccg45air`/`ccf`; haiku tier `glm-4.5-air` → `glm-4.7`; installer-side alias cleanup rewritten to full-line value-anchored matching; smoke test now detects silent model substitution; v2.5.0: Completed (uncommitted — see §7)
+- Add GLM-5.3 wrapper (`ccg53` + D/Dd/A) and consolidate the wrapper set to the 6 models that genuinely serve themselves; retire `ccg52`/`ccg51`/`ccg5`/`ccg45air`/`ccf`; haiku tier `glm-4.5-air` → `glm-4.7`; installer-side alias cleanup rewritten to full-line value-anchored matching; smoke test now detects silent model substitution; v2.5.0: Completed (committed `02c4bd4`, pushed)
   - Completed in Session 2026-08-16 08:50 CDT
+- Phase 18 adversarial code review — 18 defects fixed across 6 files (3 HIGH security), 7 commits pushed, 0 CRITICAL/HIGH open at close: Completed (`02c4bd4` … `b0ff602`)
+  - Completed in Session 2026-08-16 → closed 2026-08-17 06:50 CEST
+- Phase 19 planning — 4 SPECs authored for the remaining open items, then reduced to 3 (the install.ps1 end-to-end SPEC was dropped by user decision): Completed
+  - Completed in Session 2026-08-17 11:43 CEST
 
 ## 3. Execution Plan Status
 - Phase 1: Add GLM-5 / adjust GLM-4.7 directories and mappings
@@ -106,37 +109,49 @@
   - Status: Completed (implemented, tested end-to-end in a sandbox HOME, redeployed to this machine, runtime-verified). **Not yet committed.**
   - Last updated: 2026-08-16 08:50 CDT
 
-- Phase 18 harness code review + fix — 17 defects across 6 files, found by 3 independent reviewers + 10 Implementers. Includes 3 HIGH security fixes (API-key command injection in both installers; curl config injection introduced by our own argv fix; rc data-loss introduced by our own symlink fix), PowerShell ACL hardening at 12 sites, and a CRLF alias regression that silently defeated Phase 17's central purpose on Windows-style rc files: Completed (uncommitted — see §7)
+- Phase 18 harness code review + fix — 17 defects across 6 files, found by 3 independent reviewers + 10 Implementers. Includes 3 HIGH security fixes (API-key command injection in both installers; curl config injection introduced by our own argv fix; rc data-loss introduced by our own symlink fix), PowerShell ACL hardening at 12 sites, and a CRLF alias regression that silently defeated Phase 17's central purpose on Windows-style rc files: Completed (committed `02c4bd4`, pushed)
   - Completed in Session 2026-08-16 (Phase 18)
 
 ## 4. Outstanding Work
-- Windows-side verification of install.ps1 (now: 5.3 wrapper + tier scheme + ccg53 shims + Remove-RetiredWrappers) on a real Windows host.
-  - Status: Open — standing gap across all phases.
-  - **Correction (2026-08-16)**: the previous note "no Windows host in this environment" is wrong. Windows IS this same machine — `/mnt/c` is mounted, PowerShell 5.1 is at its standard path, and PowerShell 7 is installed at `C:\Program Files\PowerShell\7`.
-  - **Correction to the correction (2026-08-16, Phase 18)**: an earlier claim in this file that "WSL interop is disabled" was ALSO wrong — it came from a bad probe. Verified: `/proc/sys/fs/binfmt_misc/WSLInterop` reads `enabled`, and invoking `powershell.exe` directly returns `5.1.26100.9168`. Windows PowerShell **is executable from this WSL session**; only `pwsh`/`powershell.exe` are absent from `PATH`.
-  - **What this actually unblocks, and what it does not**: `install.ps1` can now be **parsed** safely (parsing does not execute) — done in Phase 18 via `[System.Management.Automation.Language.Parser]::ParseFile`, result **0 syntax errors** (5055 tokens at session close, after the ACL work). First mechanical validation of install.ps1 in the project's history. **Running** it remains unsafe here: `install.ps1:29-36` anchors every path to `$env:USERPROFILE`, which resolves to the real Windows profile (`C:\Users\jung.hur`), and a bash-side `HOME` override cannot redirect it — so there is no safe sandbox for a full execution test. Full end-to-end Windows verification therefore stays OPEN.
-  - **What Phase 18 substituted for execution**: AST parse; the `Test-ZaiApiKey` guard extracted and unit-tested under real Windows PowerShell 5.1.26100.9168 (10 cases, 0 failures); `Protect-KeyFile` executed against a real temp file with ACEs enumerated before/after; one generated wrapper extracted and executed against a temp `CLAUDE_HOME`. The install flow itself is still unexecuted.
-  - Last updated: 2026-08-17 06:50 CEST (Phase 18)
+
+> **Three SPECs are ready to execute.** They live in `.moai/specs/` (gitignored, local-only) and are the next agent's work queue. See §7 for the exact starting point.
+> `SPEC_LOW_DEFECTS_CLEANUP.md` · `SPEC_SHELLCHECK_BASELINE.md` · `SPEC_INDEPENDENT_REVIEW_ORCHESTRATOR_FIXES.md`
+> `SPEC_SECURITY_APIKEY_INJECTION.md` is marked IMPLEMENTED in its own header — retained as a record, **do not re-execute**.
+
+- **`package.json` advertises an npx entry point that fetches somebody else's package.**
+  - Status: Open (LOW — nothing user-facing is broken today)
+  - Discovered 2026-08-17 while resolving the Windows-user question. `package.json` `description` says *"Run with: npx claude-glm-installer"*, and `bin` declares that name — but `npm view claude-glm-installer` resolves to **upstream JoeInnsp23's v1.0.3** (`repository.url = JoeInnsp23/claude-glm-wrapper`), not this fork's v2.5.0. Anyone following that instruction runs a different, older codebase and would not know.
+  - Not currently harmful: `README.md` only documents `git clone` + `bash install.sh`; the stale npx claim exists solely in `package.json`'s description field.
+  - Options: drop the npx claim from the description, or publish under a distinct name. Not decided.
+  - Last updated: 2026-08-17 11:43 CEST
+  - Reference: PROJECT_LOG.md Session 2026-08-17 (planning)
+- ~~Windows-side end-to-end verification of `install.ps1`.~~ **CLOSED — will not do (user decision, 2026-08-17 11:43 CEST).**
+  - Status: **Closed / won't-do.** The SPEC that covered it (`SPEC_INSTALLPS1_E2E_WINDOWS.md`) was deleted, not deferred.
+  - Rationale: the cost/benefit collapsed once the user population was measured. The repo has **0 stars, 0 forks**, and the npm name resolves to upstream — so this fork's `install.ps1` reaches essentially one Windows user, the repo owner, who has decided not to spend the effort. Running it would have required either a throwaway Windows account, a VM, or accepting writes to the real `%USERPROFILE%` (there is no sandbox — `install.ps1` anchors 14 paths to it and a bash-side `HOME` override cannot redirect them).
+  - **`install.ps1` itself is untouched and still shipped** (1386 lines). What was dropped is the *verification task*, not the code. It retains the Phase 18 static assurance: AST parse 0 errors, `Test-ZaiApiKey` unit-tested 10/10 under real PowerShell 5.1, `Protect-KeyFile` executed against a real file, one generated wrapper executed against a temp `CLAUDE_HOME`, and a close line-by-line review that found no defects.
+  - If a real Windows user ever appears, reopen this: the bash counterpart produced two data-loss regressions in a single review, and the PowerShell side has never had that scrutiny.
+  - Last updated: 2026-08-17 11:43 CEST
+  - Last updated: 2026-08-17 11:43 CEST (Phase 18)
   - Reference: PROJECT_LOG.md Session 2026-08-16 → closed 2026-08-17 (Phase 18)
 - The `[1m]` bracket model form cannot be validated against the raw Z.AI API, and one live `ccg` launch is still the only way to confirm it end-to-end.
   - Status: Open (structural — not fixable by testing harder)
   - Both `glm-5.2[1m]` and `glm-5.3[1m]` return HTTP 400 "modelCode does not exist" on `/v1/messages`; the bracket is a Claude-Code-side routing convention the client translates before sending. Reroute behaviour for the bracket form is therefore INFERRED from the base model id, not observed. The base ids ARE verified to serve themselves (live, Phase 17 + 18).
   - README and `smoke_test_models.sh` now both state this limitation explicitly (Phase 18), so the "verified" claim no longer overreaches.
   - Recommended: launch `ccg` once and confirm the session reports GLM-5.3 with the 1M window.
-  - Last updated: 2026-08-17 06:50 CEST
+  - Last updated: 2026-08-17 11:43 CEST
   - Consolidates the former separate "Runtime confirmation that `glm-5.2[1m]` resolves" item, which was the same gap for the superseded 5.2 default.
-- Optional: remove the stale `~/.local/bin/claude-glm-5.2.bak-1000000` stopgap backup.
-  - Status: Open (optional user cleanup) — note this file was NOT observed in `~/.local/bin` during Phase 17/18 redeploys, so it may already be gone.
-  - Last updated: 2026-08-17 06:50 CEST
+- ~~Remove the stale `~/.local/bin/claude-glm-5.2.bak-1000000` stopgap backup.~~ **RESOLVED 2026-08-17** — verified absent from `~/.local/bin`; already cleaned up. No action needed.
+  - Status: Resolved
+  - Last updated: 2026-08-17 11:43 CEST
 - Blank line accumulates one per installer run in the user's rc file.
   - Status: Open (LOW, cosmetic, PRE-EXISTING — not introduced by Phase 17/18)
   - Confirmed by two independent reviewers: alias lines themselves never duplicate (28 stays 28, one header stays one); only a blank line grows. The removal filter strips header/comment/alias lines but not the blank line preceding the block.
   - Deliberately not fixed: the tidy fix (filtering blank lines) risks eating a blank line the user wrote.
-  - Last updated: 2026-08-17 06:50 CEST
+  - Last updated: 2026-08-17 11:43 CEST
 - Minor review findings accepted but not fixed (all LOW, all recorded with reproductions in PROJECT_LOG Phase 18).
   - Status: Open (LOW)
   - `install.sh` unquoted `all_wrappers=($(find_all_installations))` word-splits on a wrapper path containing a space; the printed pipe-to-bash install hint differs from the safe process-substitution form used everywhere else; `smoke_test_models.sh` `validate_key` accepts an empty string where its `install.sh` sibling rejects it (unreachable today — `detect_key` guards it); `.bak` symlink following during rc rewrite (same-user, grants no privilege).
-  - Last updated: 2026-08-17 06:50 CEST
+  - Last updated: 2026-08-17 11:43 CEST
 
 ## 5. Risks, Open Questions, and Assumptions
 - Risk: TypeScript build / proxy code removed; `package.json` no longer includes TypeScript/dev deps.
@@ -241,8 +256,21 @@
   - PowerShell script execution on Windows (reason: not run in this environment)
 
 ## 7. Restart Instructions
+
+> ## ▶ YOUR JOB: execute three SPECs
+>
+> They are in `.moai/specs/` (gitignored, local-only). Execute them **in this order** — the dependency is real, not cosmetic:
+>
+> 1. **`SPEC_INDEPENDENT_REVIEW_ORCHESTRATOR_FIXES.md`** — do this FIRST. It is a *review* SPEC: the deliverable is a verdict plus `file:line` findings, **not a diff**, and findings must be filed as new SPECs rather than fixed inline. It audits four fixes in `install.sh` that carry the same author for both implementation and verification. Running it first means the other two build on reviewed ground; running it last means possibly reviewing code that has already moved.
+> 2. **`SPEC_LOW_DEFECTS_CLEANUP.md`** — four LOW defects, all with reproductions. **Read its §1a carefully**: an earlier prescription of `mapfile -t` was caught as defective (bash 4.0+ only; macOS ships 3.2.57, and `install.sh` currently uses zero bash-4 constructs — under `set -eE` it would 127 into the ERR trap and hand every macOS user a file-a-bug prompt; it also breaks the empty-array case into a phantom entry that reaches `rm ""`). The SPEC carries the corrected bash-3.2-safe `while read` form. **Do not "simplify" it back to `mapfile`.**
+> 3. **`SPEC_SHELLCHECK_BASELINE.md`** — install shellcheck, lint 4 shell files at the correct per-file dialect (`install.sh`/`smoke_test_models.sh` are bash; `.git_hooks/pre-commit`/`pre-push` are `#!/bin/sh`), record a versioned baseline. It recommends accepting the existing findings as debt and gating only NEW ones — that recommendation is argued in the SPEC; read the argument before overriding it.
+>
+> `SPEC_SECURITY_APIKEY_INJECTION.md` is marked **IMPLEMENTED** in its own header. It is a record of Phase 18 work. **Do not re-execute it.**
+>
+> **Not audited:** these SPECs' proportionality, acceptance-criteria quality, and the shape of the review SPEC were never independently reviewed — `plan-auditor` was spawned and never delivered (mailbox routing failed four times). Their *factual claims* were verified against the real files. Treat the structure with normal scepticism.
+
 - Starting point:
-  0. **Nothing is in flight. Working tree is clean and everything is pushed.** `origin/main` = `0919f90`, divergence `0 0`. Phases 17 and 18 are both fully committed. There is no half-finished work to resume and no uncommitted state to reconcile.
+  0. **Nothing is in flight. Working tree is clean and everything is pushed.** `origin/main` = `b0ff602`, divergence `0 0`. Phases 17 and 18 are both fully committed. There is no half-finished work to resume and no uncommitted state to reconcile. The SPECs above are new work, not resumed work.
   1. Commit lineage (newest first):
      - `0919f90` chore: MoAI-ADK tooling configuration (CLAUDE.md condensed, .mcp.json, .claudeignore, .worktreeinclude, .agency.archived/)
      - `18d49e6` ci: label-sync workflow + git hooks, **actions SHA-pinned**
@@ -258,12 +286,12 @@
      - The Edit tool cannot write outside the project dir (e.g. `~/.bashrc`); use an anchored `sed -i` after a backup.
      - Never run the installer against the real `$HOME` when testing — always `env HOME="$sandbox"`.
      - The pre-commit hook runs `moai gate` (currently exits 0); the pre-push hook runs `make ci-local` and skips cleanly since there is no Makefile.
-- Recommended next actions (all optional; nothing is blocking):
-  1. **Pick up the aliases**: `source ~/.bashrc` or open a new shell, then `ccg` to use GLM-5.3.
-  2. **The one genuinely useful verification left**: launch `ccg` once and confirm the session really reports GLM-5.3 with the 1M window. The raw API cannot validate the `glm-5.3[1m]` bracket form (it 400s — the bracket is client-side), so a live launch is the only remaining evidence.
-  3. **Re-run `smoke_test_models.sh`** whenever Z.AI changes plan availability. Current baseline: 6 shipped models PASS with matching served-by, 4 retired IDs REROUTED, `glm-4.7-flashx` 429 (not plan-covered — it is the control proving the 200s are real plan access). A retired ID flipping REROUTED → PASS means Z.AI un-retired it.
-  4. **If `install.ps1` ever needs changing**, remember it has never been executed end-to-end. Parse it, unit-test extracted functions under real PS 5.1, and lean on structural symmetry with the bash side — that is the review standard Phase 18 established for it.
-  5. **Consider installing `shellcheck`.** Phase 18's two worst regressions (an unguarded `return 1` under `set -e`, and a truncating redirect) are exactly the class a shell linter flags, and its absence is the largest remaining gap in the static tier.
+- Recommended next actions:
+  1. **Execute the three SPECs** in the order given above. That is the primary work.
+  2. **Pick up the aliases** if this is a fresh shell: `source ~/.bashrc`, then `ccg` for GLM-5.3.
+  3. **The one cheap verification still worth doing**: launch `ccg` once and confirm the session reports GLM-5.3 with the 1M window. The raw API rejects the `glm-5.3[1m]` bracket form (it is a client-side routing convention), so a live launch is the only remaining evidence for it.
+  4. **Re-run `smoke_test_models.sh`** when Z.AI changes plan availability. Baseline: 6 shipped models PASS with matching served-by, 4 retired IDs REROUTED, `glm-4.7-flashx` 429 (the control proving the 200s are real plan access). A retired ID flipping REROUTED → PASS means Z.AI un-retired it and it may deserve a wrapper back.
+  5. **If you touch `install.ps1`**, remember it has never been executed end-to-end and the verification task was deliberately dropped (§4). Parse it, unit-test extracted functions under real PowerShell 5.1 via `/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe`, and lean on structural symmetry with the bash side. Never run the installer itself — it writes to the real `%USERPROFILE%`.
 - Cross-project wiki: `~/PROJECTS/wiki/concept/claude-code-auto-compact-window-headroom.md` (why the window is 900000); `~/PROJECTS/wiki/concept/set-e-err-trap-false-abort.md` (bare `return 1` under `set -e`+ERR trap false-aborts — Phase 18 hit this again at a second call site); `~/PROJECTS/wiki/concept/generated-secret-file-perms.md` (chmod the config a script generates, not just the script).
 - Security posture at close: **0 CRITICAL, 0 HIGH open.** Across the Phase 18 program 21 findings were tracked, 13 closed and verified, 1 retracted by its own author as a false positive, and the remainder are LOW/INFO listed in §4. Two of the three HIGH findings were regressions introduced by fixes earlier in the same review and caught by independent re-gating — which is the single strongest argument for keeping the never-self-review rule.
-- Last updated: 2026-08-17 06:50 CEST
+- Last updated: 2026-08-17 11:43 CEST

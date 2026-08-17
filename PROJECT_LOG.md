@@ -6,6 +6,7 @@ Bounded active log for the claude-glm-wrapper installer (Claude Code wrappers fo
 - logs/PROJECT_LOG_2026-H1.md — 10 sessions (2026-02 … 2026-04)
 
 ## Session Index (active, newest first)
+- 2026-08-17 11:43 CEST (Phase 19 planning — 3 SPECs queued for execution; ps1 e2e SPEC dropped)
 - 2026-08-16 → closed 2026-08-17 06:50 CEST (Phase 18 harness code review — 18 fixes, 6 commits pushed)
 - 2026-08-16 08:50 CDT (Phase 17 GLM-5.3 + consolidation to genuinely-serving models)
 - 2026-07-03 00:57 CDT (Phase 16 harness review)
@@ -18,6 +19,52 @@ Bounded active log for the claude-glm-wrapper installer (Claude Code wrappers fo
 - 2026-06-16
 
 ---
+
+## Session 2026-08-17 11:43 CEST (Phase 19 planning)
+- Coding CLI used: Claude Code CLI (Opus 5, 1M context)
+- Phase worked on: Phase 19 — turn Phase 18's consciously-deferred items into executable SPECs. **No code was changed this session**; `git status` clean throughout, `origin/main` unchanged at `b0ff602`.
+
+### What was produced
+Four SPECs authored by `manager-spec` under `.moai/specs/` (gitignored, local-only), then reduced to three:
+
+| SPEC | Severity | Shape |
+|---|---|---|
+| `SPEC_LOW_DEFECTS_CLEANUP.md` | LOW ×4 | Code fixes, each with a verbatim reproduction |
+| `SPEC_SHELLCHECK_BASELINE.md` | MEDIUM | Tooling gap + an explicit fix-now-vs-accept-debt decision |
+| `SPEC_INDEPENDENT_REVIEW_ORCHESTRATOR_FIXES.md` | MEDIUM | **Review** SPEC — deliverable is a verdict, not a diff |
+| ~~`SPEC_INSTALLPS1_E2E_WINDOWS.md`~~ | — | **Deleted** by user decision (see below) |
+
+`SPEC_SECURITY_APIKEY_INJECTION.md` (Phase 18) was re-headed **IMPLEMENTED and VERIFIED — do not re-execute**, so the next agent does not mistake a record for a work item.
+
+### The finding that justified the session
+The SPEC author **rejected the orchestrator's prescribed fix** for defect 1a and was right to. The brief said to replace `local all_wrappers=($(find_all_installations))` with `mapfile -t` and called it "a clean swap". It fails twice, both reproduced and both independently re-verified by the orchestrator:
+
+1. **`mapfile` is bash 4.0+; macOS ships bash 3.2.57.** macOS is a documented supported platform (`README.md:23`, `:34`), and `install.sh` currently contains **zero** bash-4-only constructs (`mapfile`/`readarray`/`declare -A` all count 0) — this would have been the first. `set -eE` + ERR trap sit at `install.sh:1545-1546`, so `mapfile: command not found` → 127 → `handle_error` → every macOS user gets a file-a-bug prompt instead of an install.
+2. **It breaks the empty case, which is the fresh-install path.** `find_all_installations` ends `printf '%s\n' "${found_files[@]}"` (`install.sh:238`), which on an empty array emits one blank line. Measured: `mapfile -t` → `count=1 first=[]`; the current `$(...)` → `count=0`; a guarded `while read` → `count=0`. The phantom entry defeats the early return, is displayed to the user as a wrapper to clean up, is approved under that false description, and reaches `rm ""`.
+
+Corrected to a bash-3.2-safe `while IFS= read -r` loop with an `[ -n ]` guard — which is also the idiom `find_all_installations` already uses twelve lines above, so it satisfies "preserve existing style" where `mapfile` would have been the modernisation the project rule forbids. **A LOW cosmetic fix would have broken every macOS install.**
+
+Three further corrections to the orchestrator's brief, accepted:
+- **1b** — the pipe-to-bash hint is *self-contradictory*, not a live hazard. The stdin-eats-the-next-line failure occurs when the *installer* is fed to bash over stdin; the hint is a string a user copies into a fresh shell, so printing it executes nothing. Justification moved onto contradiction with `README.md:37` and `install.sh:7`/`:11`.
+- **1d** — the two directions are not equally reachable. `.bak` exfiltration via `cp -p` needs nothing; injection needs the restore path to fire, i.e. an induced disk-full. Recorded so a reviewer knows to force the condition.
+- **SPEC 4 option (a)** — a throwaway Windows account is the option *least* likely to reproduce the Phase 18 ACL finding, because that finding exists only because the real profile is long-lived. Inverts the intuitive safety ordering.
+
+### Decisions taken
+- **`install.ps1` end-to-end verification: closed, will not do** (user decision). The severity question the SPEC author raised — "MEDIUM only if the Windows user population is ~0" — was resolved by measurement: the repo has **0 stars, 0 forks**, and `npm view claude-glm-installer` resolves to upstream JoeInnsp23's **v1.0.3**, not this fork's 2.5.0. This fork's `install.ps1` therefore reaches essentially one Windows user. The SPEC was deleted rather than deferred. **`install.ps1` itself is untouched and still shipped** (1386 lines) with its Phase 18 static assurance intact.
+- **Execution order fixed** as review → LOW defects → shellcheck, so the review audits code before the other SPECs move it.
+- **Project documentation generation skipped** deliberately: the `/moai plan` workflow offers to create `product.md`/`structure.md`/`tech.md`, but this project already carries richer context in `PROJECT_HANDOFF.md` and this log.
+- **SPEC format**: followed the repo's existing flat `SPEC_<NAME>.md` convention rather than the workflow's 12-field GEARS frontmatter — consistency inside the repo over the generic schema.
+
+### New finding (not from the SPECs)
+`package.json`'s description advertises *"Run with: npx claude-glm-installer"*, but that npm name resolves to **upstream's v1.0.3**, not this fork. Anyone following it runs a different, older codebase. Nothing user-facing is broken today — `README.md` documents only `git clone` + `bash install.sh` — so it is recorded in §4 as LOW, undecided.
+
+### Verification performed
+- All load-bearing SPEC claims re-checked against the real files by the orchestrator: the unquoted array at `install.sh:244`; `find_all_installations` emitting one path per line; the pipe form at `install.sh:1536` vs the safe form at `:7`/`:11`/`README.md:37`; the `validate_key` empty-check asymmetry (smoke 0, install.sh 1); `cp -p` with no prior `rm -f`; `install.ps1`'s 14 `%USERPROFILE%` anchors.
+- **Attempted to falsify** the claim that defect 1c is unreachable, and failed: all four `detect_key` success paths are `[ -n … ]`-guarded, and empirically both `--key ""` and `ZAI_API_KEY=""` exit at the error path before `validate_key` runs. The "latent, not live" framing stands.
+- Re-verified the `mapfile` rejection independently (all four axes above).
+
+### Gap, stated rather than glossed
+`plan-auditor` was spawned and **never delivered** — four idle notifications, nothing through the mailbox, no artifacts. So the SPECs' *factual claims* are verified, and the orchestrator's *brief* was independently reviewed (that is how the `mapfile` bug surfaced), but **the SPECs themselves were never independently audited** — proportionality, acceptance-criteria quality, and the review-SPEC shape remain unreviewed. Recorded in §7 so the executing agent applies normal scepticism. Mailbox routing failed repeatedly across this and the prior session; `manager-spec` worked around it by writing its report to a file, which is how its findings were recovered.
 
 ## Session 2026-08-16 → closed 2026-08-17 06:50 CEST (Phase 18 harness code review + fix)
 - Coding CLI used: Claude Code CLI (Opus 5, 1M context)
