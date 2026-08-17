@@ -6,7 +6,7 @@ Bounded active log for the claude-glm-wrapper installer (Claude Code wrappers fo
 - logs/PROJECT_LOG_2026-H1.md — 10 sessions (2026-02 … 2026-04)
 
 ## Session Index (active, newest first)
-- 2026-08-16 (Phase 18 harness code review — 4-agent adversarial review + 10 Implementers)
+- 2026-08-16 → closed 2026-08-17 06:50 CEST (Phase 18 harness code review — 18 fixes, 6 commits pushed)
 - 2026-08-16 08:50 CDT (Phase 17 GLM-5.3 + consolidation to genuinely-serving models)
 - 2026-07-03 00:57 CDT (Phase 16 harness review)
 - 2026-07-02 10:01 CDT
@@ -19,7 +19,7 @@ Bounded active log for the claude-glm-wrapper installer (Claude Code wrappers fo
 
 ---
 
-## Session 2026-08-16 (Phase 18 harness code review + fix)
+## Session 2026-08-16 → closed 2026-08-17 06:50 CEST (Phase 18 harness code review + fix)
 - Coding CLI used: Claude Code CLI (Opus 5, 1M context)
 - Invocation: `/harness-hur-code-review-and-fix` — autonomous review, then fix everything real found. "Fix only what is broken."
 - Team: Orchestrator + 3 persistent members (Reviewer, QA Agent, Security Auditor) + 10 disposable Implementers. No web UI → Playwright mandate N/A. No test suite and no CI existed, so QA established a baseline from zero.
@@ -62,6 +62,27 @@ Bounded active log for the claude-glm-wrapper installer (Claude Code wrappers fo
 
 ### Process note
 The last 4 of 17 fixes were implemented by the Orchestrator directly: two Implementers died on an account session limit and the final three agents on `SSL certificate hostname mismatch`. Those four were **diagnosed** by the independent Reviewer, so the finding is independent; the implementation is not independently reviewed and is verified behaviourally only. Stated for the record rather than glossed.
+
+### Session close — commits pushed (2026-08-17 06:50 CEST)
+An 18th fix landed during the commit phase, surfaced by the commit itself: `git add bin/cli.js` printed *"The following paths are ignored… bin"*. The tooling's `.gitignore` rewrite had added `bin/` under a **"Go Build Artifacts"** heading, but this is a Node package whose `bin/` is source and its published entry point (`package.json` → `"bin": {...}`, `"files": ["bin/"]`). The two existing files survived only because `.gitignore` does not apply to already-tracked files; any NEW file under `bin/` was silently ignored and would never have shipped. Fixed with a root-anchored negation (`!/bin/`) so nested build dirs stay ignored. Verified: new `bin/` file visible to git, `tools/bin/compiled` still ignored, 0 spurious diffs.
+
+Six commits, all pushed to `origin/main` (`0919f90`), working tree clean:
+
+| Commit | Contents |
+|---|---|
+| `02c4bd4` | fix: 17 review defects, 3 HIGH security (7 files, +882/−786) |
+| `c7839e4` | docs: Phase 18 session record |
+| `985d5d6` | fix: `.gitignore` `bin/` entry-point hazard |
+| `18d49e6` | ci: label-sync workflow + git hooks, **actions SHA-pinned** |
+| `0919f90` | chore: MoAI-ADK tooling configuration |
+
+**Commit hygiene decisions, recorded because they were deliberate:**
+- Staged by explicit pathspec throughout; never `git add -A`. Tooling-authored changes (`CLAUDE.md` −553 lines, `.mcp.json`) were committed in their **own** `chore:` commit rather than folded under a `fix:` message that would have misattributed them.
+- `.github/` was NOT committed until its actions were pinned. `actions/checkout@v4` → `11d5960a326750d5838078e36cf38b85af677262`, `EndBug/label-sync@v2` → `52074158190acb45f3077f9099fea818aa43f97a`, both resolved via the GitHub API (not transcribed) and confirmed to dereference to commit objects. The pins landed in the **same commit** as the workflow: a workflow goes live the instant it is pushed, and the job holds `issues: write` + `pull-requests: write` + `GITHUB_TOKEN`, so pinning as a follow-up would have left a live window.
+- Also verified clean in that workflow while reviewing it: no `pull_request_target`; `permissions:` explicitly scoped; the `dry_run` input is interpolated into a `with:` block rather than a `run:` block, so there is no shell-injection sink.
+- Before committing `.gitignore`, its tooling-authored changes were inspected rather than assumed: `logs/` → `logs/*` + `!logs/.gitkeep` (archives still ignored — confirmed at `.gitignore:114`), plus new credential/auth/state ignore patterns. Benign, kept.
+
+Post-push sanity: clean install still yields 6 wrappers / 28 aliases; pre-push hook skipped `ci-local` cleanly (no Makefile).
 
 ## Session 2026-08-16 08:50 CDT (Phase 17 GLM-5.3 + consolidation)
 - Coding CLI used: Claude Code CLI (Opus 5, 1M context)

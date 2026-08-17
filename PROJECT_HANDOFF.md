@@ -4,9 +4,10 @@
 - Purpose: Local wrapper/installer scripts to run Claude Code against Z.AI GLM models via per-model `CLAUDE_HOME` directories.
 - Scope: Cross-platform install scripts + docs for `ccg` (GLM-5.3, default, 1M context), `ccg53` (GLM-5.3), `ccg5t` (GLM-5-Turbo), `ccg47` (GLM-4.7), `ccg46` (GLM-4.6), `ccg45` (GLM-4.5), and `ccg45v` (GLM-4.5V vision) — **6 wrappers, each verified to serve the model its name claims**. Each wrapper uses Z.AI's opus/sonnet/haiku tier scheme (opus+sonnet = its own model, haiku = glm-4.7). Installer manages GLM aliases only — the bare `claude` command and any user-curated `ccd`/`ccdD`/`claudeD` aliases are intentionally untouched.
 - **Retired in Phase 17** (Z.AI silently reroutes these IDs while still returning HTTP 200): `ccg52`/`ccg51`/`ccg5` (served by glm-5.3), `ccg45air`/`ccf` (served by glm-4.7). The installer now deletes their wrapper scripts and strips their aliases on re-run.
-- Last updated: 2026-08-16 08:50 CDT
-- Last coding CLI used (informational): Claude Code (Opus 5)
+- Last updated: 2026-08-17 06:50 CEST
+- Last coding CLI used (informational): Claude Code CLI (Opus 5, 1M context)
 - Current version: 2.5.0 (package.json)
+- Latest commit on `main`: `0919f90`, pushed to origin. Working tree **clean**. Phase 18 lineage: `0919f90` (tooling config) ← `18d49e6` (CI + SHA-pinned actions) ← `985d5d6` (.gitignore bin/ fix) ← `c7839e4` (Phase 18 docs) ← `02c4bd4` (17 review fixes, v2.5.0) ← `347801f` (Phase 16 docs).
 - Latest commit on `main`: `a103f0b` (Phase 16: harness code review — settings.json chmod 600 + set-e guard + csh dedup, v2.4.2), pushed to origin. Recent lineage: `a103f0b` (Phase 16 review fixes) ← `a29600e` (Phase 15 auto-compact 900K) ← `d8c936d` (A variants) ← `7b2d009`/`92164c0` (remove redundant ./install bootstrap) ← `5e1eb62` (Phase 14 smart-dedup) ← `502411d` (Phase 13 GLM-5.2 + tier scheme). NOTE: the prior handoff incorrectly recorded `25ff837` as the tip; git history between that and Phase 13 also has `072a9c9` (Phase 11+12) plus a run of install.ps1 PS5.1 hardening commits (`ec387cb`, `4399507`, `03e7dfb`, `657b2c9`, `70ff1ff`) that were never logged in PROJECT_LOG.md. Those are pre-existing and left as-is.
 
 ## 2. Current State
@@ -113,25 +114,29 @@
   - Status: Open — standing gap across all phases.
   - **Correction (2026-08-16)**: the previous note "no Windows host in this environment" is wrong. Windows IS this same machine — `/mnt/c` is mounted, PowerShell 5.1 is at its standard path, and PowerShell 7 is installed at `C:\Program Files\PowerShell\7`.
   - **Correction to the correction (2026-08-16, Phase 18)**: an earlier claim in this file that "WSL interop is disabled" was ALSO wrong — it came from a bad probe. Verified: `/proc/sys/fs/binfmt_misc/WSLInterop` reads `enabled`, and invoking `powershell.exe` directly returns `5.1.26100.9168`. Windows PowerShell **is executable from this WSL session**; only `pwsh`/`powershell.exe` are absent from `PATH`.
-  - **What this actually unblocks, and what it does not**: `install.ps1` can now be **parsed** safely (parsing does not execute) — done in Phase 18 via `[System.Management.Automation.Language.Parser]::ParseFile`, result **0 syntax errors, 4631 tokens**. First mechanical validation of install.ps1 in the project's history. **Running** it remains unsafe here: `install.ps1:29-36` anchors every path to `$env:USERPROFILE`, which resolves to the real Windows profile (`C:\Users\jung.hur`), and a bash-side `HOME` override cannot redirect it — so there is no safe sandbox for a full execution test. Full end-to-end Windows verification therefore stays OPEN.
-  - Last updated: 2026-08-16 (Phase 18 code review)
-  - Reference: PROJECT_LOG.md Session 2026-08-16 (Phase 17, Phase 18)
-- The `[1m]` bracket model form cannot be validated against the raw Z.AI API.
+  - **What this actually unblocks, and what it does not**: `install.ps1` can now be **parsed** safely (parsing does not execute) — done in Phase 18 via `[System.Management.Automation.Language.Parser]::ParseFile`, result **0 syntax errors** (5055 tokens at session close, after the ACL work). First mechanical validation of install.ps1 in the project's history. **Running** it remains unsafe here: `install.ps1:29-36` anchors every path to `$env:USERPROFILE`, which resolves to the real Windows profile (`C:\Users\jung.hur`), and a bash-side `HOME` override cannot redirect it — so there is no safe sandbox for a full execution test. Full end-to-end Windows verification therefore stays OPEN.
+  - **What Phase 18 substituted for execution**: AST parse; the `Test-ZaiApiKey` guard extracted and unit-tested under real Windows PowerShell 5.1.26100.9168 (10 cases, 0 failures); `Protect-KeyFile` executed against a real temp file with ACEs enumerated before/after; one generated wrapper extracted and executed against a temp `CLAUDE_HOME`. The install flow itself is still unexecuted.
+  - Last updated: 2026-08-17 06:50 CEST (Phase 18)
+  - Reference: PROJECT_LOG.md Session 2026-08-16 → closed 2026-08-17 (Phase 18)
+- The `[1m]` bracket model form cannot be validated against the raw Z.AI API, and one live `ccg` launch is still the only way to confirm it end-to-end.
   - Status: Open (structural — not fixable by testing harder)
-  - Both `glm-5.2[1m]` and `glm-5.3[1m]` return HTTP 400 "modelCode does not exist" on `/v1/messages`; the bracket is a Claude-Code-side routing convention the client translates before sending. Reroute behavior for the bracket form is therefore INFERRED from the base model id, not observed.
-  - Last updated: 2026-08-16 08:50 CDT
-- Runtime confirmation that `glm-5.2[1m]` resolves inside a real Claude Code launch.
-  - Status: Open
-  - Last updated: 2026-06-16 15:36 CDT
-  - Reference: PROJECT_LOG.md Session 2026-06-16 (Phase 13)
-  - Note: the raw `/v1/messages` API 400s on the literal bracket form because `[1m]` is a Claude Code client-side routing convention, not a raw model id; base `glm-5.2` is confirmed reachable (HTTP 200). Recommend one live `ccg` launch to confirm.
-- Clean the duplicate alias block currently on this machine's `~/.bash_profile`.
-  - Status: Resolved (2026-07-02) — the Phase 15 redeploy re-ran `bash install.sh` (option 2); the Phase 14 smart-dedup stripped the redundant `~/.bash_profile` block (verified: no installer alias block remains there; it sources `~/.bashrc`). New GLM `A` aliases are now live in `~/.bashrc`.
-  - Last updated: 2026-07-02 10:01 CDT
-  - Reference: PROJECT_LOG.md Session 2026-07-02 (Phase 15)
-- Optional: remove the stale `~/.local/bin/claude-glm-5.2.bak-1000000` stopgap backup (leftover from the pre-Phase-15 hand-patch; still contains 1000000; inert — not on any alias path; not created by an MoAI session so left in place).
-  - Status: Open (optional user cleanup)
-  - Last updated: 2026-07-02 10:01 CDT
+  - Both `glm-5.2[1m]` and `glm-5.3[1m]` return HTTP 400 "modelCode does not exist" on `/v1/messages`; the bracket is a Claude-Code-side routing convention the client translates before sending. Reroute behaviour for the bracket form is therefore INFERRED from the base model id, not observed. The base ids ARE verified to serve themselves (live, Phase 17 + 18).
+  - README and `smoke_test_models.sh` now both state this limitation explicitly (Phase 18), so the "verified" claim no longer overreaches.
+  - Recommended: launch `ccg` once and confirm the session reports GLM-5.3 with the 1M window.
+  - Last updated: 2026-08-17 06:50 CEST
+  - Consolidates the former separate "Runtime confirmation that `glm-5.2[1m]` resolves" item, which was the same gap for the superseded 5.2 default.
+- Optional: remove the stale `~/.local/bin/claude-glm-5.2.bak-1000000` stopgap backup.
+  - Status: Open (optional user cleanup) — note this file was NOT observed in `~/.local/bin` during Phase 17/18 redeploys, so it may already be gone.
+  - Last updated: 2026-08-17 06:50 CEST
+- Blank line accumulates one per installer run in the user's rc file.
+  - Status: Open (LOW, cosmetic, PRE-EXISTING — not introduced by Phase 17/18)
+  - Confirmed by two independent reviewers: alias lines themselves never duplicate (28 stays 28, one header stays one); only a blank line grows. The removal filter strips header/comment/alias lines but not the blank line preceding the block.
+  - Deliberately not fixed: the tidy fix (filtering blank lines) risks eating a blank line the user wrote.
+  - Last updated: 2026-08-17 06:50 CEST
+- Minor review findings accepted but not fixed (all LOW, all recorded with reproductions in PROJECT_LOG Phase 18).
+  - Status: Open (LOW)
+  - `install.sh` unquoted `all_wrappers=($(find_all_installations))` word-splits on a wrapper path containing a space; the printed pipe-to-bash install hint differs from the safe process-substitution form used everywhere else; `smoke_test_models.sh` `validate_key` accepts an empty string where its `install.sh` sibling rejects it (unreachable today — `detect_key` guards it); `.bak` symlink following during rc rewrite (same-user, grants no privilege).
+  - Last updated: 2026-08-17 06:50 CEST
 
 ## 5. Risks, Open Questions, and Assumptions
 - Risk: TypeScript build / proxy code removed; `package.json` no longer includes TypeScript/dev deps.
@@ -142,8 +147,36 @@
   - Status: Open
   - Date opened: 2026-02-11
   - Current assumption: Verification relies on installer script syntax checks and text search, not `npm` builds.
+- Risk: `install.ps1` is shipped but has never been executed end-to-end, on any machine, in this project's history.
+  - Status: Open (mitigated, not resolved)
+  - Date opened: 2026-06-16 (Phase 13); materially mitigated 2026-08-17 (Phase 18)
+  - Mitigation in effect: AST parse (0 errors) + isolated execution of its two security-critical functions under real Windows PowerShell 5.1 + close line-by-line review by an independent reviewer, which found no defects and confirmed 28 profile aliases match 28 `.cmd` shims exactly in both directions. Assumption: structural symmetry with the bash side (which IS end-to-end verified) carries the rest.
+- Risk: the charset guard `^[A-Za-z0-9._-]+$` would reject a legitimate Z.AI key containing other characters.
+  - Status: Open (accepted trade-off)
+  - Date opened: 2026-08-16 (Phase 18)
+  - Assumption in effect: observed real keys are hex + `.` + alphanumerics and pass. A base64-style key containing `+`, `/`, or `=` would be rejected, and there is no override flag. The failure is loud and actionable (clear message, exit 1, no partial install), not silent. Widening the charset would reopen the injection vector, so this is deliberate.
+- Risk: the reroute behaviour Phase 17 is built on could be reversed by Z.AI at any time.
+  - Status: Open (monitored)
+  - Date opened: 2026-08-16 (Phase 17)
+  - Detection in effect: `smoke_test_models.sh` probes the retired IDs on purpose and reports REROUTED. If one ever flips back to PASS, Z.AI un-retired it and it may deserve a wrapper again.
+- Risk: three of the four final fixes carry no independent review.
+  - Status: Open (disclosed)
+  - Date opened: 2026-08-17 (Phase 18 close)
+  - Context: the Implementer agents died on an account session limit and then `SSL certificate hostname mismatch`, so the orchestrator implemented the last four itself. Each was *diagnosed* by an independent reviewer, and each was verified behaviourally with before/after evidence — but implementation and verification share an author, which the rest of this session deliberately avoided.
 
 ## 6. Verification Status
+- Verified (Session 2026-08-16 → closed 2026-08-17 06:50 CEST, Phase 18 adversarial code review):
+  - **Method**: three independent reviewers (Reviewer, QA Agent, Security Auditor) + 10 disposable Implementers, under the rule that no agent reviews its own code. Every fix was additionally re-verified by the orchestrator by running it, not by reading the agent's claim.
+  - Static: `bash -n` on install.sh + smoke_test_models.sh; `node --check` on both bin scripts; `ast.parse` on fix_hooks_config.py; `package.json` parses at 2.5.0; **install.ps1 AST parse = 0 errors, 5055 tokens** (first mechanical validation in project history).
+  - Security, re-tested after fixing: the 3 injection vectors (quote-break, command-substitution, JSON-structure-break) rejected in BOTH languages across 19 bypass probes incl. Unicode homoglyphs, fullwidth quotes, NUL, CR/LF, 100k-char input; the key-recovery laundering path closed; curl-config injection payload rejected with the attacker-chosen target file confirmed **absent** after the run.
+  - rc-file safety: mode-600 rc keeps mode **and inode** (373775 → 373775); symlinked rc stays a symlink and the dotfiles target receives the block; 444 rc byte-identical and refused; rc-writable-but-directory-unwritable leaves the rc byte-identical with user data intact (was: silently destroyed, exit 0); unreadable rc → exactly 1 header (was 2); no stray `.tmp`/`.bak` on any path.
+  - Alias matching: managed lines removed in LF, **CRLF**, and trailing-whitespace forms, while user-owned colliding aliases (`ccg`, `ccg52`, `ccg53`, `ccx`) survive in LF **and** CRLF. Reviewer additionally ran both regexes over a corpus of all 114 historical alias lines from git history: no managed alias escapes, only the deliberately-exempt claude aliases survive.
+  - Retired-wrapper deletion now fingerprint-gated: a user-authored `~/.local/bin/claude-glm` survives; a real retired wrapper is still removed.
+  - Permissions: wrappers 700, settings.json 600, pre-chmod creation mode 600 (umask window closed), `~/.local` + `~/.local/bin` restored to 755, and the wrapper's `umask 077` verified NOT to leak into the launched Claude session (child sees 0022).
+  - PowerShell (isolated, never full-run): `Test-ZaiApiKey` unit-tested 10/10 under real PS 5.1.26100.9168; `Protect-KeyFile` executed on a real file — 5 inherited ACEs → 1 explicit ACE, inheritance blocked (`D:PAI` in SDDL); one generated wrapper extracted and executed against a temp `CLAUDE_HOME`, producing a settings.json with the same single-ACE result.
+  - Regression: clean install → 6 wrappers / 28 aliases; idempotent over 3 runs (1 header, 1 PATH line, no alias growth); csh and zsh paths; live Z.AI smoke test (6 shipped models PASS with matching served-by, 4 retired REROUTED, `glm-4.7-flashx` 429 control); `moai gate` exit 0.
+  - Commit hygiene: `origin/main` at `0919f90`, divergence `0 0`, working tree clean; both pinned action SHAs resolved via the GitHub API and confirmed to dereference to commit objects.
+  - **Not verified**: `install.ps1` end-to-end install flow (no sandbox for `%USERPROFILE%`); a true ENOSPC disk-full (`ulimit -f` used as a faithful stand-in); `cli.js` argument forwarding executed (verified by code read + a stubbed `spawn`, deliberately not run against a real HOME); `shellcheck` unavailable, so no lint baseline exists.
 - Verified (Session 2026-08-16 08:50 CDT, Phase 17 GLM-5.3 + consolidation):
   - Live API, requested-vs-served comparison (3 confirmations each, deterministic): `glm-5.2`/`glm-5.1`/`glm-5` → served by **glm-5.3**; `glm-4.5-air` → served by **glm-4.7**. Serving themselves: glm-5.3, glm-5-turbo, glm-4.7, glm-4.6, glm-4.5, glm-4.5v. v5 namespace sweep (15 candidates): only 5/5.1/5.2/5.3/5-turbo exist; the rest HTTP 400.
   - `bash -n install.sh` => OK; `bash -n smoke_test_models.sh` => OK; `json.load(package.json)` => 2.5.0
@@ -209,21 +242,28 @@
 
 ## 7. Restart Instructions
 - Starting point:
-  0. **Phase 17 is implemented, verified, and redeployed but NOT COMMITTED.** `git status` will show modified: install.sh, install.ps1, smoke_test_models.sh, README.md, package.json, PROJECT_HANDOFF.md, PROJECT_LOG.md. Backups of the pre-change installers are in the session scratchpad and dotfile backups at `~/.bashrc.bak.glm53-*`. Also still untracked from a prior MoAI tooling update: `.claudeignore`, `.git_hooks/`, `.github/` (unrelated to Phase 17; decision pending).
-  1. Latest commit on `main` is `347801f` (docs end-of-session for Phase 16); the last substantive code commit is `a103f0b`. Project version now 2.5.0 in the working tree.
-     - Phase 16 (harness review: settings.json chmod 600 + set-e guard + csh dedup, v2.4.2) → `a103f0b`
-     - Phase 15 (GLM-5.2 auto-compact window 1000000 → 900000, v2.4.1) → `a29600e`
-     - Phase 13 (GLM-5.2 default + tier-scheme migration) → `502411d`
-     - Phase 14 (bash alias smart-dedup) → `5e1eb62`
-     - Removed redundant `./install` bootstrap → `92164c0`
-     - Auto-mode `A` alias variants → `d8c936d`
-  2. `.moai/` is gitignored (local-only SPEC artifacts). The earlier `.gitignore`/`CLAUDE.md` upstream-drift question is closed — `CLAUDE.md` was committed (`03e7dfb`); nothing pending there.
-  3. Note for testing: in the Claude Code Bash-tool sandbox, `grep` is a shell-function wrapper that `exec`s away subshells — run any test that pipes installer functions through grep as a child `bash` process (real `/usr/bin/grep`), not in an inline `( … )` subshell. Real users running `bash install.sh` are unaffected. Also: the Edit tool cannot write files outside the project dir (e.g. `~/.bashrc`); use an anchored `sed -i` after a backup.
-- Recommended next actions (optional):
-  1. Done this session (Phase 15 redeploy): `bash install.sh` (option 2) regenerated all wrappers (incl. `claude-glm-5.2` at the new 900000 window), installed the auto-mode `A` aliases (`ccgA` … `ccg52A`) into `~/.bashrc`, and triggered the Phase 14 dedup that stripped the leftover alias block from `~/.bash_profile`. Run `source ~/.bashrc` (or open a new shell) to pick up the refreshed aliases.
-  2. Launch `ccg` once to confirm the 900000 window behaves as expected inside a real Claude Code session (the raw API cannot validate the `glm-5.2[1m]` bracket form; base `glm-5.2` is confirmed reachable). If heavy turns still occasionally hit "context over limit", lower the 5.2 window to 800000 (auto-compact ~664K, ~336K headroom) — the safer fallback value.
-  3. Re-run `smoke_test_models.sh` whenever Z.ai changes plan availability (baseline 2026-06-16: glm-5.2 + all wrapper models PASS; only glm-4.7-flashx 429s).
-  4. Windows-side execution of `install.ps1` remains unverified — run on a Windows host if convenient.
-- Cross-project wiki: `~/PROJECTS/wiki/concept/claude-code-auto-compact-window-headroom.md` (auto-compact-window headroom — why the 5.2 window is 900000, 800000 as safer fallback); `~/PROJECTS/wiki/concept/set-e-err-trap-false-abort.md` (Phase 16 FIX-2 lesson — bare `return 1` under `set -e`+ERR trap false-aborts); `~/PROJECTS/wiki/concept/generated-secret-file-perms.md` (Phase 16 FIX-1 lesson — chmod the config a script generates, not just the script).
-- Security note (Phase 16): wrappers now `chmod 600` their settings.json at runtime. This machine's existing config-dir settings.json were proactively hardened to 600; on any other machine, launching each wrapper once re-hardens its settings.json (previously 644).
-- Last updated: 2026-07-04 15:00 CDT
+  0. **Nothing is in flight. Working tree is clean and everything is pushed.** `origin/main` = `0919f90`, divergence `0 0`. Phases 17 and 18 are both fully committed. There is no half-finished work to resume and no uncommitted state to reconcile.
+  1. Commit lineage (newest first):
+     - `0919f90` chore: MoAI-ADK tooling configuration (CLAUDE.md condensed, .mcp.json, .claudeignore, .worktreeinclude, .agency.archived/)
+     - `18d49e6` ci: label-sync workflow + git hooks, **actions SHA-pinned**
+     - `985d5d6` fix: `.gitignore` no longer silently ignores this package's `bin/` entry point
+     - `c7839e4` docs: Phase 18 session record
+     - `02c4bd4` fix: **17 review defects, 3 HIGH security** (v2.5.0)
+     - `347801f` docs: Phase 16 end-of-session ← previous session's tip
+  2. Current shipped surface: **6 wrappers** (`claude-glm-5.3`, `-5-turbo`, `-4.7`, `-4.6`, `-4.5`, `-4.5v`) and **28 aliases** (7 bases × normal/`D`/`Dd`/`A`). `ccg` = `ccg53` = GLM-5.3. Retired in Phase 17: `ccg52`, `ccg51`, `ccg5`, `ccg45air`, `ccf` — Z.AI reroutes those IDs to a different model, so a wrapper named after them was lying. Re-running the installer deletes their scripts and strips their aliases.
+  3. `.moai/` is gitignored (local-only SPEC artifacts). `.moai/specs/SPEC_SECURITY_APIKEY_INJECTION.md` from Phase 18 lives there.
+  4. **Environment notes for the next agent** (each of these cost time to rediscover):
+     - Windows PowerShell 5.1 **is** reachable from this WSL session at `/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe` (it is not on `PATH`; `pwsh` is absent). Use it to AST-parse `install.ps1` — but do NOT run the installer, it writes to the real `%USERPROFILE%`.
+     - In the Claude Code Bash-tool sandbox, `grep` is a shell-function wrapper that `exec`s away subshells — run any test piping installer functions through grep as a child `bash script.sh` process, never an inline `( … )` subshell.
+     - The Edit tool cannot write outside the project dir (e.g. `~/.bashrc`); use an anchored `sed -i` after a backup.
+     - Never run the installer against the real `$HOME` when testing — always `env HOME="$sandbox"`.
+     - The pre-commit hook runs `moai gate` (currently exits 0); the pre-push hook runs `make ci-local` and skips cleanly since there is no Makefile.
+- Recommended next actions (all optional; nothing is blocking):
+  1. **Pick up the aliases**: `source ~/.bashrc` or open a new shell, then `ccg` to use GLM-5.3.
+  2. **The one genuinely useful verification left**: launch `ccg` once and confirm the session really reports GLM-5.3 with the 1M window. The raw API cannot validate the `glm-5.3[1m]` bracket form (it 400s — the bracket is client-side), so a live launch is the only remaining evidence.
+  3. **Re-run `smoke_test_models.sh`** whenever Z.AI changes plan availability. Current baseline: 6 shipped models PASS with matching served-by, 4 retired IDs REROUTED, `glm-4.7-flashx` 429 (not plan-covered — it is the control proving the 200s are real plan access). A retired ID flipping REROUTED → PASS means Z.AI un-retired it.
+  4. **If `install.ps1` ever needs changing**, remember it has never been executed end-to-end. Parse it, unit-test extracted functions under real PS 5.1, and lean on structural symmetry with the bash side — that is the review standard Phase 18 established for it.
+  5. **Consider installing `shellcheck`.** Phase 18's two worst regressions (an unguarded `return 1` under `set -e`, and a truncating redirect) are exactly the class a shell linter flags, and its absence is the largest remaining gap in the static tier.
+- Cross-project wiki: `~/PROJECTS/wiki/concept/claude-code-auto-compact-window-headroom.md` (why the window is 900000); `~/PROJECTS/wiki/concept/set-e-err-trap-false-abort.md` (bare `return 1` under `set -e`+ERR trap false-aborts — Phase 18 hit this again at a second call site); `~/PROJECTS/wiki/concept/generated-secret-file-perms.md` (chmod the config a script generates, not just the script).
+- Security posture at close: **0 CRITICAL, 0 HIGH open.** Across the Phase 18 program 21 findings were tracked, 13 closed and verified, 1 retracted by its own author as a false positive, and the remainder are LOW/INFO listed in §4. Two of the three HIGH findings were regressions introduced by fixes earlier in the same review and caught by independent re-gating — which is the single strongest argument for keeping the never-self-review rule.
+- Last updated: 2026-08-17 06:50 CEST
