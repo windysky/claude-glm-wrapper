@@ -76,8 +76,26 @@ VERDICT: PROFILE DID NOT FOLLOW override
 
 `$PROFILE` is a PowerShell automatic variable fixed at session start, not derived from `$env:USERPROFILE` at use time, and `install.ps1:311` writes the 28 aliases via `Set-Content -Path $PROFILE`. So the sandbox option that relied on overriding `$env:USERPROFILE` is **falsified, not open**: wrappers would go to the scratch directory while 28 aliases landed in the operator's real, OneDrive-synced profile. Should that SPEC ever be revived, this closes its open question.
 
+### SPEC_SHELLCHECK_BASELINE — baseline captured, Option B adopted
+The SPEC's first step was blocked as it predicted: `sudo -n true` exits 1, so `apt-get install` needs an interactive password. Took the SPEC's own named fallback — the official static release binary (v0.9.0, matching the apt candidate `0.9.0-1` so future runs stay comparable), placed in a project-local gitignored path rather than the user's real `~/.local/bin`.
+
+**22 findings, 0 errors, and two of four files clean** (`smoke_test_models.sh`, `.git_hooks/pre-commit`). `install.sh` 20, `.git_hooks/pre-push` 2. Severity: warning 11, info 10, style 1. Artifact: `.moai/specs/shellcheck-baseline-2026-08-17.md`; machine-readable baseline + comparison procedure: `.moai/baselines/shellcheck-2026-08-17/`.
+
+**The result that mattered was a negative one.** The `set -e` masking class this linter was wanted for — `SC2155`, `local x=$(cmd)` swallowing the command's exit status — came back **clean on inspection**. All 8 hits were read at the site rather than classified by code: 4 are `local rc_file=$(detect_shell_rc)`, and that function cannot fail (every `case` branch assigns, there is a `*)` default, it ends in `echo`), while the other 4 wrap `uname`/`date`/`basename`/`sed` inside `report_error`. Nothing of consequence is masked. Option B (baseline as accepted debt, gate only NEW findings) adopted on that evidence.
+
+One genuine finding: **`DEBUG` is dead** (`SC2034`, `install.sh:40`) — assigned at `:16`, `:25`, `:40`, read nowhere, so `--debug` and the documented `CLAUDE_GLM_DEBUG=1` set a flag no code consumes. Filed as `SPEC_DEBUG_FLAG_DEAD`.
+
+### A defect claim of my own, filed and then withdrawn
+`SC2086` at `install.sh:154` (`$(echo $PATH | sed …)`) was classified as genuine on the reasoning that an unquoted `$PATH` would glob-expand and substitute local filenames into a **public** GitHub issue body. A SPEC was written on that premise. **The reproduction failed**, and the SPEC was withdrawn.
+
+`$PATH` contains no whitespace, so unquoted it remains a *single word*; pathname expansion then applies to the whole string `/usr/bin:*`, which matches nothing as a path pattern and stays literal. The whitespace half is masked too — `echo` rejoins arguments with single spaces. The first attempt at this reproduction was itself invalid: run inline in the agent's shell wrapper, where `set -f` can disable globbing and fake either verdict. The verdict came from a child script that asserts `set -f` is off first.
+
+Recorded in the baseline artifact rather than deleted: a falsified defect claim is cheaper to read than to re-derive. Quoting remains correct practice; the asserted consequence was not real.
+
 ### Gap, stated rather than glossed
-`SPEC_SHELLCHECK_BASELINE` was **not started** — `shellcheck` is still not installed, so no lint baseline exists. The three newly-filed finding SPECs are unexecuted by design (a finding is not fixed inside the review that found it).
+The five filed finding SPECs (`SPEC_CCX_UNCONDITIONAL_DELETE`, `SPEC_ALIAS_GLM_WILDCARD_OVERMATCH`, `SPEC_FINGERPRINT_COMMENT_MATCH`, `SPEC_DEBUG_FLAG_DEAD`) are **unexecuted by design** — a finding is not fixed inside the review that found it. Two of them (`FINGERPRINT_COMMENT_MATCH`, `DEBUG_FLAG_DEAD`) need a decision before implementation and say so in their own headers.
+
+`shellcheck` is installed only as a local static binary under `.moai/tmp/`, which is gitignored — it will not survive a clean checkout, and the comparison procedure in the baseline artifact assumes that path. No CI wiring for the NEW-findings gate exists yet; Option B is a recorded policy, not an enforced one.
 
 ## Session 2026-08-17 11:43 CEST (Phase 19 planning)
 - Coding CLI used: Claude Code CLI (Opus 5, 1M context)

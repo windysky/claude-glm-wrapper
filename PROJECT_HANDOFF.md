@@ -114,9 +114,19 @@
 
 ## 4. Outstanding Work
 
-> **Three SPECs are ready to execute.** They live in `.moai/specs/` (gitignored, local-only) and are the next agent's work queue. See §7 for the exact starting point.
-> `SPEC_LOW_DEFECTS_CLEANUP.md` · `SPEC_SHELLCHECK_BASELINE.md` · `SPEC_INDEPENDENT_REVIEW_ORCHESTRATOR_FIXES.md`
+> **The three queued SPECs are all executed** (Phase 19, 2026-08-17). `.moai/specs/` is gitignored and local-only.
+> **Done** — `SPEC_INDEPENDENT_REVIEW_ORCHESTRATOR_FIXES.md` (verdict APPROVED ×4) · `SPEC_LOW_DEFECTS_CLEANUP.md` (4 fixes, committed `10a3dbe`) · `SPEC_SHELLCHECK_BASELINE.md` (baseline captured, Option B adopted).
+> **New queue** — findings raised by that work, none executed (a finding is not fixed inside the review that found it): `SPEC_CCX_UNCONDITIONAL_DELETE.md` (MEDIUM) · `SPEC_ALIAS_GLM_WILDCARD_OVERMATCH.md` (LOW-MEDIUM) · `SPEC_FINGERPRINT_COMMENT_MATCH.md` (LOW, decision required) · `SPEC_DEBUG_FLAG_DEAD.md` (LOW, decision required).
 > `SPEC_SECURITY_APIKEY_INJECTION.md` is marked IMPLEMENTED in its own header — retained as a record, **do not re-execute**.
+
+- **ShellCheck lint policy: Option B — baseline as accepted debt, gate only NEW findings.**
+  - Status: **Decided and in effect** (2026-08-17, Phase 19)
+  - Baseline: 22 findings across 4 files — `install.sh` 20, `.git_hooks/pre-push` 2, and **`smoke_test_models.sh` + `.git_hooks/pre-commit` both clean**. Severity: warning 11, info 10, style 1, **error 0**. Artifact: `.moai/specs/shellcheck-baseline-2026-08-17.md`; machine-readable: `.moai/baselines/shellcheck-2026-08-17/`.
+  - Rationale: the `set -e` masking class the linter was wanted for came back **clean** — all 8 `SC2155` hits were checked at the site, and `detect_shell_rc` (4 of them) cannot fail. The remaining 20 are style debt in code that is end-to-end verified. Option A would convert a cheap win into a mass edit of a 1,559-line installer that writes user dotfiles.
+  - Existing findings are addressed opportunistically, when a change already touches those lines. The NEW-finding comparison procedure is in the baseline artifact.
+  - Tooling caveat: `shellcheck` 0.9.0 is a **static release binary** at `.moai/tmp/tools/shellcheck`, not an apt install — `sudo -n` exits 1 in this environment, so the package route is unavailable without an interactive password. The version matches the apt candidate (`0.9.0-1`) so a future apt-installed run stays comparable.
+  - Last updated: 2026-08-17 (Phase 19)
+  - Reference: PROJECT_LOG.md Session 2026-08-17 (Phase 19 execution)
 
 - **`package.json` advertises an npx entry point that fetches somebody else's package.**
   - Status: Open (LOW — nothing user-facing is broken today)
