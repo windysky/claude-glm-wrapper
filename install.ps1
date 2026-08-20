@@ -1197,6 +1197,13 @@ function Install-ClaudeGlm {
                     Add-PowerShellAliases
                     Add-CmdShims
                     Write-Host "OK: API key updated!"
+                    Write-Host ""
+                    Write-Host "IMPORTANT: this PowerShell session still has the OLD profile loaded."
+                    Write-Host "           Aliases were rewritten on disk, but a running session reads"
+                    Write-Host "           the profile only once, at startup. Reload before using them:"
+                    Write-Host ""
+                    Write-Host "   . `$PROFILE            # or just open a new PowerShell window"
+                    Write-Host ""
                     exit 0
                 }
             }
@@ -1229,6 +1236,13 @@ function Install-ClaudeGlm {
                 Add-PowerShellAliases
                 Add-CmdShims
                 Write-Host "OK: Reset complete!"
+                Write-Host ""
+                Write-Host "IMPORTANT: this PowerShell session still has the OLD profile loaded."
+                Write-Host "           Aliases were rewritten on disk, but a running session reads"
+                Write-Host "           the profile only once, at startup. Reload before using them:"
+                Write-Host ""
+                Write-Host "   . `$PROFILE            # or just open a new PowerShell window"
+                Write-Host ""
                 exit 0
             }
             "3" {
