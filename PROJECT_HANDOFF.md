@@ -4,10 +4,10 @@
 - Purpose: Local wrapper/installer scripts to run Claude Code against Z.AI GLM models via per-model `CLAUDE_HOME` directories.
 - Scope: Cross-platform install scripts + docs for `ccg` (GLM-5.3, default, 1M context), `ccg53` (GLM-5.3), `ccg5t` (GLM-5-Turbo), `ccg47` (GLM-4.7), `ccg46` (GLM-4.6), `ccg45` (GLM-4.5), and `ccg45v` (GLM-4.5V vision) — **6 wrappers, each verified to serve the model its name claims**. Each wrapper uses Z.AI's opus/sonnet/haiku tier scheme (opus+sonnet = its own model, haiku = glm-4.7). Installer manages GLM aliases only — the bare `claude` command and any user-curated `ccd`/`ccdD`/`claudeD` aliases are intentionally untouched.
 - **Retired in Phase 17** (Z.AI silently reroutes these IDs while still returning HTTP 200): `ccg52`/`ccg51`/`ccg5` (served by glm-5.3), `ccg45air`/`ccf` (served by glm-4.7). The installer now deletes their wrapper scripts and strips their aliases on re-run.
-- Last updated: 2026-08-17 11:43 CEST
+- Last updated: 2026-08-20 14:16 CDT
 - Last coding CLI used (informational): Claude Code CLI (Opus 5, 1M context)
 - Current version: 2.5.0 (package.json)
-- Latest commit on `main`: `b0ff602`, pushed to origin. Working tree **clean**. Lineage: `b0ff602` (Phase 18 end-of-session docs) ← `0919f90` (tooling config) ← `18d49e6` (CI + SHA-pinned actions) ← `985d5d6` (.gitignore bin/ fix) ← `c7839e4` (Phase 18 docs) ← `02c4bd4` (17 review fixes, v2.5.0) ← `347801f` (Phase 16 docs).
+- Latest commit on `main`: `9ea2516`, pushed to origin. Working tree **clean**. Lineage: `9ea2516` (install.ps1 $PROFILE-reload reminder) ← `a45a6a6` (shellcheck baseline docs) ← `10a3dbe` (SPEC_LOW_DEFECTS_CLEANUP) ← `373f59e`/`b0ff602` (Phase 19/18 end-of-session docs) ← `0919f90` (tooling config) ← `18d49e6` (CI + SHA-pinned actions) ← `985d5d6` (.gitignore bin/ fix) ← `c7839e4` (Phase 18 docs) ← `02c4bd4` (17 review fixes, v2.5.0) ← `347801f` (Phase 16 docs).
 
 ## 2. Current State
 - GLM-5 wrapper (`ccg5`): Completed
@@ -53,6 +53,8 @@
   - Completed in Session 2026-08-16 → closed 2026-08-17 06:50 CEST
 - Phase 19 planning — 4 SPECs authored for the remaining open items, then reduced to 3 (the install.ps1 end-to-end SPEC was dropped by user decision): Completed
   - Completed in Session 2026-08-17 11:43 CEST
+- Phase 20 — `install.ps1` prints a "$PROFILE reload needed" reminder after the two menu paths (option 1 "Update API key only", option 2 "Reset wrappers/aliases") that rewrite the profile and then `exit 0` without telling the user their open session is now stale: Completed (commit `9ea2516`, pushed)
+  - Completed in Session 2026-08-20 11:59 CDT (root-caused via a live report from the user's real Windows machine, see PROJECT_LOG for the reproduction)
 
 ## 3. Execution Plan Status
 - Phase 1: Add GLM-5 / adjust GLM-4.7 directories and mappings
@@ -112,6 +114,13 @@
 - Phase 18 harness code review + fix — 17 defects across 6 files, found by 3 independent reviewers + 10 Implementers. Includes 3 HIGH security fixes (API-key command injection in both installers; curl config injection introduced by our own argv fix; rc data-loss introduced by our own symlink fix), PowerShell ACL hardening at 12 sites, and a CRLF alias regression that silently defeated Phase 17's central purpose on Windows-style rc files: Completed (committed `02c4bd4`, pushed)
   - Completed in Session 2026-08-16 (Phase 18)
 
+- Phase 20: `install.ps1` — reload-$PROFILE reminder after option 1/2 menu paths
+  - Status: Completed (commit `9ea2516`, pushed)
+  - Last updated: 2026-08-20 11:59 CDT
+  - Trigger: the user ran option 2 ("Reset wrappers/aliases") on their real Windows machine, then ran `ccgD`/`ccg52D` in the *same already-open* PowerShell window and hit `The term 'claude-glm-5.2' is not recognized...`. Root cause: PowerShell reads `$PROFILE` once, at session start — the installer correctly rewrote the profile on disk (`ccg` -> `claude-glm-5.3`) and correctly deleted the retired `claude-glm-5.2.ps1` it used to point at, but the *running* session still had the old in-memory alias. `ccg53D` "worked" in the same transcript only because `ccg53` mapped to `claude-glm-5.3` in both the old and new profile.
+  - Fix: both early-exit menu paths (option 1, option 2) now print `. $PROFILE` / "open a new window" guidance before `exit 0`; the fresh-install path already had this at line ~1281. No behavior change beyond the added output. AST parse 0 errors (5097 tokens) after the change.
+  - Wiki distillation: `~/PROJECTS/wiki/concept/powershell-profile-two-paths-and-load-once.md` (new) + `~/PROJECTS/wiki/concept/deployed-is-not-running.md` (+instance section) — this is a concrete case of the general "deployed code is not running code" pattern, plus a second, independent trap (PS 5.1 and PS 7 read *different* default `$PROFILE` files, which caused an earlier false negative in this same session before the user's real transcript surfaced the actual bug).
+
 ## 4. Outstanding Work
 
 > **The three queued SPECs are all executed** (Phase 19, 2026-08-17). `.moai/specs/` is gitignored and local-only.
@@ -143,13 +152,20 @@
   - Last updated: 2026-08-17 11:43 CEST
   - Last updated: 2026-08-17 11:43 CEST (Phase 18)
   - Reference: PROJECT_LOG.md Session 2026-08-16 → closed 2026-08-17 (Phase 18)
-- The `[1m]` bracket model form cannot be validated against the raw Z.AI API, and one live `ccg` launch is still the only way to confirm it end-to-end.
-  - Status: Open (structural — not fixable by testing harder)
+- The `[1m]` bracket model form cannot be validated against the raw Z.AI API — structural, not fixable by testing harder.
+  - Status: Open (structural, unchanged) — but the **live-launch recommendation below is now satisfied on Windows**.
   - Both `glm-5.2[1m]` and `glm-5.3[1m]` return HTTP 400 "modelCode does not exist" on `/v1/messages`; the bracket is a Claude-Code-side routing convention the client translates before sending. Reroute behaviour for the bracket form is therefore INFERRED from the base model id, not observed. The base ids ARE verified to serve themselves (live, Phase 17 + 18).
   - README and `smoke_test_models.sh` now both state this limitation explicitly (Phase 18), so the "verified" claim no longer overreaches.
-  - Recommended: launch `ccg` once and confirm the session reports GLM-5.3 with the 1M window.
-  - Last updated: 2026-08-17 11:43 CEST
+  - **Done 2026-08-20**: the user's real Windows transcript (Phase 20 trigger, above) includes `ccg53D` launching and printing `LAUNCH: Starting Claude Code with GLM-5.3 (1M context)... CONFIG: Config directory: C:\Users\juhur\.claude-glm-53` — a genuine live launch confirming the bracket form resolves end-to-end on Windows PowerShell 5.1. Still not confirmable against the raw API directly (structural, see above); this closes only the "one live launch" recommendation, on one platform (Windows). A bash-side (`ccg` on Linux/macOS/WSL) live-launch confirmation is still open — lower priority, since the bash side's settings.json/wrapper content was already verified byte-for-byte correct (Phase 17/18) and this session additionally re-confirmed the deployed WSL wrapper + settings.json match spec.
+  - Last updated: 2026-08-20 14:16 CDT
   - Consolidates the former separate "Runtime confirmation that `glm-5.2[1m]` resolves" item, which was the same gap for the superseded 5.2 default.
+- The Windows-side git checkout is one commit behind `origin/main` and carries unrelated uncommitted noise — user asked to "commit and push", decision deferred.
+  - Status: **Open — deferred, awaiting explicit user decision.** An `AskUserQuestion` round proposing three options (pull only / discard-noise-then-pull / commit-everything-as-is) was interrupted by the user invoking `/endsession` before answering.
+  - Location: `C:\JHCloud\OneDrive - North Dakota University System\Desktop\GitHub\agents\claude-glm-wrapper` (reachable read/write from WSL at `/mnt/c/JHCloud/OneDrive - North Dakota University System/Desktop/GitHub/agents/claude-glm-wrapper`). This is a **separate git checkout** from the canonical one at `/home/juhur/PROJECTS/41_agents/claude-glm-wrapper` (this repo) — they must be kept in sync manually.
+  - State as of 2026-08-20 14:16 CDT: at commit `a45a6a6` (one behind `9ea2516` — missing the Phase 20 `$PROFILE`-reload fix); `git status` reports it "up to date with origin/main" but that's a stale cached view from its last fetch, not current.
+  - Uncommitted noise (NOT from this session, pre-existing, cause unknown): `.npmignore`, `LICENSE`, `bin/preinstall.js` modified — diffed and confirmed **pure line-ending flips (LF→CRLF), zero content change**, most likely a Windows git/editor artifact. Plus an untracked `error_home.txt` — a PowerShell parse-error log from an **unrelated project** (`terminal-auto-launcher`), apparently dropped into this checkout by accident.
+  - Recommended: `git pull` on the Windows checkout to bring in `9ea2516` (needed for future option-1/2 installer runs to show the reload reminder); separately decide whether to discard the CRLF noise (`git checkout -- .npmignore LICENSE bin/preinstall.js`) and delete `error_home.txt`, or leave them. Do NOT commit them as-is without that decision — they don't belong in this repo's history.
+  - Last updated: 2026-08-20 14:16 CDT
 - ~~Remove the stale `~/.local/bin/claude-glm-5.2.bak-1000000` stopgap backup.~~ **RESOLVED 2026-08-17** — verified absent from `~/.local/bin`; already cleaned up. No action needed.
   - Status: Resolved
   - Last updated: 2026-08-17 11:43 CEST
@@ -207,6 +223,12 @@
   - Context: making a wrapper unremovable requires removing write permission from the *directory* (`rm -f` needs directory write, not file write), and that same change aborts the install earlier at wrapper creation (`install.sh:552`). Reaching the warning needs an immutable attribute or a foreign-owned sticky directory — root-only setups. The path is not shown defective, only untestable; do not rely on that warning as a safety net.
 
 ## 6. Verification Status
+- Verified (Session 2026-08-20 14:16 CDT, Phase 20 + status check):
+  - Live on this machine (WSL/bash side): `alias ccg='claude-glm-5.3'` in `~/.bashrc` (+ `ccgD`/`ccgDd`/`ccgA`/`ccg53*`); deployed `~/.local/bin/claude-glm-5.3` sets `ANTHROPIC_DEFAULT_OPUS_MODEL="glm-5.3[1m]"` / `ANTHROPIC_DEFAULT_SONNET_MODEL="glm-5.3[1m]"` / haiku=`glm-4.7`; deployed `~/.claude-glm-53/settings.json` matches exactly (valid JSON, correct model IDs, `CLAUDE_CODE_AUTO_COMPACT_WINDOW=900000`). No linkage defect on this machine.
+  - `install.ps1` source: `Set-Alias ccg claude-glm-5.3` + `Set-Alias ccg53 claude-glm-5.3` (both present, both correct); `claude-glm-5.3.ps1` wrapper template sets the same `glm-5.3[1m]` opus/sonnet + `glm-4.7` haiku + `900000` window as the bash side.
+  - Live on the user's real Windows machine (their pasted terminal transcript, not simulated): `install.ps1` option 2 correctly regenerated 6 wrapper `.ps1` files, correctly deleted 22 retired wrapper/shim files, correctly rewrote the PowerShell profile and 28 CMD shims. `ccg53D` launched successfully — `LAUNCH: Starting Claude Code with GLM-5.3 (1M context)... CONFIG: Config directory: C:\Users\juhur\.claude-glm-53`. `ccgD`/`ccg52D` failed in the *same* window with a stale-session error (diagnosed as a known, already-fixed defect — see Phase 20).
+  - Windows checkout sync state (`/mnt/c/JHCloud/OneDrive - North Dakota University System/Desktop/GitHub/agents/claude-glm-wrapper`, read via WSL mount): `git log` confirms HEAD = `a45a6a6`, one commit behind `origin/main`'s `9ea2516`. `git diff` confirms the 3 modified files are pure CRLF line-ending flips (zero content change); `error_home.txt` confirmed to be an unrelated project's error log, not this repo's content.
+  - Gap: did not verify a live `ccg` (bare alias, not `ccg53D`) launch on Windows in this session — only `ccg53D` was in the user's transcript.
 - Verified (Session 2026-08-16 → closed 2026-08-17 06:50 CEST, Phase 18 adversarial code review):
   - **Method**: three independent reviewers (Reviewer, QA Agent, Security Auditor) + 10 disposable Implementers, under the rule that no agent reviews its own code. Every fix was additionally re-verified by the orchestrator by running it, not by reading the agent's claim.
   - Static: `bash -n` on install.sh + smoke_test_models.sh; `node --check` on both bin scripts; `ast.parse` on fix_hooks_config.py; `package.json` parses at 2.5.0; **install.ps1 AST parse = 0 errors, 5055 tokens** (first mechanical validation in project history).
@@ -297,8 +319,12 @@
 > **Not audited:** these SPECs' proportionality, acceptance-criteria quality, and the shape of the review SPEC were never independently reviewed — `plan-auditor` was spawned and never delivered (mailbox routing failed four times). Their *factual claims* were verified against the real files. Treat the structure with normal scepticism.
 
 - Starting point:
-  0. **Nothing is in flight. Working tree is clean and everything is pushed.** `origin/main` = `b0ff602`, divergence `0 0`. Phases 17 and 18 are both fully committed. There is no half-finished work to resume and no uncommitted state to reconcile. The SPECs above are new work, not resumed work.
+  0. **Nothing is in flight. Working tree is clean and everything is pushed.** `origin/main` = `9ea2516`, divergence `0 0`. Phases 17-20 are all fully committed. There is no half-finished work to resume in *this* checkout. **One thing is genuinely pending**: the separate Windows-side git checkout is a commit behind and has uncommitted noise; the user asked to "commit and push" there and the decision on exactly what to do was deferred (see §4) — that's the one open thread for the next session.
   1. Commit lineage (newest first):
+     - `9ea2516` fix: install.ps1 tells the user to reload `$PROFILE` after options 1 and 2 (Phase 20)
+     - `a45a6a6` docs: shellcheck baseline recorded, Option B adopted
+     - `10a3dbe` fix: 4 LOW defects closed (SPEC_LOW_DEFECTS_CLEANUP)
+     - `373f59e` / `b0ff602` docs: Phase 19/18 end-of-session records
      - `0919f90` chore: MoAI-ADK tooling configuration (CLAUDE.md condensed, .mcp.json, .claudeignore, .worktreeinclude, .agency.archived/)
      - `18d49e6` ci: label-sync workflow + git hooks, **actions SHA-pinned**
      - `985d5d6` fix: `.gitignore` no longer silently ignores this package's `bin/` entry point
@@ -309,16 +335,19 @@
   3. `.moai/` is gitignored (local-only SPEC artifacts). `.moai/specs/SPEC_SECURITY_APIKEY_INJECTION.md` from Phase 18 lives there.
   4. **Environment notes for the next agent** (each of these cost time to rediscover):
      - Windows PowerShell 5.1 **is** reachable from this WSL session at `/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe` (it is not on `PATH`; `pwsh` is absent). Use it to AST-parse `install.ps1` — but do NOT run the installer, it writes to the real `%USERPROFILE%`.
+     - **Two different Windows PowerShell profile files exist, and checking the wrong one gives a false "nothing installed."** PS 5.1 (`powershell.exe`, what `install.ps1` targets) reads `Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1`; PS 7/Core (`pwsh.exe`) reads `Documents\PowerShell\Microsoft.PowerShell_profile.ps1` — both literally same-named, both can exist side by side. From WSL both are reachable read-only at `/mnt/c/Users/<user>/Documents/{WindowsPowerShell,PowerShell}/Microsoft.PowerShell_profile.ps1`. This session initially checked the wrong (PS7) one and saw no GLM aliases, before the user's real transcript revealed the correct one. Full writeup: `~/PROJECTS/wiki/concept/powershell-profile-two-paths-and-load-once.md`.
+     - **`$PROFILE` is read once, at PowerShell session start.** Rewriting it on disk (what every `install.ps1` reset/update path does) does NOT update an already-open window — that window needs `. $PROFILE` or a fresh window. Phase 20 added a printed reminder for this after options 1/2; the fresh-install path already had it.
+     - **The Windows-side checkout is a *separate git clone* from this repo**, at `C:\JHCloud\OneDrive - North Dakota University System\Desktop\GitHub\agents\claude-glm-wrapper` (`/mnt/c/JHCloud/OneDrive - North Dakota University System/Desktop/GitHub/agents/claude-glm-wrapper` from WSL, read/write). It does not auto-sync with this repo — check its `git log`/`git status` explicitly before assuming it has a given fix.
      - In the Claude Code Bash-tool sandbox, `grep` is a shell-function wrapper that `exec`s away subshells — run any test piping installer functions through grep as a child `bash script.sh` process, never an inline `( … )` subshell.
-     - The Edit tool cannot write outside the project dir (e.g. `~/.bashrc`); use an anchored `sed -i` after a backup.
+     - The Edit tool cannot write outside the project dir (e.g. `~/.bashrc`, or the Windows checkout, or `~/PROJECTS/wiki/`); use Bash (`sed -i` after a backup, or a `python3`/heredoc rewrite) for those.
      - Never run the installer against the real `$HOME` when testing — always `env HOME="$sandbox"`.
      - The pre-commit hook runs `moai gate` (currently exits 0); the pre-push hook runs `make ci-local` and skips cleanly since there is no Makefile.
 - Recommended next actions:
-  1. **Execute the three SPECs** in the order given above. That is the primary work.
-  2. **Pick up the aliases** if this is a fresh shell: `source ~/.bashrc`, then `ccg` for GLM-5.3.
-  3. **The one cheap verification still worth doing**: launch `ccg` once and confirm the session reports GLM-5.3 with the 1M window. The raw API rejects the `glm-5.3[1m]` bracket form (it is a client-side routing convention), so a live launch is the only remaining evidence for it.
+  1. **Resolve the deferred Windows-checkout sync** (§4): decide what to do with the CRLF-only noise + stray `error_home.txt`, then `git pull` that checkout so it has `9ea2516`. This was interrupted mid-decision by `/endsession` — it's the one loose end from this session.
+  2. **Execute the three Phase 19 SPECs** in the order given above, if not already done. That is otherwise the primary queued work.
+  3. **Pick up the aliases** if this is a fresh shell: `source ~/.bashrc`, then `ccg` for GLM-5.3.
   4. **Re-run `smoke_test_models.sh`** when Z.AI changes plan availability. Baseline: 6 shipped models PASS with matching served-by, 4 retired IDs REROUTED, `glm-4.7-flashx` 429 (the control proving the 200s are real plan access). A retired ID flipping REROUTED → PASS means Z.AI un-retired it and it may deserve a wrapper back.
-  5. **If you touch `install.ps1`**, remember it has never been executed end-to-end and the verification task was deliberately dropped (§4). Parse it, unit-test extracted functions under real PowerShell 5.1 via `/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe`, and lean on structural symmetry with the bash side. Never run the installer itself — it writes to the real `%USERPROFILE%`.
-- Cross-project wiki: `~/PROJECTS/wiki/concept/claude-code-auto-compact-window-headroom.md` (why the window is 900000); `~/PROJECTS/wiki/concept/set-e-err-trap-false-abort.md` (bare `return 1` under `set -e`+ERR trap false-aborts — Phase 18 hit this again at a second call site); `~/PROJECTS/wiki/concept/generated-secret-file-perms.md` (chmod the config a script generates, not just the script).
+  5. **If you touch `install.ps1`**, remember it has never been executed end-to-end **by this project's own testing** (though the user's real machine has now exercised the option-2 reset path + a live launch, see §6) and the formal verification task was deliberately dropped (§4). Parse it, unit-test extracted functions under real PowerShell 5.1 via `/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe`, and lean on structural symmetry with the bash side. Never run the installer itself from this session — it writes to the real `%USERPROFILE%`.
+- Cross-project wiki: `~/PROJECTS/wiki/concept/claude-code-auto-compact-window-headroom.md` (why the window is 900000); `~/PROJECTS/wiki/concept/set-e-err-trap-false-abort.md` (bare `return 1` under `set -e`+ERR trap false-aborts — Phase 18 hit this again at a second call site); `~/PROJECTS/wiki/concept/generated-secret-file-perms.md` (chmod the config a script generates, not just the script); `~/PROJECTS/wiki/concept/powershell-profile-two-paths-and-load-once.md` (Phase 20 — PS5.1 vs PS7 profile-path divergence + `$PROFILE` read-once-at-startup, new 2026-08-20); `~/PROJECTS/wiki/concept/deployed-is-not-running.md` (+instance section added 2026-08-20, general "deployed ≠ running" pattern).
 - Security posture at close: **0 CRITICAL, 0 HIGH open.** Across the Phase 18 program 21 findings were tracked, 13 closed and verified, 1 retracted by its own author as a false positive, and the remainder are LOW/INFO listed in §4. Two of the three HIGH findings were regressions introduced by fixes earlier in the same review and caught by independent re-gating — which is the single strongest argument for keeping the never-self-review rule.
-- Last updated: 2026-08-17 11:43 CEST
+- Last updated: 2026-08-20 14:16 CDT
