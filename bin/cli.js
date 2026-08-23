@@ -14,7 +14,7 @@ console.log('=======================================\n');
 console.log(`Detected OS: ${platform}\n`);
 
 function showHelp() {
-  console.log('📖 Usage: npx claude-glm-installer [options]\n');
+  console.log('📖 Usage: npx @windysky/claude-glm-installer [options]\n');
   console.log('Options:');
   console.log('  -h, --help      Show this help message and exit');
   console.log('  --debug         Enable debug mode');

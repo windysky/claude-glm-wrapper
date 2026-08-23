@@ -11,7 +11,7 @@
 bin/
 # ...but NOT this repository's own bin/. That rule targets Go compiler output;
 # here bin/ is source, and it is this package's npm entry point:
-#   package.json -> "bin": {"claude-glm-installer": "bin/cli.js"}
+#   package.json -> "bin": {"claude-glm-installer": "bin/cli.js"}  (@windysky scope)
 #   package.json -> "files": ["bin/", ...]
 # bin/cli.js and bin/preinstall.js survive only because they are already
 # tracked; without this negation any NEW file added there is silently ignored

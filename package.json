@@ -1,7 +1,7 @@
 {
-  "name": "claude-glm-installer",
+  "name": "@windysky/claude-glm-installer",
   "version": "2.5.0",
-  "description": "Cross-platform installer for Claude Code with Z.AI GLM models.",
+  "description": "Cross-platform installer for Claude Code with Z.AI GLM models. Run with: npx @windysky/claude-glm-installer",
   "keywords": [
     "claude",
     "claude-code",
@@ -18,7 +18,7 @@
     "url": "git+https://github.com/windysky/claude-glm-wrapper.git"
   },
   "license": "MIT",
-  "author": "Joseph Stephenson-Mouzo",
+  "author": "windysky",
   "bin": {
     "claude-glm-installer": "bin/cli.js"
   },
@@ -35,5 +35,8 @@
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

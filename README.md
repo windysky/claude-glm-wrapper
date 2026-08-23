@@ -31,6 +31,17 @@ Use [Z.AI's GLM models](https://z.ai) with [Claude Code](https://www.anthropic.c
 
 ## Installation
 
+### Any platform (npx)
+
+Runs the right installer for your OS — no clone, no global install:
+
+```bash
+npx @windysky/claude-glm-installer
+```
+
+This package is npx-only by design: `npm install -g` is refused, so you always
+run the current version rather than a stale copy.
+
 ### macOS / Linux / WSL2
 
 ```bash
