@@ -40,6 +40,26 @@ if [ "$CLAUDE_GLM_DEBUG" = "1" ] || [ "$CLAUDE_GLM_DEBUG" = "true" ]; then
     DEBUG=true
 fi
 
+# Debug tracing for --debug / CLAUDE_GLM_DEBUG=1, both documented in the header
+# above. Mirrors Write-DebugLog in install.ps1 so the two installers trace the
+# same decisions.
+#
+# The `if` form is load-bearing: `[ "$DEBUG" = "true" ] && echo ...` returns 1
+# when debug is OFF, and this script runs under `set -eE` (see the bottom of the
+# file), so every call site would abort the install for the majority of users who
+# never pass --debug. `if ... fi` returns 0 either way. Verified, not assumed.
+#
+# Output goes to stderr so it never contaminates a function's stdout — several
+# of these functions return values by printing them.
+#
+# No call site below touches $ZAI_API_KEY or ANTHROPIC_AUTH_TOKEN: these trace
+# paths, counts and branch decisions only. Keep it that way when adding more.
+debug_log() {
+    if [ "$DEBUG" = "true" ]; then
+        echo "DEBUG: $*" >&2
+    fi
+}
+
 # Configuration
 USER_BIN_DIR="$HOME/.local/bin"
 GLM_45_CONFIG_DIR="$HOME/.claude-glm-45"
@@ -223,6 +243,7 @@ find_all_installations() {
 
     local found_files=()
 
+    debug_log "find_all_installations: scanning ${#locations[@]} location(s)"
     for location in "${locations[@]}"; do
         if [ -d "$location" ]; then
             # Find all claude-glm* files in this location
@@ -234,6 +255,7 @@ find_all_installations() {
         fi
     done
 
+    debug_log "find_all_installations: found ${#found_files[@]} file(s)"
     # Return found files (print them)
     printf '%s\n' "${found_files[@]}"
 }
@@ -258,7 +280,9 @@ cleanup_old_wrappers() {
         [ -n "$wrapper_line" ] && all_wrappers+=("$wrapper_line")
     done < <(find_all_installations)
 
+    debug_log "cleanup_old_wrappers: ${#all_wrappers[@]} wrapper(s) in scope"
     if [ ${#all_wrappers[@]} -eq 0 ]; then
+        debug_log "cleanup_old_wrappers: nothing to clean, returning early"
         return 0
     fi
 
@@ -423,6 +447,7 @@ detect_shell_rc() {
             ;;
     esac
 
+    debug_log "detect_shell_rc: SHELL=$SHELL -> shell_name=$shell_name -> rc=$rc_file"
     echo "$rc_file"
 }
 
@@ -897,8 +922,16 @@ remove_retired_wrappers() {
         # cleanup_old_wrappers, this path never asks. Every wrapper this
         # installer generates points at the Z.AI endpoint, so require that
         # fingerprint before removing anything.
+        # Match the endpoint only where a wrapper ASSIGNS it, not anywhere in the
+        # file: a whole-file grep also matched a user's own script that merely
+        # mentions the endpoint in a comment, and this path never asks before
+        # deleting. Verified safe against the full history — every wrapper form
+        # ever generated under a retired name writes exactly
+        # `export ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic"`, unindented,
+        # so nothing key-bearing becomes undeletable by tightening this.
         if [ -f "$USER_BIN_DIR/$name" ] && \
-           grep -q 'api\.z\.ai/api/anthropic' "$USER_BIN_DIR/$name" 2>/dev/null; then
+           grep -qE '^[[:space:]]*(export[[:space:]]+)?ANTHROPIC_BASE_URL=.*api\.z\.ai/api/anthropic' \
+                "$USER_BIN_DIR/$name" 2>/dev/null; then
             # A failed removal must not stop the install, and must not pass
             # silently either: the wrapper left behind still carries the user's
             # API key and still points at a name Z.AI no longer serves.
@@ -910,6 +943,25 @@ remove_retired_wrappers() {
             fi
         fi
     done
+    # `ccx` is retired too, but it cannot use the loop above: the historical ccx
+    # wrapper was a local proxy (ANTHROPIC_BASE_URL="http://127.0.0.1:${PORT}") and
+    # is the only wrapper form this installer ever wrote WITHOUT the Z.AI endpoint,
+    # so there is no shared fingerprint to test. It previously ran as an
+    # unconditional `rm` before the menu, which deleted a user's own ~/.local/bin/ccx
+    # with no prompt — and still deleted it when the user chose "Cancel". Gate it on
+    # the proxy wrapper's own markers, and run it here so declining the install
+    # declines this too. A surviving retired ccx points at a dead local port: it
+    # fails loudly and harmlessly, which is the better way for this to be wrong.
+    if [ -f "$USER_BIN_DIR/ccx" ] && \
+       grep -qE 'CLAUDE_PROXY_PORT|ANTHROPIC_UPSTREAM_URL' "$USER_BIN_DIR/ccx" 2>/dev/null; then
+        if rm -f "$USER_BIN_DIR/ccx" 2>/dev/null; then
+            removed=$((removed + 1))
+        else
+            echo "  ⚠️  Could not remove retired wrapper: $USER_BIN_DIR/ccx"
+            echo "     Delete it manually — it still holds your API key."
+        fi
+    fi
+
     if [ "$removed" -gt 0 ]; then
         echo "🧹 Removed $removed retired wrapper(s) — that model is no longer served under its own name"
     fi
@@ -1351,7 +1403,6 @@ main() {
     # Clean up old installations from different locations
     cleanup_old_wrappers
 
-    rm -f "$USER_BIN_DIR/ccx" 2>/dev/null || true
 
     # Check if already installed
     if [ -f "$USER_BIN_DIR/claude-glm-5.3" ] || [ -f "$USER_BIN_DIR/claude-glm-5.2" ] || [ -f "$USER_BIN_DIR/claude-glm-5.1" ] || [ -f "$USER_BIN_DIR/claude-glm-5-turbo" ] || [ -f "$USER_BIN_DIR/claude-glm-5" ] || [ -f "$USER_BIN_DIR/claude-glm-4.7" ] || [ -f "$USER_BIN_DIR/claude-glm-4.6" ] || [ -f "$USER_BIN_DIR/claude-glm-4.5v" ] || [ -f "$USER_BIN_DIR/claude-glm-4.5-air" ] || [ -f "$USER_BIN_DIR/claude-glm-4.5" ] || [ -f "$USER_BIN_DIR/claude-glm-fast" ]; then

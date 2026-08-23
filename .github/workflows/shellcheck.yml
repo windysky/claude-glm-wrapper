@@ -1,0 +1,112 @@
+# ShellCheck Gate
+#
+# Enforces the policy recorded in the 2026-08-17 lint baseline: the existing
+# findings are accepted debt; only NEW findings fail the build.
+#
+# Comparison is by SC-code COUNT per file, never by line number — any edit
+# shifts line numbers and would report every finding as new. A count that DROPS
+# is an improvement and passes; a count that RISES, or a code that was not in
+# the baseline at all, fails.
+#
+# Baseline: .github/shellcheck-baseline/*.counts (tracked on purpose — the
+# human-readable artifact lives under gitignored .moai/, which a clean checkout
+# does not have, so CI cannot diff against it).
+#
+# Dialects are per-file by shebang: install.sh and smoke_test_models.sh are
+# #!/bin/bash; both .git_hooks files are #!/bin/sh, where POSIX findings are
+# legitimate rather than noise.
+#
+# Refreshing the baseline: run the same commands locally, commit the .counts
+# files, and say why in the commit message. Note that a shellcheck VERSION change
+# on the runner can shift counts on its own — the job prints the version it used
+# so a sudden mass failure is diagnosable rather than mysterious.
+
+name: ShellCheck Gate
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "install.sh"
+      - "smoke_test_models.sh"
+      - ".git_hooks/**"
+      - ".github/shellcheck-baseline/**"
+      - ".github/workflows/shellcheck.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "install.sh"
+      - "smoke_test_models.sh"
+      - ".git_hooks/**"
+      - ".github/shellcheck-baseline/**"
+      - ".github/workflows/shellcheck.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  shellcheck:
+    name: Fail on new shellcheck findings
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # Pinned to a full commit SHA, not a tag. A tag is mutable: whoever
+      # controls the action's repo can repoint v4 at new code, which would then
+      # run here with this workflow's token. Update deliberately: re-resolve the
+      # tag, read the diff, then bump.
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      # shellcheck ships preinstalled on the ubuntu-latest runner image, so
+      # there is no install step and no sudo requirement.
+      - name: Record shellcheck version
+        run: shellcheck --version
+
+      - name: Compare findings against the baseline
+        run: |
+          set -uo pipefail
+          status=0
+          check() {
+            dialect="$1"; file="$2"
+            base=".github/shellcheck-baseline/$(printf '%s' "$file" | sed 's#^\.##; s#/#_#g').counts"
+            if [ ! -f "$base" ]; then
+              echo "::error file=$file::no baseline at $base — add one before linting this file"
+              status=1
+              return
+            fi
+            shellcheck -s "$dialect" -f gcc "$file" 2>&1 \
+              | grep -oE 'SC[0-9]+' | sort | uniq -c | awk '{print $2, $1}' > /tmp/now.counts || true
+            echo "--- $file (-s $dialect)"
+            while read -r code count; do
+              [ -n "${code:-}" ] || continue
+              was="$(awk -v c="$code" '$1==c {print $2}' "$base")"
+              was="${was:-0}"
+              if [ "$count" -gt "$was" ]; then
+                echo "::error file=$file::$code rose from $was to $count"
+                status=1
+              elif [ "$count" -lt "$was" ]; then
+                echo "    $code improved: $was -> $count (update the baseline when convenient)"
+              fi
+            done < /tmp/now.counts
+            # A code present in the baseline but absent now is a pure improvement.
+            while read -r code was; do
+              [ -n "${code:-}" ] || continue
+              if ! awk -v c="$code" '$1==c {found=1} END {exit !found}' /tmp/now.counts; then
+                echo "    $code fully cleared (was $was)"
+              fi
+            done < "$base"
+          }
+
+          check bash install.sh
+          check bash smoke_test_models.sh
+          check sh   .git_hooks/pre-commit
+          check sh   .git_hooks/pre-push
+
+          if [ "$status" -ne 0 ]; then
+            echo ""
+            echo "New shellcheck findings were introduced. Either fix them, or — if the"
+            echo "finding is deliberate — refresh .github/shellcheck-baseline/ and explain"
+            echo "why in the commit message."
+          fi
+          exit "$status"
