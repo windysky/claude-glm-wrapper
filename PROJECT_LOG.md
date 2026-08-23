@@ -6,6 +6,7 @@ Bounded active log for the claude-glm-wrapper installer (Claude Code wrappers fo
 - logs/PROJECT_LOG_2026-H1.md — 10 sessions (2026-02 … 2026-04)
 
 ## Session Index (active, newest first)
+- 2026-08-23 (Phase 19 follow-up — expert panel decided 4 open questions; debug flag, ccx gate, fingerprint tighten, CI lint gate shipped)
 - 2026-08-17 14:xx CEST (Phase 19 execution — review SPEC verdict APPROVED ×4, 3 findings filed, LOW defects fixed)
 - 2026-08-17 11:43 CEST (Phase 19 planning — 3 SPECs queued for execution; ps1 e2e SPEC dropped)
 - 2026-08-16 → closed 2026-08-17 06:50 CEST (Phase 18 harness code review — 18 fixes, 6 commits pushed)
@@ -20,6 +21,36 @@ Bounded active log for the claude-glm-wrapper installer (Claude Code wrappers fo
 - 2026-06-16
 
 ---
+
+## Session 2026-08-23 (Phase 19 follow-up)
+- Coding CLI used: Claude Code CLI (Opus 5, 1M context)
+- Phase: close the open decisions left by Phase 19 execution. Three read-only expert agents were spawned to decide them rather than returning to the user.
+
+### Panel decisions (each re-verified before acting — two needed correcting)
+| Question | Verdict | What decided it |
+|---|---|---|
+| `SPEC_DEBUG_FLAG_DEAD` | **implement** | `install.ps1` already ships `Write-DebugLog` with 25+ call sites at the same points; removing the bash side would permanently diverge two parity-tracked siblings |
+| `SPEC_FINGERPRINT_COMMENT_MATCH` | **tighten (Option B)** | Across 24 commits, every retired-name wrapper writes one identical unindented `export ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic"` — the key-retention counter-risk is empirically absent |
+| npx claim | **drop the claim** | `npm view claude-glm-installer` → upstream's v1.0.3; this fork carries upstream's `author` and could not publish over it |
+| shellcheck gate | **CI, blocking** | `.git_hooks/*` are Go/`moai gate` templates that no-op here and are not installed on a fresh clone |
+
+**The panel's literal debug helper would have broken every install.** It proposed `debug_log() { [ "$DEBUG" = "true" ] && echo ...; }`, which returns 1 when debug is OFF — and this script runs under `set -eE`, so every call site would abort for the majority of users who never pass `--debug`. Probed all three forms; shipped the `if ... fi` form, which returns 0 either way.
+
+**One expert finding was itself a rediscovery, not a mystery.** The security reviewer flagged an "unexplained" decoy-D anomaly (`ccx` deleted). That was the already-filed `SPEC_CCX_UNCONDITIONAL_DELETE`, unrelated to its patch.
+
+### Shipped
+- **Debug flag implemented** — `debug_log()` + 5 call sites (`find_all_installations` scan/result, `cleanup_old_wrappers` count + early return, `detect_shell_rc` resolution). stderr-only; stdout byte-identical with the flag off; key never touched; `SC2034` cleared.
+- **`SPEC_CCX_UNCONDITIONAL_DELETE`** — the ungated `rm -f ~/.local/bin/ccx` is gated on the proxy wrapper's own markers and moved inside `remove_retired_wrappers`, which the Cancel branch never reaches. Choosing "4) Cancel" no longer deletes anything.
+- **`SPEC_FINGERPRINT_COMMENT_MATCH`** — the retired-wrapper gate now matches only where a wrapper ASSIGNS the endpoint, so a user script mentioning it in a comment survives.
+- **ShellCheck CI gate** — `.github/workflows/shellcheck.yml`, blocking on NEW findings only, comparing SC-code counts (edit-resilient) against a **tracked** baseline at `.github/shellcheck-baseline/`. The expert surfaced the blocker: the original baseline lived under gitignored `.moai/`, so CI had nothing to diff against. Gate logic tested locally on three cases (clean passes, new finding fails, improvement passes).
+- **npx claim removed** from `package.json`'s description. The larger question — retiring the `bin` stanza and `preinstall.js` — was split into `SPEC_NPM_ENTRY_POINT_RETIREMENT` because it couples to the `.gitignore` `!/bin/` rationale.
+- **Tooling triage**: the 2026-08-21 template run was split. CLAUDE.md (manager-kanban → manager-lead, Agent Teams re-allowed) and the `.agency.archived/` removal were accepted; two files were **reverted** because the run replaced project-specific hardening with template defaults — `.gitignore` lost the `!/bin/` negation (new files under `bin/` would be silently unshippable) and `label-sync.yml` was unpinned from full commit SHAs back to mutable `@v4`/`@v2` tags on a workflow holding `issues:write` + `pull-requests:write`.
+
+### Disclosure — commit `5e7964d` is mis-scoped
+Its message describes only the two R3 fixes, but it carries seven files: the debug flag, the CI workflow, the tracked baseline, and the `package.json` change went in with it. Cause: those four were staged earlier in the session and never committed, so a later `git add install.sh` + commit swept the whole index. The content is correct and verified; only the message under-describes it. History was left intact rather than force-pushing a rewrite over already-published commits. Stated here because a future reader diffing that commit against its subject will otherwise think something unrelated was smuggled in.
+
+### Still open
+`SPEC_ALIAS_GLM_WILDCARD_OVERMATCH` (LOW-MED, ready — must NOT be "fixed" by reverting R1) and `SPEC_NPM_ENTRY_POINT_RETIREMENT` (decision required). The CI gate has never run on a real PR — its first execution is unobserved, and a shellcheck version difference on the runner can shift counts on its own.
 
 ## Session 2026-08-17 (Phase 19 execution)
 - Coding CLI used: Claude Code CLI (Opus 5, 1M context)
