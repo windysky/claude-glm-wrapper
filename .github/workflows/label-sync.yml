@@ -39,17 +39,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      # Third-party actions are pinned to a full commit SHA, not a tag. A tag is
-      # mutable: whoever controls the action's repo can repoint v2/v4 at new
-      # code, which would then run here with the issues:write and
-      # pull-requests:write permissions granted below and the repository's
-      # GITHUB_TOKEN. That is the tj-actions/changed-files supply-chain pattern.
-      # Update deliberately: re-resolve the tag, read the diff, then bump.
       - name: Checkout
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        uses: actions/checkout@v4
 
       - name: Sync labels
-        uses: EndBug/label-sync@52074158190acb45f3077f9099fea818aa43f97a # v2
+        uses: EndBug/label-sync@v2
         with:
           config-file: .github/labels.yml
           # delete-other-labels: false — preserve labels not in labels.yml (e.g., bot-managed labels)
