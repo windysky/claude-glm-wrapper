@@ -348,3 +348,7 @@ package-lock.json
 
 # Restored 2026-09-30 — rules dropped by the v3.1.3 template sync (from fce0361^)
 !/bin/
+
+# MoAI-generated tooling files — kept local, never published (2026-09-30)
+/.agents/
+/AGENTS.md
