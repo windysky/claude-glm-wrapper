@@ -352,5 +352,6 @@ package-lock.json
 # MoAI-generated tooling files — kept local, never published (2026-09-30)
 /.agents/
 /AGENTS.md
+/CLAUDE.md
 /.claudeignore
 /.worktreeinclude
