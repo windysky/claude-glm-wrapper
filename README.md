@@ -84,6 +84,25 @@ Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 - Creates wrapper scripts in `~/.local/bin/`
 - Adds convenient aliases to your shell profile
 - Adds `~/.local/bin/` (or `%USERPROFILE%\.local\bin` on Windows) to your PATH and updates the current session; warns if it still isn't available
+- Syncs `GLM_API_KEY` in `~/.moai/.env.glm` to the same key, **if that file already exists** (see below)
+
+#### MoAI-ADK key sync
+
+If you also use [MoAI-ADK](https://github.com/modu-ai/moai-adk), it reads its Z.AI credential
+from `~/.moai/.env.glm` as `GLM_API_KEY=` — a different file and a different variable name from
+the `ANTHROPIC_AUTH_TOKEN` these wrappers use. Rotating your key here used to leave MoAI-ADK
+authenticating with the previous one until you noticed and edited the file by hand.
+
+The installer now rewrites that one line to match, on every path that sets a key (fresh install,
+"Update API key only", and "Reset wrappers using existing API key"). It:
+
+- **never creates the file** — its absence means MoAI-ADK isn't configured, and the installer
+  won't drop a credential file for a tool you don't run
+- leaves your comments and line ordering intact, and collapses duplicate `GLM_API_KEY` lines
+- skips the sync entirely if you declined to enter a key, so a working MoAI-ADK setup is never
+  overwritten with the placeholder
+- warns instead of failing if the file can't be written — your GLM wrappers are already installed
+  by that point
 
 ## Usage
 

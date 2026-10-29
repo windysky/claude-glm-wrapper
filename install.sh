@@ -967,6 +967,87 @@ remove_retired_wrappers() {
     fi
 }
 
+# Keep MoAI-ADK's GLM key file in step with the key this installer just wrote.
+#
+# MoAI-ADK (the `moai` CLI) does not read the wrappers: it takes its Z.AI
+# credential from ~/.moai/.env.glm, under the name GLM_API_KEY. That is a
+# different file and a different variable name from the ANTHROPIC_AUTH_TOKEN
+# this installer embeds, and nothing ever kept the two in step — so rotating the
+# key here left MoAI-ADK authenticating with the previous one until the user
+# noticed and hand-edited the file.
+#
+# Deliberately does NOT create the file. Its absence means MoAI-ADK is not
+# installed, or has never been configured; writing a key file for a tool the
+# user does not run is not this installer's business, and an unexpected
+# credential file appearing under ~/.moai is worse than no sync at all.
+#
+# Never fails the install. A sync that cannot happen is reported and skipped:
+# the wrappers are already written by this point, and aborting here would leave
+# a correct GLM install looking like a failed one.
+sync_moai_env_glm() {
+    local env_file="$HOME/.moai/.env.glm"
+
+    if [ ! -f "$env_file" ]; then
+        debug_log "sync_moai_env_glm: $env_file absent — MoAI-ADK not configured, nothing to sync"
+        return 0
+    fi
+
+    # Nothing to propagate while the key is still the placeholder (the user
+    # declined to enter one). Overwriting a real GLM_API_KEY with the literal
+    # YOUR_ZAI_API_KEY_HERE would break a working MoAI-ADK install.
+    if [ -z "$ZAI_API_KEY" ] || [ "$ZAI_API_KEY" = "YOUR_ZAI_API_KEY_HERE" ]; then
+        debug_log "sync_moai_env_glm: no real key in hand — leaving $env_file untouched"
+        return 0
+    fi
+
+    if [ ! -w "$env_file" ]; then
+        echo "  ⚠️  Cannot write $env_file — MoAI-ADK's GLM_API_KEY was NOT updated."
+        echo "     Set it by hand to the same key, or MoAI-ADK keeps using the old one."
+        return 0
+    fi
+
+    local tmp
+    # Same directory as the target, so the mv below is a rename within one
+    # filesystem — atomic, and never a copy that could leave a half-written
+    # key file behind.
+    tmp=$(mktemp "${env_file}.XXXXXX" 2>/dev/null) || {
+        echo "  ⚠️  Could not stage an update for $env_file — GLM_API_KEY unchanged."
+        return 0
+    }
+    chmod 600 "$tmp" 2>/dev/null || true
+
+    # The key reaches awk through the environment rather than through -v: awk
+    # expands backslash escapes in a -v value, and ENVIRON does not. The
+    # validator already rejects backslashes, so this is belt-and-braces — but it
+    # is the kind of belt that stops a future charset relaxation corrupting a
+    # credential silently.
+    #
+    # Three cases in one pass: replace the first GLM_API_KEY line where it
+    # stands (preserving the file's comments and ordering), drop any duplicate
+    # GLM_API_KEY lines (a later one would win and re-introduce the stale key),
+    # and append the line when the file has none.
+    if MOAI_GLM_SYNC_KEY="$ZAI_API_KEY" awk '
+        BEGIN { key = ENVIRON["MOAI_GLM_SYNC_KEY"] }
+        /^[[:space:]]*GLM_API_KEY[[:space:]]*=/ {
+            if (!seen) { print "GLM_API_KEY=" key; seen = 1 }
+            next
+        }
+        { print }
+        END { if (!seen) print "GLM_API_KEY=" key }
+    ' "$env_file" > "$tmp" 2>/dev/null; then
+        if mv -f "$tmp" "$env_file" 2>/dev/null; then
+            chmod 600 "$env_file" 2>/dev/null || true
+            echo "✅ Synced GLM_API_KEY in $env_file (MoAI-ADK)"
+            return 0
+        fi
+    fi
+
+    rm -f "$tmp" 2>/dev/null || true
+    echo "  ⚠️  Failed to update $env_file — MoAI-ADK's GLM_API_KEY is unchanged."
+    echo "     Set it by hand to the same key you just entered."
+    return 0
+}
+
 # ---- Staged rc rewrite cleanup ----
 # Paths of the temp + backup files for the rc rewrite currently in flight.
 # Tracked at script scope so the trap can remove them when the run is
@@ -1431,6 +1512,7 @@ main() {
                     create_claude_glm_53_wrapper
                     remove_retired_wrappers
                     create_shell_aliases
+                    sync_moai_env_glm
                     echo "✅ API key updated!"
                     exit 0
                 fi
@@ -1464,6 +1546,7 @@ main() {
                 create_claude_glm_53_wrapper
                 remove_retired_wrappers
                 create_shell_aliases
+                sync_moai_env_glm
                 echo "✅ Reset complete!"
                 exit 0
                 ;;
@@ -1507,6 +1590,7 @@ main() {
     create_claude_glm_53_wrapper
     remove_retired_wrappers
     create_shell_aliases
+    sync_moai_env_glm
 
     # Final instructions
     local rc_file=$(detect_shell_rc)

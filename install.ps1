@@ -884,6 +884,91 @@ function Remove-RetiredWrappers {
     }
 }
 
+# Keep MoAI-ADK's GLM key file in step with the key this installer just wrote.
+# Mirrors sync_moai_env_glm in install.sh.
+#
+# MoAI-ADK (the `moai` CLI) does not read the wrappers: it takes its Z.AI
+# credential from ~\.moai\.env.glm, under the name GLM_API_KEY. That is a
+# different file and a different variable name from the ANTHROPIC_AUTH_TOKEN
+# this installer embeds, and nothing ever kept the two in step - so rotating the
+# key here left MoAI-ADK authenticating with the previous one until the user
+# noticed and hand-edited the file.
+#
+# Deliberately does NOT create the file. Its absence means MoAI-ADK is not
+# installed, or has never been configured; writing a key file for a tool the
+# user does not run is not this installer's business.
+#
+# Never fails the install. A sync that cannot happen is reported and skipped:
+# the wrappers are already written by this point, and aborting here would leave
+# a correct GLM install looking like a failed one.
+function Sync-MoaiEnvGlm {
+    $envFile = Join-Path $env:USERPROFILE ".moai\.env.glm"
+
+    if (-not (Test-Path -LiteralPath $envFile -PathType Leaf)) {
+        Write-DebugLog "Sync-MoaiEnvGlm: $envFile absent - MoAI-ADK not configured, nothing to sync"
+        return
+    }
+
+    # Nothing to propagate while the key is still the placeholder (the user
+    # declined to enter one). Overwriting a real GLM_API_KEY with the literal
+    # YOUR_ZAI_API_KEY_HERE would break a working MoAI-ADK install.
+    if ((-not $ZaiApiKey) -or ($ZaiApiKey -eq "YOUR_ZAI_API_KEY_HERE")) {
+        Write-DebugLog "Sync-MoaiEnvGlm: no real key in hand - leaving $envFile untouched"
+        return
+    }
+
+    try {
+        $lines = @(Get-Content -LiteralPath $envFile -ErrorAction Stop)
+
+        # Three cases in one pass: replace the first GLM_API_KEY line where it
+        # stands (preserving the file's comments and ordering), drop any
+        # duplicate GLM_API_KEY lines (a later one would win and re-introduce
+        # the stale key), and append the line when the file has none.
+        $out = New-Object System.Collections.Generic.List[string]
+        $seen = $false
+        foreach ($line in $lines) {
+            if ($line -match '^\s*GLM_API_KEY\s*=') {
+                if (-not $seen) {
+                    $out.Add("GLM_API_KEY=$ZaiApiKey")
+                    $seen = $true
+                }
+                continue
+            }
+            $out.Add($line)
+        }
+        if (-not $seen) {
+            $out.Add("GLM_API_KEY=$ZaiApiKey")
+        }
+
+        # Written to a sibling temp file and moved into place, so an
+        # interrupted write never leaves a truncated credential file. The temp
+        # file is created empty and ACL-hardened BEFORE it holds the key, so the
+        # credential never exists on disk under a default ACL.
+        #
+        # Not Set-Content -Encoding UTF8: under Windows PowerShell 5.1 that
+        # writes a BOM, and a BOM on the first line turns `GLM_API_KEY=...` into
+        # a key name no dotenv parser recognises. LF line endings for the same
+        # reason — a trailing CR would ride along inside the parsed value.
+        # UTF8Encoding($false) is BOM-less and still preserves any non-ASCII
+        # comment the file already carried, which -Encoding ascii would mangle.
+        $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+        $tmpFile = "$envFile.tmp$PID"
+        [System.IO.File]::WriteAllText($tmpFile, "", $utf8NoBom)
+        Protect-KeyFile -Path $tmpFile
+        [System.IO.File]::WriteAllText($tmpFile, (($out -join "`n") + "`n"), $utf8NoBom)
+        Move-Item -LiteralPath $tmpFile -Destination $envFile -Force -ErrorAction Stop
+        Protect-KeyFile -Path $envFile
+
+        Write-Host "OK: Synced GLM_API_KEY in $envFile (MoAI-ADK)" -ForegroundColor Green
+    } catch {
+        if ($tmpFile -and (Test-Path -LiteralPath $tmpFile)) {
+            Remove-Item -LiteralPath $tmpFile -Force -ErrorAction SilentlyContinue
+        }
+        Write-Host "WARNING: Could not update $envFile - MoAI-ADK's GLM_API_KEY is unchanged." -ForegroundColor Yellow
+        Write-Host "         Set it by hand to the same key you just entered." -ForegroundColor Yellow
+    }
+}
+
 function Add-CmdShims {
     Remove-DeprecatedGlmArtifacts
     Remove-DangerSkipArtifacts
@@ -1196,6 +1281,7 @@ function Install-ClaudeGlm {
                     Remove-RetiredWrappers
                     Add-PowerShellAliases
                     Add-CmdShims
+                    Sync-MoaiEnvGlm
                     Write-Host "OK: API key updated!"
                     Write-Host ""
                     Write-Host "IMPORTANT: this PowerShell session still has the OLD profile loaded."
@@ -1235,6 +1321,7 @@ function Install-ClaudeGlm {
                 Remove-RetiredWrappers
                 Add-PowerShellAliases
                 Add-CmdShims
+                Sync-MoaiEnvGlm
                 Write-Host "OK: Reset complete!"
                 Write-Host ""
                 Write-Host "IMPORTANT: this PowerShell session still has the OLD profile loaded."
@@ -1286,6 +1373,7 @@ function Install-ClaudeGlm {
     Remove-RetiredWrappers
     Add-PowerShellAliases
     Add-CmdShims
+    Sync-MoaiEnvGlm
 
     # Final instructions
     Write-Host ""
