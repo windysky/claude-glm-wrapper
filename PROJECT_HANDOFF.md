@@ -4,7 +4,7 @@
 - Purpose: Local wrapper/installer scripts to run Claude Code against Z.AI GLM models via per-model `CLAUDE_HOME` directories.
 - Scope: Cross-platform install scripts + docs for `ccg` (GLM-5.3, default, 1M context), `ccg53` (GLM-5.3), `ccg5t` (GLM-5-Turbo), `ccg47` (GLM-4.7), `ccg46` (GLM-4.6), `ccg45` (GLM-4.5), and `ccg45v` (GLM-4.5V vision) — **6 wrappers, each verified to serve the model its name claims**. Each wrapper uses Z.AI's opus/sonnet/haiku tier scheme (opus+sonnet = its own model, haiku = glm-4.7). Installer manages GLM aliases only — the bare `claude` command and any user-curated `ccd`/`ccdD`/`claudeD` aliases are intentionally untouched.
 - **Retired in Phase 17** (Z.AI silently reroutes these IDs while still returning HTTP 200): `ccg52`/`ccg51`/`ccg5` (served by glm-5.3), `ccg45air`/`ccf` (served by glm-4.7). The installer now deletes their wrapper scripts and strips their aliases on re-run.
-- Last updated: 2026-10-31 10:47 CDT
+- Last updated: 2026-10-31 11:19 CDT
 - Last coding CLI used (informational): Claude Code CLI (Opus 5, switched to Opus 5.5 mid-session)
 - Current version: 2.5.0 (package.json)
 - Latest commit on `main`: `48c8f93` (`install.ps1` UTF-8 read fix) plus docs-only commits after it; working tree clean, divergence `0 0` expected. CI `ShellCheck Gate` was green on the `819f3a9` push (its path filter covers `install.sh` and the baseline, not `install.ps1` or docs). Lineage (newest first): `48c8f93` ← `819f3a9` (Phase 20: MoAI-ADK `GLM_API_KEY` sync) ← `55802a0`/`058f9d5`/`424369c`/`a546d33`/`fce0361` (2026-09-30 MoAI tooling housekeeping; no installer, package or README change) ← `56ce6f4` (npm republish under `@windysky`) ← `62dc201` (Phase 19 follow-up docs) ← `5e7964d` (ccx gate + fingerprint tighten, mis-scoped).
@@ -59,6 +59,8 @@
   - Completed in Session 2026-08-23 (Phase 19 follow-up)
 - MoAI-ADK key sync — `install.sh` (`sync_moai_env_glm`) and `install.ps1` (`Sync-MoaiEnvGlm`) now rewrite `GLM_API_KEY` in `~/.moai/.env.glm` to the wrapper key on all three key paths (never creating the file, skipping on the placeholder); README section; live `~/.moai/.env.glm` repaired; retired key swept from local config: Completed (`819f3a9`). The follow-up `install.ps1` UTF-8-read fix (21/21 under real PowerShell 5.1) landed as `48c8f93`.
   - Completed in Session 2026-10-31 10:19 CDT (Phase 20)
+- npm distribution dropped (user decision): npx section removed from the README, npx claim removed from the `package.json` description, package marked `private`: Completed
+  - Completed in Session 2026-10-31 (Phase 20 follow-up)
 
 ## 3. Execution Plan Status
 - Phase 1: Add GLM-5 / adjust GLM-4.7 directories and mappings
@@ -144,12 +146,13 @@
   - Last updated: 2026-08-17 (Phase 19)
   - Reference: PROJECT_LOG.md Session 2026-08-17 (Phase 19 execution)
 
-- **`package.json` advertises an npx entry point that fetches somebody else's package.**
-  - Status: Open (LOW — nothing user-facing is broken today)
+- ~~**`package.json` advertises an npx entry point that fetches somebody else's package.**~~ **RESOLVED 2026-10-31 — the npx claim was dropped.**
+  - Status: **Resolved** 2026-10-31 (user decision: no npm distribution)
   - Discovered 2026-08-17 while resolving the Windows-user question. `package.json` `description` says *"Run with: npx claude-glm-installer"*, and `bin` declares that name — but `npm view claude-glm-installer` resolves to **upstream JoeInnsp23's v1.0.3** (`repository.url = JoeInnsp23/claude-glm-wrapper`), not this fork's v2.5.0. Anyone following that instruction runs a different, older codebase and would not know.
   - Not currently harmful: `README.md` only documents `git clone` + `bash install.sh`; the stale npx claim exists solely in `package.json`'s description field.
   - Options: drop the npx claim from the description, or publish under a distinct name. Not decided.
   - **Update 2026-10-31:** commit `56ce6f4` re-pointed the package at the author's own scope — `package.json` is now `@windysky/claude-glm-installer`, and both its description and `README.md:39` say `npx @windysky/claude-glm-installer` — but `npm view @windysky/claude-glm-installer` returns **E404** (nothing published at registry.npmjs.org, checked 2026-10-31). The instruction now fails loudly instead of running somebody else's code. Decision needed: publish the package, or drop the npx claim from both places.
+  - **Resolution 2026-10-31:** the user does not want npm distribution. `README.md` no longer has the npx section, the `package.json` description no longer advertises npx, and `package.json` is `"private": true`. That flag is npm's documented guard against accidental publishing, but it was **not observed working here**: `npm publish --dry-run` ignores it (lists the tarball, exit 0), and a real publish with no login fails on `ENEEDAUTH` first, with or without the flag. The protection that actually holds today is that no npm account or token exists on this machine (`~/.npmrc` has no `_authToken`). The installers never used npm or node (no reference in `install.sh`, `install.ps1` or `smoke_test_models.sh`; `package.json` has no dependencies). `bin/cli.js`, `bin/preinstall.js`, `.npmignore`, the `preinstall` script and the `.gitignore` `!/bin/` rule are now dead weight and were left in place — removing them is the optional `SPEC_NPM_ENTRY_POINT_RETIREMENT`. The `npx github:windysky/claude-glm-wrapper` route was tested and is blocked by the `preinstall` guard (it runs in npm's temporary git clone), which no longer matters.
   - Last updated: 2026-08-17 11:43 CEST
   - Reference: PROJECT_LOG.md Session 2026-08-17 (planning)
 - ~~Windows-side end-to-end verification of `install.ps1`.~~ **CLOSED — will not do (user decision, 2026-08-17 11:43 CEST).**
@@ -195,6 +198,10 @@
   - Status: Open (LOW, repo hygiene)
   - `git ls-files NEXT_SESSION.md` lists it, so the `/endsession` step that appends `/NEXT_SESSION.md` to `.gitignore` would be inert — an ignore rule does not untrack a tracked file — and every close dirties the tree. Left unchanged. If wanted: `git rm --cached NEXT_SESSION.md`, then add `/NEXT_SESSION.md` **at the end of `.gitignore`, below `# User Custom Patterns (preserved by moai update)`** (rules placed higher are deleted by `moai update`).
   - Last updated: 2026-10-31 10:19 CDT
+- The GitHub repository is PUBLIC (0 stars, 0 forks), which does not match "I don't want anyone else to have the installer" (user, 2026-10-31).
+  - Status: Open (optional decision; nothing changed). Dropping npm does not make the installer private — anyone can read and clone the repository today.
+  - If private is wanted: `gh repo edit windysky/claude-glm-wrapper --visibility private --accept-visibility-change-consequences`. Consequences: the README's `raw.githubusercontent.com` one-line installers (the shell and PowerShell variants) stop working for unauthenticated machines, so each machine would need `gh auth login` or an authenticated `git clone`; copies already cloned or cached stay out there.
+  - Last updated: 2026-10-31 11:19 CDT
 
 ## 5. Risks, Open Questions, and Assumptions
 - Risk: TypeScript build / proxy code removed; `package.json` no longer includes TypeScript/dev deps.
@@ -331,14 +338,14 @@
 
 ## 7. Restart Instructions
 
-> ## ▶ Nothing is mandatory. Everything is committed; two decisions are open.
+> ## ▶ Nothing is mandatory.
 >
 > The three SPECs this block used to assign are **done** (Phase 19). Do not re-execute them, or `SPEC_SECURITY_APIKEY_INJECTION.md` (marked IMPLEMENTED in its own header). `.moai/specs/` is gitignored and local-only.
 >
-> **Primary next step:** the npx decision in §4 (the package returns E404). Optional after that: whether `install.sh` should learn about the Windows side.
+> **Primary next step:** none required — the npx question is settled (dropped, 2026-10-31). Optional: whether to make the GitHub repository private (§4), and whether `install.sh` should learn about the Windows side.
 
 - Starting point:
-  0. **State at close (2026-10-31).** Everything is committed: code commit `48c8f93` (`install.ps1` UTF-8 read fix, found by running `Sync-MoaiEnvGlm` under real PowerShell 5.1; `819f3a9` had shipped a `Get-Content` read that mojibake'd non-ASCII comments) on top of `819f3a9`, then docs-only commits. Working tree clean and divergence `0 0` are expected (NEXT_SESSION precondition 2). Nothing is in flight.
+  0. **State at close (2026-10-31).** Everything is committed: code commit `48c8f93` (`install.ps1` UTF-8 read fix, found by running `Sync-MoaiEnvGlm` under real PowerShell 5.1; `819f3a9` had shipped a `Get-Content` read that mojibake'd non-ASCII comments) on top of `819f3a9`, then docs-only commits. Working tree clean and divergence `0 0` are expected (NEXT_SESSION precondition 2). Nothing is in flight; the npx-claim removal (`README.md`, `package.json` and these docs, 2026-10-31) is committed and pushed.
   1. Commit lineage (newest first):
      - `48c8f93` fix(install.ps1): read .env.glm as explicit UTF-8 so non-ASCII comments survive — **Phase 20**; docs-only commits follow it
      - `819f3a9` feat(installer): sync MoAI-ADK's GLM_API_KEY with the wrapper key (install.sh + install.ps1 + README) — **Phase 20**
@@ -362,7 +369,7 @@
      - The user's global rule forbids AI-harness trailers (`🗿 MoAI` etc.) in commits and PRs even though a harness reminder asks for one — none were added.
 - Recommended next actions:
   1. ~~Land the `install.ps1` fix.~~ **Done** — committed as `48c8f93` on 2026-10-31.
-  2. **npx decision.** `package.json` and `README.md:39` tell users to run `npx @windysky/claude-glm-installer`; the registry returns E404. Publish it, or drop the claim in both places.
+  2. ~~npx decision~~ — **settled 2026-10-31:** no npm distribution (README section and description claim removed; package marked private).
   3. **Optional:** teach `install.sh` about the Windows side (§4) — only if the user wants one run to rotate both. Otherwise the rule stays "one installer run per OS".
   4. **Optional:** untrack `NEXT_SESSION.md` (§4, repo hygiene).
   6. **Pick up the aliases** if this is a fresh shell: `source ~/.bashrc`, then `ccg` for GLM-5.3.
@@ -371,4 +378,4 @@
   9. **If you touch `install.ps1`**, remember it has never been executed end-to-end and the verification task was deliberately dropped (§4). Parse it, unit-test extracted functions under real PowerShell 5.1 via `/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe`, and lean on structural symmetry with the bash side. Never run the installer itself — it writes to the real `%USERPROFILE%`.
 - Cross-project wiki: `~/PROJECTS/wiki/concept/claude-code-auto-compact-window-headroom.md` (why the window is 900000); `~/PROJECTS/wiki/concept/set-e-err-trap-false-abort.md` (bare `return 1` under `set -e`+ERR trap false-aborts — Phase 18 hit this again at a second call site); `~/PROJECTS/wiki/concept/generated-secret-file-perms.md` (chmod the config a script generates, not just the script). Added 2026-10-31: `~/PROJECTS/wiki/concept/a-tool-absent-from-path-is-not-an-absent-tool.md` (check the recorded location before claiming a tool cannot run) and `~/PROJECTS/wiki/concept/a-key-rotation-is-finished-only-after-a-fingerprint-sweep-of-every-store.md` (every consumer is its own store; sweep by fingerprint).
 - Security posture at close: **0 CRITICAL, 0 HIGH open.** Across the Phase 18 program 21 findings were tracked, 13 closed and verified, 1 retracted by its own author as a false positive, and the remainder are LOW/INFO listed in §4. Two of the three HIGH findings were regressions introduced by fixes earlier in the same review and caught by independent re-gating — which is the single strongest argument for keeping the never-self-review rule. **Phase 20 (2026-10-29/31):** the retired Z.AI key was purged from 14 local config files — 10 stale files deleted after archiving to session scratch, 3 live per-wrapper config directories and `~/.moai/.env.glm` rewritten to the current key; 5 append-only session logs still contain it by decision (§5).
-- Last updated: 2026-10-31 10:47 CDT
+- Last updated: 2026-10-31 11:19 CDT
