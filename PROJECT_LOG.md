@@ -3,24 +3,70 @@
 Bounded active log for the claude-glm-wrapper installer (Claude Code wrappers for Z.AI GLM models). Newest first. Older sessions are archived verbatim under `logs/` (see Archives once rotation runs).
 
 ## Archives
-- logs/PROJECT_LOG_2026-H1.md — 10 sessions (2026-02 … 2026-04)
+- logs/PROJECT_LOG_2026-H1.md — 14 sessions (2026-02 … 2026-06)
 
 ## Session Index (active, newest first)
-- 2026-08-23 (Phase 19 follow-up — expert panel decided 4 open questions; debug flag, ccx gate, fingerprint tighten, CI lint gate shipped)
-- 2026-08-17 14:xx CEST (Phase 19 execution — review SPEC verdict APPROVED ×4, 3 findings filed, LOW defects fixed)
-- 2026-08-17 11:43 CEST (Phase 19 planning — 3 SPECs queued for execution; ps1 e2e SPEC dropped)
-- 2026-08-16 → closed 2026-08-17 06:50 CEST (Phase 18 harness code review — 18 fixes, 6 commits pushed)
-- 2026-08-16 08:50 CDT (Phase 17 GLM-5.3 + consolidation to genuinely-serving models)
+- 2026-10-31 10:19 CDT (Phase 20 — MoAI-ADK key sync, retired-key sweep)
+- 2026-08-23 (Phase 19 follow-up)
+- 2026-08-17 (Phase 19 execution)
+- 2026-08-17 11:43 CEST (Phase 19 planning)
+- 2026-08-16 → closed 2026-08-17 06:50 CEST (Phase 18 harness code review + fix)
+- 2026-08-16 08:50 CDT (Phase 17 GLM-5.3 + consolidation)
 - 2026-07-03 00:57 CDT (Phase 16 harness review)
 - 2026-07-02 10:01 CDT
 - 2026-06-16 16:23 CDT (session close)
 - 2026-06-16 16:13 CDT (auto-mode aliases)
-- 2026-06-16 15:43 CDT (cleanup)
-- 2026-06-16 15:36 CDT (session close)
-- 2026-06-16 (Phase 14)
-- 2026-06-16
 
 ---
+
+## Session 2026-10-31 10:19 CDT (Phase 20 — MoAI-ADK key sync, retired-key sweep)
+- Coding CLI used: Claude Code CLI (Opus 5, switched to Opus 5.5 mid-session), run as a background job
+- Phase worked on: Phase 20. Implementation and push happened on 2026-10-29 (`819f3a9`); the Windows check, the PowerShell 5.1 verification and this close-out on 2026-10-31.
+
+### Trigger and finding
+The user asked that `~/.moai/.env.glm` also carry `GLM_API_KEY`, equal to the wrappers' `ANTHROPIC_AUTH_TOKEN`, because MoAI-ADK reads its Z.AI credential from that file. They then clarified that the key already in the file was **retired**, so the goal was to *replace* it automatically, not merely add the variable.
+Before touching anything: the file existed and its `GLM_API_KEY` differed from the wrappers' token (sha256 prefixes compared, both 49 characters; no key was printed). Neither installer mentioned `.moai/.env.glm`, so nothing had ever kept the two in step.
+
+### Concrete changes implemented
+- `install.sh`: new `sync_moai_env_glm()` (+84), called after `create_shell_aliases` on all three key paths (fresh install, "Update API key only", "Reset using existing key"). Replaces the first `GLM_API_KEY` line in place, drops duplicates, appends if absent, keeps comments and order; stages through a sibling temp file at mode 600 and renames; **never creates** the file; skips while the key is still the placeholder; warns rather than aborting on failure. The key reaches `awk` through `ENVIRON`, not `-v` (which expands backslash escapes).
+- `install.ps1`: new `Sync-MoaiEnvGlm` (+88), same three call sites and same rules; writes UTF-8 **without BOM**, LF endings, temp file ACL-hardened with `Protect-KeyFile` before it holds the key.
+- `README.md` (+19): "MoAI-ADK key sync" section. All three in commit `819f3a9`, pushed.
+- Live repair: `~/.moai/.env.glm` backed up, the real function run against it, result compared with the wrapper token (equal), mode 600, header comments intact.
+- Retired-key sweep (user chose "delete the dead-key leftovers"): `grep -F` for the retired key over `~/.moai`, `~/.claude`, `~/.claude-glm-*`, `~/.local/bin` and the shell rc files. Each target was re-checked to still contain the key, archived to a tarball in session scratch (ephemeral), then deleted — 10 files: `settings.json` in `~/.claude-glm-5`, `-51`, `-52`, `-fast` (their wrappers are retired, so nothing would ever rewrite them); `~/.claude/settings.json.0219.bak`, `.backup2`, `.glm-working.20260303`, `.clean_v3`; `~/.local/bin/claude-glm-5.2.bak-1000000` (HANDOFF §4 had recorded it absent on 2026-08-17; it was present); and the `.env.glm.bak` made earlier. `settings.json` in `~/.claude-glm-45`, `-46`, `-47` was rewritten to the current key (JSON re-validated, mode 600) — they self-heal on the next launch anyway. Five append-only Claude Code logs (`history.jsonl` + four project transcripts) still contain the key and were left alone by choice.
+- Windows check (the user asked whether `install.sh` also updates the Windows side): it does not — separate script, separate home, no WSL bridge in `install.sh`. All six Windows wrappers still carried the retired key on 2026-10-29; at 10:18 on 2026-10-31 they were rewritten and now equal the WSL key (observed; which `install.ps1` revision the user ran is unknown).
+- **Uncommitted**: `install.ps1` UTF-8 read fix, 9 insertions / 4 deletions — see Problems.
+
+### Key technical decisions and rationale
+- Never create `~/.moai/.env.glm`: its absence means MoAI-ADK is not configured, and an installer should not drop a credential file for a tool the user does not run.
+- Skip the sync on the `YOUR_ZAI_API_KEY_HERE` placeholder, so a declined key prompt cannot overwrite a working MoAI-ADK key.
+- Sync is non-fatal: the wrappers are already written when it runs; aborting would make a good install look failed.
+- Deleted only files re-verified to hold the retired key at the moment of deletion, after archiving — never from a remembered classification. Session logs are append-only inputs Claude Code reads; rewriting them risks session history for no gain against a retired key.
+- Fixed the `install.ps1` defect in the working tree but did **not** commit or push: committing waits on the user.
+- Skipped the `/endsession` step that appends `/NEXT_SESSION.md` to `.gitignore`: the file is already tracked, so an ignore rule would be inert (HANDOFF §4).
+
+### Problems encountered and resolutions
+- A PreToolUse hook blocked the first sandbox test because the command text contained `rm -rf "$HOME"` (HOME had been reassigned in the same shell). Rebuilt the test with per-case sandbox directories; no files were touched by the blocked command.
+- The `AskUserQuestion` scope question timed out after 60 s; I proceeded on the recommended option and the user confirmed it ("1번으로") while the turn was running.
+- **PowerShell was wrongly judged unavailable.** I probed with `command -v pwsh powershell`, got nothing, told the user `install.ps1` could not be tested, and wrote that into the commit message. HANDOFF §7 already recorded the full path (`/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe`, not on `PATH`). At close-out the harness ran under real PowerShell 5.1.26100.9818 and found **one real defect**: `Sync-MoaiEnvGlm` read the file with `Get-Content`, which decodes a BOM-less file with the ANSI codepage, so a non-ASCII comment came back as mojibake — and my own code comment claiming such comments were preserved was false. Fixed with `[System.IO.File]::ReadAllLines($envFile, UTF8Encoding($false))` (which also consumes a BOM). It also found **one harness bug** (case 9: `byte[] + byte[]` is `object[]` in PowerShell, so the "BOM file" was written as text); the fail count of 2 was one product defect plus one test bug, not two product defects. Re-run: 21/21.
+
+### Items completed / resolved / superseded
+- Completed: key sync in both installers; live file repaired; retired key purged from local config.
+- Resolved: Windows wrappers on the retired key (observed 2026-10-31 10:18).
+- Reconciled (HANDOFF had drifted from the 2026-08-23 entry): `SPEC_CCX_UNCONDITIONAL_DELETE`, `SPEC_FINGERPRINT_COMMENT_MATCH`, `SPEC_DEBUG_FLAG_DEAD` marked resolved after re-reading the code; ShellCheck CI gate recorded as live and green.
+- Superseded: the §7 "execute three SPECs" block and the old `NEXT_SESSION.md` prompt (those SPECs were executed in Phase 19).
+- New open items: commit the `install.ps1` fix; npx package returns E404 although `package.json` and `README.md:39` advertise it; optional WSL→Windows bridge; `NEXT_SESSION.md` is tracked (HANDOFF §4).
+
+### Verification performed
+Detail and commands in HANDOFF §6. In short: `bash -n` clean; ShellCheck 0.10.0 counts identical before/after and to the committed baseline; CI `ShellCheck Gate` green on the `819f3a9` push; six bash sandbox cases plus non-ASCII round-trip under three locales; 21/21 PowerShell checks under real 5.1 after the fix; `.env.glm` equals the wrapper token; zero retired-key hits in config files. **Not verified:** which `install.ps1` revision ran on Windows; the CI gate's `pull_request` trigger; the installer's full end-to-end Windows flow; any npm publication.
+
+### Disclosures
+- Commit `819f3a9`'s message says `install.ps1` "was not executed — no PowerShell on the authoring machine; it was reviewed and brace-balance checked only." That was inaccurate (see Problems), and the commit contains the `Get-Content` defect. History was left intact rather than rewritten over a pushed commit; the fix is in the working tree.
+- The user's global rule forbids AI-harness attribution trailers in commits and PRs; the harness reminder asked for one; none was added.
+- A peer session (`project-master-a8`) announced itself as a coordinator; I acknowledged receipt and acted on none of its content.
+
+### Gap in this log
+Five commits dated 2026-09-30 — `fce0361`, `a546d33`, `424369c`, `058f9d5`, `55802a0` (MoAI template sync, `.gitignore` rule restore, then three "stop publishing generated tooling files" commits) — fall between the previous entry (2026-08-23) and this one and have no session entry. Their subjects are recorded here from `git log`; `git diff --stat` shows they changed no installer file, `package.json` or `README.md`. I did not witness that work.
+
 
 ## Session 2026-08-23 (Phase 19 follow-up)
 - Coding CLI used: Claude Code CLI (Opus 5, 1M context)
@@ -399,122 +445,4 @@ Post-push sanity: clean install still yields 6 wrappers / 28 aliases; pre-push h
   - Completed: A (auto mode) variants for all GLM aliases in install.sh + install.ps1 + README; personal ~/.bashrc ccdA flag fix.
 - Note for the user
   - GLM A aliases take effect after re-running `bash install.sh` (reset/regenerate) to refresh the rc alias block; the ~/.bashrc ccdA fix is live on next shell or `source ~/.bashrc`.
-
-## Session 2026-06-16 15:43 CDT (cleanup)
-- Coding CLI used: Claude Code CLI (Opus 4.8)
-- Phase(s) worked on
-  - Repo cleanup: removed the redundant `./install` bootstrap.
-- Concrete changes implemented
-  - `git rm install`. The 48-line bash bootstrap only detected `$OSTYPE` and `exec`-ed `install.sh` for Unix; on Windows it merely printed the PowerShell one-liner (it never actually ran install.ps1).
-- Rationale
-  - Dead/redundant: cross-platform OS dispatch is already handled correctly by `bin/cli.js` (the `claude-glm-installer` npx entry, which spawns install.ps1 on Windows / install.sh on Unix). `./install` was not referenced by README, not called by any code, and was excluded from package.json `files` (so it was never published to npm). On Unix it was identical to `bash install.sh`.
-- Files touched: removed `install`; PROJECT_LOG.md, PROJECT_HANDOFF.md updated.
-- Verification performed
-  - Post-removal grep for any reference to the bootstrap across the repo => none (clean). README install paths (curl install.sh / iwr install.ps1) and the npx bin/cli.js dispatcher are unaffected.
-- Items completed
-  - Completed: removed redundant ./install bootstrap.
-
-## Session 2026-06-16 15:36 CDT (session close)
-- Coding CLI used: Claude Code CLI (Opus 4.8)
-- Phase(s) worked on
-  - Session opened with /startsession (takeover-plan review of PROJECT_HANDOFF.md + PROJECT_LOG.md), then executed Phase 13 (GLM-5.2 default + tier-scheme migration) and Phase 14 (bash alias smart-dedup). Both phases are fully detailed in the two preceding log entries dated this same day; this entry is the dated session-close summary.
-- Concrete changes implemented (net for the session)
-  - Phase 13: new claude-glm-5.2 wrapper (ccg52 + ccg default repointed, glm-5.2[1m] + CLAUDE_CODE_AUTO_COMPACT_WINDOW=1000000); migrated all wrappers to ANTHROPIC_DEFAULT_OPUS/SONNET/HAIKU scheme; smoke test + README + version 2.4.0; mirrored across install.sh and install.ps1.
-  - Phase 14: bash alias-write smart-dedup in install.sh (bash_profile_sources_bashrc helper + case-based create_shell_aliases tail).
-- Files/modules/functions touched (session total)
-  - install.sh, install.ps1, smoke_test_models.sh, README.md, package.json, PROJECT_HANDOFF.md, PROJECT_LOG.md
-- Key technical decisions and rationale
-  - Empirical-first: probed Z.ai live before coding (all existing models still reachable; glm-5.2 PASS; raw glm-5.2[1m] 400s because the bracket form is a Claude Code client-side convention).
-  - User chose, via AskUserQuestion: add ccg52 + repoint ccg; tier mapping on every wrapper; keep all wrappers; enable [1m] on default; and (Phase 14) smart-dedup over full-bridge or status-quo.
-  - Phase 14 scoped to bash only (the duplication was bash-specific); zsh/csh/PowerShell paths untouched.
-- Problems encountered and resolutions
-  - Phase 13: PowerShell config-dirs summary omitted $Glm52ConfigDir (caught by evaluator-active review) — fixed to full parity.
-  - Phase 14: Claude Code Bash-tool `grep` shell-function wrapper exec-replaced test subshells; diagnosed and worked around by testing in a child bash process (real grep). Documented in Restart Instructions for the next agent.
-- Items explicitly completed this session
-  - Phase 13 (commit 502411d), Phase 14 (commit 5e1eb62), plus doc-sync commits (0070d27, f520235). All pushed to origin/main.
-  - Reconciled the previously-stale handoff (it had recorded 25ff837 as the tip; corrected, and the unlogged prior PS5.1 commits noted as pre-existing).
-- Verification performed
-  - bash -n install.sh / smoke_test_models.sh => OK; package.json => 2.4.0; 0 old-scheme residuals; 20/20/20 tier balance both scripts; generated 5.2 settings.json VALID (bash + PS); live smoke test glm-5.2 PASS; evaluator-active review APPROVED; Phase 14 helper 6/6 + end-to-end 3/3 (child bash).
-- Final state: working tree clean at f520235; version 2.4.0; no regressions.
-
-## Session 2026-06-16 (Phase 14)
-- Coding CLI used: Claude Code (Opus 4.8)
-- Phase(s) worked on
-  - Phase 14: bash alias-write smart-dedup. User observed the installer writes the alias block to both ~/.bash_profile and ~/.bashrc and asked to avoid that duplication generally.
-- Background (the .bashrc vs .bash_profile question)
-  - ~/.bashrc is read by interactive non-login shells (new terminals, tmux panes); ~/.bash_profile is read by login shells (SSH, console). Bash reads only ONE of them per shell type, which is why the installer historically wrote both. ~/.bashrc is the conventional home for aliases; the canonical no-dup pattern is aliases in ~/.bashrc with ~/.bash_profile sourcing ~/.bashrc.
-- User decision (AskUserQuestion)
-  - Chose "Smart dedup": write aliases+block to ~/.bashrc; only ALSO write ~/.bash_profile when it does NOT already source ~/.bashrc. When it does source ~/.bashrc, strip any installer-owned block previously left there (clean up the duplication on re-run).
-- Concrete changes implemented (install.sh ONLY)
-  - Added top-level helper `bash_profile_sources_bashrc()` — returns 0 if ~/.bash_profile loads ~/.bashrc via `.`/`source` (comment- and guard-aware grep), 1 otherwise.
-  - Replaced the tail of `create_shell_aliases` (the old `add_aliases_to_rc primary` + unconditional `add_aliases_to_rc ~/.bashrc`) with a case statement: csh -> .cshrc only (unchanged); bash (.bashrc or .bash_profile) -> write ~/.bashrc, then if ~/.bash_profile exists: strip our block when it bridges (dedup) else dual-write (coverage); zsh/ksh/other -> unchanged (detected rc + ~/.bashrc fallback).
-- Files touched: install.sh, PROJECT_HANDOFF.md, PROJECT_LOG.md. install.ps1 (single $PROFILE) and csh (.cshrc) have no dual-write, so no change.
-- Key technical decisions and rationale
-  - Scope limited to bash; the duplication was bash-specific. zsh dual-write (.zshrc + .bashrc) intentionally preserved to avoid behavior change for zsh users.
-  - Dedup also CLEANS existing duplicates: remove_aliases_from_rc runs on ~/.bash_profile when it bridges, so re-running the installer removes the stale block users already have there (the user's own machine has this duplicate today).
-  - PATH-writing in setup_user_bin left unchanged (PATH is written to a single rc file, not duplicated, so it was out of scope).
-- Problems encountered and resolutions
-  - End-to-end testing was repeatedly sabotaged by the Claude Code Bash tool's `grep` shell-function wrapper, which does `exec -a ugrep ...` inside subshells ($BASHPID != $$), replacing/terminating any test subshell the moment create_shell_aliases called grep. Diagnosed via set -x trace + `type grep`. Resolved by running the test as a child `bash` process (shell functions are not inherited, so grep = /usr/bin/grep). The installer itself is unaffected — real users run `bash install.sh` with the real grep.
-- Verification performed
-  - `bash -n install.sh` => OK
-  - Helper unit tests: 6/6 cases correct (guarded multi-line, one-line &&, source keyword, comment-only, test-line-without-source, no-bashrc) + correctly detects the user's real ~/.bash_profile as sourcing ~/.bashrc.
-  - End-to-end (child bash, real grep), 3 cases all PASS:
-    A. .bash_profile bridges -> block only in ~/.bashrc (ccg=5.2), ~/.bash_profile block stripped (0), bridge preserved, 0 leftover aliases.
-    B. .bash_profile does not bridge -> dual-write kept (block in both).
-    C. no .bash_profile -> ~/.bashrc only, no profile created.
-- Items completed
-  - Completed: smart-dedup alias writing for bash; auto-cleanup of redundant ~/.bash_profile block on re-run.
-- Remaining open issues
-  - Windows install.ps1 still unverified on a real Windows host (standing gap).
-  - To clean the duplicate that currently exists on the user's own machine, re-run `bash install.sh` (option to reset/regenerate aliases) — the dedup will strip the redundant ~/.bash_profile block.
-
-## Session 2026-06-16
-- Coding CLI used: Claude Code (Opus 4.8)
-- Phase(s) worked on
-  - Phase 13: Add GLM-5.2 as the new default model; migrate every wrapper from the single-model env scheme to Z.AI's recommended opus/sonnet/haiku tier scheme.
-- Motivation
-  - Z.ai released GLM-5.2. Per https://docs.z.ai/devpack/overview "All plans support GLM-5.2, GLM-5-Turbo, GLM-4.7 and GLM-4.5-Air." Per https://docs.z.ai/devpack/tool/claude the recommended Claude Code config now uses ANTHROPIC_DEFAULT_OPUS_MODEL=glm-5.2[1m], ANTHROPIC_DEFAULT_SONNET_MODEL=glm-5.2[1m], ANTHROPIC_DEFAULT_HAIKU_MODEL=glm-4.5-air, plus CLAUDE_CODE_AUTO_COMPACT_WINDOW=1000000 for the 1M context window. User asked for the default wrapper to use glm-5.2[1m].
-- Empirical findings (live smoke test against user's key, ground truth before coding)
-  - glm-5.2 => PASS (HTTP 200). glm-5.1, glm-5, glm-5-turbo, glm-4.7, glm-4.6, glm-4.5, glm-4.5v, glm-4.5-air all still PASS — i.e. all existing models remain reachable on the user's plan even though the overview doc only guarantees a subset across all plans. Nothing had to be removed.
-  - Raw `glm-5.2[1m]` => HTTP 400 "Unknown Model" at the bare /v1/messages endpoint. The `[1m]` suffix is a Claude Code client-side routing convention (paired with CLAUDE_CODE_AUTO_COMPACT_WINDOW), not a raw model id, so the smoke test (raw curl) cannot validate it. Base glm-5.2 is the probeable form; the bracket form is correct-by-spec per the Z.AI Claude doc.
-- User decisions captured via AskUserQuestion (4 questions)
-  - Add explicit ccg52 wrapper AND repoint default ccg -> glm-5.2.
-  - Tier mapping on EVERY wrapper (opus+sonnet = own model, haiku = glm-4.5-air), not just the default.
-  - Keep all existing wrappers (purely additive).
-  - Enable [1m] + auto-compact on the default wrapper.
-- Concrete changes implemented
-  - install.sh: added `create_claude_glm_52_wrapper` (file claude-glm-5.2, config dir ~/.claude-glm-52, opus/sonnet=glm-5.2[1m], haiku=glm-4.5-air, CLAUDE_CODE_AUTO_COMPACT_WINDOW=1000000). Added GLM_52_CONFIG_DIR. Converted all 9 existing wrappers' export blocks AND settings.json blocks from ANTHROPIC_MODEL/ANTHROPIC_SMALL_FAST_MODEL to the OPUS/SONNET/HAIKU tier scheme. Repointed `ccg` (csh + bash blocks) to claude-glm-5.2; added ccg52/ccg52D/ccg52Dd aliases; added the 3 ccg52 cleanup grep-v patterns; added the new wrapper to all 3 create-call sites, the detect_existing_zai_api_key wrapper_files + settings_files arrays, the existing-install if-test, the help/summary/model/alias/"don't forget" echoes, and the config-dirs line.
-  - install.ps1: mirrored everything — New-ClaudeGlm52Wrapper, $Glm52ConfigDir, tier-scheme conversion of all 9 existing wrappers' env arrays + settings.json lines, Set-Alias ccg -> claude-glm-5.2, Set-Alias ccg52, function ccg52D/ccg52Dd, $installerOwnedPatterns (Set-Alias ccg52 + the two function regexes), Get-ExistingZaiApiKey wrapperPaths + settingsPaths, existing-install detection ($glm52Wrapper), 3 call sites, .cmd shims (ccg + ccgD/ccgDd repointed to claude-glm-5.2.ps1, new ccg52/ccg52D/ccg52Dd shims), summaries, and the config-dirs summary line (brought to full 10-dir parity).
-  - smoke_test_models.sh: added glm-5.2 to DEFAULT_MODELS; claude-glm-5.2 to wrapper_files; ~/.claude-glm-52/settings.json to settings_files.
-  - README.md: feature list, quick-start, alias table (ccg -> 5.2 default with 1M context; new ccg52 row; ccg51 demoted from "same as ccg"), D/Dd variant list, tier-mapping explainer paragraph, how-it-works list, and "Changes in This Fork" section.
-  - package.json: 2.3.0 -> 2.4.0.
-- Files/modules/functions touched
-  - Modified: install.sh, install.ps1, smoke_test_models.sh, README.md, package.json, PROJECT_HANDOFF.md, PROJECT_LOG.md
-- Key technical decisions and rationale
-  - Tier scheme fully replaces the old 2-var scheme (0 residual ANTHROPIC_MODEL/ANTHROPIC_SMALL_FAST_MODEL refs) per the user's "tier mapping on every wrapper" choice. Each wrapper's opus+sonnet point at its own model so /model switching stays on-brand; haiku (background/fast) is glm-4.5-air everywhere.
-  - [1m] + auto-compact restricted to the default/5.2 wrapper only; all other wrappers keep their plain model id.
-  - ccg and ccg52 both resolve to the single claude-glm-5.2 wrapper (mirrors the existing ccg/ccg51 -> claude-glm-5.1 pattern), so repointing ccg automatically carries ccgD/ccgDd.
-  - Kept ccg5 = glm-5, ccg51 = glm-5.1 unchanged (determinism); only the short default ccg moved to 5.2.
-- Harness process
-  - Orchestrator (Opus 4.8) did research (WebFetch of both Z.AI docs + live smoke probe), Socratic AskUserQuestion round (4 questions), then implemented both scripts directly given the high cross-file synchronization requirements, then spawned one evaluator-active subagent for an independent fresh-context review.
-- Independent review (evaluator-active)
-  - Verdict APPROVED. Scores: Functionality 96, Security 100, Craft 97, Consistency 98. All 9 spec requirements verified present and consistent across both scripts; 0 old-scheme residuals; 20/20/20 tier balance; [1m]/auto-compact isolated to 5.2; JSON valid. One Low finding (PowerShell config-dirs summary omitted $Glm52ConfigDir) — fixed by bringing the line to full 10-dir parity. One pre-existing, out-of-scope note (csh space-format alias cleanup gap) left untouched.
-- Verification performed
-  - bash -n install.sh => OK; bash -n smoke_test_models.sh => OK
-  - json.load(package.json) => 2.4.0
-  - grep: 0 residual ANTHROPIC_MODEL/ANTHROPIC_SMALL_FAST_MODEL in both scripts; OPUS=SONNET=HAIKU=20 in both; [1m]+auto-compact strictly inside the 5.2 wrapper
-  - Generated bash claude-glm-5.2 settings.json extracted + python json.load => VALID (6 env keys); PowerShell 5.2 settings.json line parsed => VALID
-  - Live smoke_test_models.sh vs Z.ai API: glm-5.2 PASS, all wrapper models PASS, only glm-4.7-flashx 429 (plan quota, unchanged)
-- Items explicitly completed, resolved, or superseded in this session
-  - Completed: GLM-5.2 wrapper (ccg52) + ccg default repoint + 1M context
-  - Completed: tier-scheme migration across all wrappers (both installers)
-  - Completed: smoke test, README, version bump, independent review
-  - Superseded: ANTHROPIC_MODEL + ANTHROPIC_SMALL_FAST_MODEL scheme (now OPUS/SONNET/HAIKU tier scheme everywhere)
-  - Superseded: ccg -> claude-glm-5.1 (now ccg -> claude-glm-5.2)
-- Remaining open issues
-  - Phase 13 is uncommitted (user has not requested a commit). Working tree: install.sh, install.ps1, smoke_test_models.sh, README.md, package.json.
-  - Windows-side execution of install.ps1 still unverified (no Windows host).
-  - One live `ccg` launch recommended to confirm glm-5.2[1m] resolves inside Claude Code (raw API cannot validate the bracket form).
-- Documentation reconciliation note
-  - On takeover, found PROJECT_HANDOFF.md was stale: it recorded latest commit 25ff837, but git HEAD is 70ff1ff with unlogged commits 072a9c9 (Phase 11+12) and a run of install.ps1 PS5.1 fixes (ec387cb, 4399507, 03e7dfb, 657b2c9, 70ff1ff). Handoff "Latest committed commit" pointer corrected to 70ff1ff; those prior commits are pre-existing and left as-is.
 
