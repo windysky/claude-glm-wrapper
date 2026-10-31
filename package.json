@@ -1,7 +1,8 @@
 {
   "name": "@windysky/claude-glm-installer",
   "version": "2.5.0",
-  "description": "Cross-platform installer for Claude Code with Z.AI GLM models. Run with: npx @windysky/claude-glm-installer",
+  "private": true,
+  "description": "Cross-platform installer for Claude Code with Z.AI GLM models.",
   "keywords": [
     "claude",
     "claude-code",
