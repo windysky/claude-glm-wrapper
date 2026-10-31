@@ -227,6 +227,16 @@ function Add-PowerShellAliases {
     $managedNames = 'ccg|ccgD|ccgDd|ccgA|ccg45|ccg45D|ccg45Dd|ccg45A|ccg45v|ccg45vD|ccg45vDd|ccg45vA|ccg45air|ccg45airD|ccg45airDd|ccg45airA|ccg46|ccg46D|ccg46Dd|ccg46A|ccg47|ccg47D|ccg47Dd|ccg47A|ccg5|ccg5D|ccg5Dd|ccg5A|ccg5t|ccg5tD|ccg5tDd|ccg5tA|ccg51|ccg51D|ccg51Dd|ccg51A|ccg52|ccg52D|ccg52Dd|ccg52A|ccg53|ccg53D|ccg53Dd|ccg53A|ccf|ccx'
     $managedFlags = '--dangerously-skip-permissions( -d)?|--permission-mode auto'
 
+    # The claude-glm* wrapper names a profile alias may point at: the 12 distinct
+    # values this installer (and its bash sibling) has written, current and retired.
+    # Enumerated, NOT `claude-glm[A-Za-z0-9._-]*`: the open wildcard deleted a
+    # user's own `Set-Alias ccg claude-glm-wrapper-mine`, contradicting the
+    # promise above that a user's alias is never touched. `ccx` is matched exactly
+    # for the same reason (the bash installer narrowed it earlier). Adding a
+    # wrapper means adding it HERE and to $managedNames: a name missing from this
+    # list is not scrubbed on re-run and its old alias lingers.
+    $managedWrappers = 'claude-glm|claude-glm-4\.5|claude-glm-4\.5-air|claude-glm-4\.5v|claude-glm-4\.6|claude-glm-4\.7|claude-glm-5|claude-glm-5\.1|claude-glm-5\.2|claude-glm-5\.3|claude-glm-5-turbo|claude-glm-fast'
+
     # Comment headers this installer writes, plus the two generated line shapes:
     #   Set-Alias NAME claude-glm-X
     #   function NAME { BASE --flags @args }
@@ -237,7 +247,7 @@ function Add-PowerShellAliases {
         "^# Claude-GLM Danger Skip Aliases$",
         "^# Claude-GLM Auto Mode Aliases$",
         "^# ccx multi-provider proxy function$",
-        "^Set-Alias ($managedNames) (claude-glm[A-Za-z0-9._-]*|ccx[A-Za-z0-9._-]*)$",
+        "^Set-Alias ($managedNames) ($managedWrappers|ccx)$",
         "^\s*function\s+($managedNames)\s*\{\s*($managedNames) ($managedFlags) @args \}\s*$",
         '^\s*function\s+ccx\b',
         '\\ccx\.ps1'

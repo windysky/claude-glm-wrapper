@@ -1151,9 +1151,20 @@ create_shell_aliases() {
             # version no longer ships, or they linger pointing at a deleted file.
             local managed_names='ccg|ccgD|ccgDd|ccgA|ccg45|ccg45D|ccg45Dd|ccg45A|ccg45v|ccg45vD|ccg45vDd|ccg45vA|ccg45air|ccg45airD|ccg45airDd|ccg45airA|ccg46|ccg46D|ccg46Dd|ccg46A|ccg47|ccg47D|ccg47Dd|ccg47A|ccg5|ccg5D|ccg5Dd|ccg5A|ccg5t|ccg5tD|ccg5tDd|ccg5tA|ccg51|ccg51D|ccg51Dd|ccg51A|ccg52|ccg52D|ccg52Dd|ccg52A|ccg53|ccg53D|ccg53Dd|ccg53A|ccf|ccx'
             local managed_flags='--dangerously-skip-permissions( -d)?|--permission-mode auto'
-            # Every value this installer has ever written: a claude-glm* wrapper
-            # (optionally with our own flags), a managed base alias plus our
-            # flags, or a legacy ccx / claude-proxy target.
+            # Every value this installer has ever written: one of the claude-glm
+            # wrapper names listed below (optionally with our own flags), a
+            # managed base alias plus our flags, or a legacy ccx / claude-proxy
+            # target.
+            # The wrapper names are ENUMERATED, not `claude-glm[A-Za-z0-9._-]*`.
+            # The open wildcard deleted a user's own line such as
+            # `alias ccg='claude-glm-wrapper-mine'` — the same defect, on the same
+            # expression, that the `ccx` note below records. The list is the 12
+            # distinct claude-glm* alias values found in this file's git history
+            # (the 6 current wrappers plus the retired claude-glm, -4.5-air, -5,
+            # -5.1, -5.2 and -fast), so every alias this installer ever wrote is
+            # still scrubbed. Adding a wrapper means adding it HERE, to
+            # managed_names above, and to the wrapper creation code: a name missing
+            # from this list is not scrubbed on re-run and its old alias lingers.
             # `ccx` is matched exactly, not `ccx[A-Za-z0-9._-]*`: the historical
             # value this installer wrote was the bare string `ccx`, and the
             # trailing wildcard additionally deleted a user's own line such as
@@ -1162,7 +1173,7 @@ create_shell_aliases() {
             # appears in the project's history only as a directory and npm
             # package name, never as an alias value, so it matched nothing this
             # installer ever wrote and only widened the deletion surface.
-            local managed_value="claude-glm[A-Za-z0-9._-]*( (${managed_flags}))?|(${managed_names}) (${managed_flags})|ccx"
+            local managed_value="(claude-glm|claude-glm-4\.5|claude-glm-4\.5-air|claude-glm-4\.5v|claude-glm-4\.6|claude-glm-4\.7|claude-glm-5|claude-glm-5\.1|claude-glm-5\.2|claude-glm-5\.3|claude-glm-5-turbo|claude-glm-fast)( (${managed_flags}))?|(${managed_names}) (${managed_flags})|ccx"
             # bash/zsh:  alias NAME='VALUE'      csh:  alias NAME 'VALUE'
             # The trailing [[:space:]]* is load-bearing. grep strips only \n, so
             # on a CRLF rc file every managed line ends in \r and a bare `$`
