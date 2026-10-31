@@ -918,7 +918,12 @@ function Sync-MoaiEnvGlm {
     }
 
     try {
-        $lines = @(Get-Content -LiteralPath $envFile -ErrorAction Stop)
+        # Read as explicit UTF-8, not with Get-Content: Windows PowerShell 5.1
+        # decodes a BOM-less file with the ANSI codepage, so a non-ASCII comment
+        # came back as mojibake after the round trip. ReadAllLines also consumes a
+        # BOM when one is present, so a Notepad-saved file is healed, not carried on.
+        $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+        $lines = @([System.IO.File]::ReadAllLines($envFile, $utf8NoBom))
 
         # Three cases in one pass: replace the first GLM_API_KEY line where it
         # stands (preserving the file's comments and ordering), drop any
@@ -949,9 +954,9 @@ function Sync-MoaiEnvGlm {
         # writes a BOM, and a BOM on the first line turns `GLM_API_KEY=...` into
         # a key name no dotenv parser recognises. LF line endings for the same
         # reason — a trailing CR would ride along inside the parsed value.
-        # UTF8Encoding($false) is BOM-less and still preserves any non-ASCII
-        # comment the file already carried, which -Encoding ascii would mangle.
-        $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+        # UTF8Encoding($false) is BOM-less, and with the explicit UTF-8 read above
+        # it preserves any non-ASCII comment the file already carried (-Encoding
+        # ascii would mangle it).
         $tmpFile = "$envFile.tmp$PID"
         [System.IO.File]::WriteAllText($tmpFile, "", $utf8NoBom)
         Protect-KeyFile -Path $tmpFile
