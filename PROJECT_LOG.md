@@ -64,6 +64,9 @@ Detail and commands in HANDOFF §6. In short: `bash -n` clean; ShellCheck 0.10.0
 - The user's global rule forbids AI-harness attribution trailers in commits and PRs; the harness reminder asked for one; none was added.
 - A peer session (`project-master-a8`) announced itself as a coordinator; I acknowledged receipt and acted on none of its content.
 
+### Addendum (after close-out, 2026-10-31)
+The user then asked to commit and push, carefully. Pre-flight: `main` at `819f3a9`, divergence `0 0`; all 169 added lines scanned for the retired and the current key by sha256 fingerprint plus generic credential patterns — 0 findings. Landed as `48c8f93` (the `install.ps1` fix), `a7bf9dd` (these docs) and a final docs commit that marks the fix as landed. The "uncommitted" statements above describe the state at close-out.
+
 ### Gap in this log
 Five commits dated 2026-09-30 — `fce0361`, `a546d33`, `424369c`, `058f9d5`, `55802a0` (MoAI template sync, `.gitignore` rule restore, then three "stop publishing generated tooling files" commits) — fall between the previous entry (2026-08-23) and this one and have no session entry. Their subjects are recorded here from `git log`; `git diff --stat` shows they changed no installer file, `package.json` or `README.md`. I did not witness that work.
 

@@ -4,10 +4,10 @@
 - Purpose: Local wrapper/installer scripts to run Claude Code against Z.AI GLM models via per-model `CLAUDE_HOME` directories.
 - Scope: Cross-platform install scripts + docs for `ccg` (GLM-5.3, default, 1M context), `ccg53` (GLM-5.3), `ccg5t` (GLM-5-Turbo), `ccg47` (GLM-4.7), `ccg46` (GLM-4.6), `ccg45` (GLM-4.5), and `ccg45v` (GLM-4.5V vision) — **6 wrappers, each verified to serve the model its name claims**. Each wrapper uses Z.AI's opus/sonnet/haiku tier scheme (opus+sonnet = its own model, haiku = glm-4.7). Installer manages GLM aliases only — the bare `claude` command and any user-curated `ccd`/`ccdD`/`claudeD` aliases are intentionally untouched.
 - **Retired in Phase 17** (Z.AI silently reroutes these IDs while still returning HTTP 200): `ccg52`/`ccg51`/`ccg5` (served by glm-5.3), `ccg45air`/`ccf` (served by glm-4.7). The installer now deletes their wrapper scripts and strips their aliases on re-run.
-- Last updated: 2026-10-31 10:19 CDT
+- Last updated: 2026-10-31 10:47 CDT
 - Last coding CLI used (informational): Claude Code CLI (Opus 5, switched to Opus 5.5 mid-session)
 - Current version: 2.5.0 (package.json)
-- Latest commit on `main`: `819f3a9`, pushed to origin (CI `ShellCheck Gate` green on that push). **Working tree is not clean**: `install.ps1` carries a verified but **uncommitted** fix, and the three session docs are modified by the 2026-10-31 close-out. Lineage (newest first): `819f3a9` (Phase 20: MoAI-ADK `GLM_API_KEY` sync) ← `55802a0`/`058f9d5`/`424369c`/`a546d33`/`fce0361` (2026-09-30 MoAI tooling housekeeping; no installer, package or README change) ← `56ce6f4` (npm republish under `@windysky`) ← `62dc201` (Phase 19 follow-up docs) ← `5e7964d` (ccx gate + fingerprint tighten, mis-scoped).
+- Latest commit on `main`: `48c8f93` (`install.ps1` UTF-8 read fix) plus docs-only commits after it; working tree clean, divergence `0 0` expected. CI `ShellCheck Gate` was green on the `819f3a9` push (its path filter covers `install.sh` and the baseline, not `install.ps1` or docs). Lineage (newest first): `48c8f93` ← `819f3a9` (Phase 20: MoAI-ADK `GLM_API_KEY` sync) ← `55802a0`/`058f9d5`/`424369c`/`a546d33`/`fce0361` (2026-09-30 MoAI tooling housekeeping; no installer, package or README change) ← `56ce6f4` (npm republish under `@windysky`) ← `62dc201` (Phase 19 follow-up docs) ← `5e7964d` (ccx gate + fingerprint tighten, mis-scoped).
 
 ## 2. Current State
 - GLM-5 wrapper (`ccg5`): Completed
@@ -57,7 +57,7 @@
   - Completed in Session 2026-08-17 (Phase 19 execution)
 - Phase 19 follow-up — `--debug` flag implemented, `ccx` deletion gated on its proxy markers, retired-wrapper fingerprint tightened to assignment-only, ShellCheck CI gate (`.github/workflows/shellcheck.yml`, blocking on NEW findings) with a tracked baseline, npx claim dropped and then re-pointed at the `@windysky` scope (`56ce6f4`): Completed — each shipped item re-checked in the code on 2026-10-31 (§6)
   - Completed in Session 2026-08-23 (Phase 19 follow-up)
-- MoAI-ADK key sync — `install.sh` (`sync_moai_env_glm`) and `install.ps1` (`Sync-MoaiEnvGlm`) now rewrite `GLM_API_KEY` in `~/.moai/.env.glm` to the wrapper key on all three key paths (never creating the file, skipping on the placeholder); README section; live `~/.moai/.env.glm` repaired; retired key swept from local config: Completed (`819f3a9`). The follow-up `install.ps1` UTF-8-read fix is verified (21/21 under real PowerShell 5.1) but **not yet committed**.
+- MoAI-ADK key sync — `install.sh` (`sync_moai_env_glm`) and `install.ps1` (`Sync-MoaiEnvGlm`) now rewrite `GLM_API_KEY` in `~/.moai/.env.glm` to the wrapper key on all three key paths (never creating the file, skipping on the placeholder); README section; live `~/.moai/.env.glm` repaired; retired key swept from local config: Completed (`819f3a9`). The follow-up `install.ps1` UTF-8-read fix (21/21 under real PowerShell 5.1) landed as `48c8f93`.
   - Completed in Session 2026-10-31 10:19 CDT (Phase 20)
 
 ## 3. Execution Plan Status
@@ -124,7 +124,7 @@
   - Remaining from its findings queue: `SPEC_ALIAS_GLM_WILDCARD_OVERMATCH` (§4)
 
 - Phase 20: keep MoAI-ADK's `GLM_API_KEY` in step with the wrapper key (both installers) + retired-key sweep
-  - Status: Completed and pushed (`819f3a9`); **one follow-up fix to `install.ps1` is verified but uncommitted**
+  - Status: Completed (`819f3a9`, follow-up fix `48c8f93`)
   - Last updated: 2026-10-31 10:19 CDT
 
 ## 4. Outstanding Work
@@ -179,8 +179,8 @@
   - Status: Open (LOW)
   - `install.sh` unquoted `all_wrappers=($(find_all_installations))` word-splits on a wrapper path containing a space; the printed pipe-to-bash install hint differs from the safe process-substitution form used everywhere else; `smoke_test_models.sh` `validate_key` accepts an empty string where its `install.sh` sibling rejects it (unreachable today — `detect_key` guards it); `.bak` symlink following during rc rewrite (same-user, grants no privilege).
   - Last updated: 2026-08-17 11:43 CEST
-- `install.ps1`: commit the verified UTF-8-read fix.
-  - Status: Open — **uncommitted in the working tree** (9 insertions, 4 deletions). Committing and pushing waits on the user.
+- ~~`install.ps1`: commit the verified UTF-8-read fix.~~ **RESOLVED — committed as `48c8f93` (2026-10-31).**
+  - Status: Resolved — committed (9 insertions, 4 deletions).
   - Defect: commit `819f3a9` shipped `Sync-MoaiEnvGlm` reading `.env.glm` with `Get-Content`, which decodes a BOM-less file with the ANSI codepage under Windows PowerShell 5.1 — a non-ASCII comment came back as mojibake (`ED 82 A4` → `C3 AD E2 80 9A C2 A4`). The MoAI-generated header is ASCII, so the default file is unaffected; a hand-edited Korean comment would be corrupted. Fix: `[System.IO.File]::ReadAllLines($envFile, UTF8Encoding($false))`, which also consumes a BOM. Verified 21/21 under real PowerShell 5.1 (§6).
   - Last updated: 2026-10-31 10:19 CDT
   - Reference: PROJECT_LOG.md Session 2026-10-31 10:19 CDT
@@ -240,9 +240,9 @@
   - Date opened: 2026-08-17 (Phase 19 review, finding F4)
   - Context: making a wrapper unremovable requires removing write permission from the *directory* (`rm -f` needs directory write, not file write), and that same change aborts the install earlier at wrapper creation (`install.sh:552`). Reaching the warning needs an immutable attribute or a foreign-owned sticky directory — root-only setups. The path is not shown defective, only untestable; do not rely on that warning as a safety net.
 - Risk: until the `install.ps1` fix is committed, `main` carries the `Get-Content` ANSI-decode defect in `Sync-MoaiEnvGlm`.
-  - Status: Open (LOW — the MoAI-generated header is ASCII; only a hand-edited non-ASCII comment is affected)
+  - Status: **Resolved** — `main` carried the defect only between `819f3a9` and `48c8f93` (LOW: the MoAI-generated header is ASCII; only a hand-edited non-ASCII comment was affected)
   - Date opened: 2026-10-31
-  - Mitigation: fix verified in the working tree (§4); commit pending.
+  - Mitigation: fixed in `48c8f93`.
 - Assumption: the retired Z.AI key remains in five append-only Claude Code logs (`~/.claude/history.jsonl` and four project transcripts).
   - Status: Accepted (the user chose to leave them, 2026-10-29). Rewriting those files risks session history for no gain against a retired key; revisit only if the key is ever un-retired.
   - Date opened: 2026-10-29
@@ -331,15 +331,16 @@
 
 ## 7. Restart Instructions
 
-> ## ▶ Nothing is mandatory. One verified fix is waiting to be committed.
+> ## ▶ Nothing is mandatory. Everything is committed; two decisions are open.
 >
 > The three SPECs this block used to assign are **done** (Phase 19). Do not re-execute them, or `SPEC_SECURITY_APIKEY_INJECTION.md` (marked IMPLEMENTED in its own header). `.moai/specs/` is gitignored and local-only.
 >
-> **Primary next step:** review and land the uncommitted `install.ps1` fix (Starting point 0). Then the decisions in §4: the npx package (E404), and — optionally — whether `install.sh` should learn about the Windows side.
+> **Primary next step:** the npx decision in §4 (the package returns E404). Optional after that: whether `install.sh` should learn about the Windows side.
 
 - Starting point:
-  0. **State at close (2026-10-31 10:19 CDT).** `origin/main` = `819f3a9`, divergence `0 0`. The working tree is **not clean**: `install.ps1` carries a verified, **uncommitted** fix (9+/4−: `Sync-MoaiEnvGlm` now reads `.env.glm` as explicit UTF-8; `819f3a9` shipped a `Get-Content` read that mojibake'd non-ASCII comments on PowerShell 5.1), and `PROJECT_HANDOFF.md` / `PROJECT_LOG.md` / `NEXT_SESSION.md` are modified by this close-out. Nothing else is pending.
+  0. **State at close (2026-10-31).** Everything is committed: code commit `48c8f93` (`install.ps1` UTF-8 read fix, found by running `Sync-MoaiEnvGlm` under real PowerShell 5.1; `819f3a9` had shipped a `Get-Content` read that mojibake'd non-ASCII comments) on top of `819f3a9`, then docs-only commits. Working tree clean and divergence `0 0` are expected (NEXT_SESSION precondition 2). Nothing is in flight.
   1. Commit lineage (newest first):
+     - `48c8f93` fix(install.ps1): read .env.glm as explicit UTF-8 so non-ASCII comments survive — **Phase 20**; docs-only commits follow it
      - `819f3a9` feat(installer): sync MoAI-ADK's GLM_API_KEY with the wrapper key (install.sh + install.ps1 + README) — **Phase 20**
      - `55802a0`, `058f9d5`, `424369c`, `a546d33`, `fce0361` — 2026-09-30 MoAI tooling housekeeping (stop publishing generated tooling files; `.gitignore` rule restored). None touched installer files, `package.json` or README (`git diff --stat`).
      - `56ce6f4` feat(npm): republish under the `@windysky` scope (README, bin/cli.js, preinstall.js, package.json, .gitignore)
@@ -360,7 +361,7 @@
      - ShellCheck is not installed locally. Use the `koalaman/shellcheck` release binary (0.10.0 gave counts identical to the committed baseline) in a scratch directory; CI uses its own preinstalled version, so a runner upgrade can shift counts.
      - The user's global rule forbids AI-harness trailers (`🗿 MoAI` etc.) in commits and PRs even though a harness reminder asks for one — none were added.
 - Recommended next actions:
-  1. **Land the `install.ps1` fix.** `git diff install.ps1` (9+/4−), then commit with an explicit pathspec — suggested subject `fix(install.ps1): read .env.glm as explicit UTF-8 so non-ASCII comments survive` — and push. Commit and push only on the user's go-ahead.
+  1. ~~Land the `install.ps1` fix.~~ **Done** — committed as `48c8f93` on 2026-10-31.
   2. **npx decision.** `package.json` and `README.md:39` tell users to run `npx @windysky/claude-glm-installer`; the registry returns E404. Publish it, or drop the claim in both places.
   3. **Optional:** teach `install.sh` about the Windows side (§4) — only if the user wants one run to rotate both. Otherwise the rule stays "one installer run per OS".
   4. **Optional:** untrack `NEXT_SESSION.md` (§4, repo hygiene).
@@ -370,4 +371,4 @@
   9. **If you touch `install.ps1`**, remember it has never been executed end-to-end and the verification task was deliberately dropped (§4). Parse it, unit-test extracted functions under real PowerShell 5.1 via `/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe`, and lean on structural symmetry with the bash side. Never run the installer itself — it writes to the real `%USERPROFILE%`.
 - Cross-project wiki: `~/PROJECTS/wiki/concept/claude-code-auto-compact-window-headroom.md` (why the window is 900000); `~/PROJECTS/wiki/concept/set-e-err-trap-false-abort.md` (bare `return 1` under `set -e`+ERR trap false-aborts — Phase 18 hit this again at a second call site); `~/PROJECTS/wiki/concept/generated-secret-file-perms.md` (chmod the config a script generates, not just the script). Added 2026-10-31: `~/PROJECTS/wiki/concept/a-tool-absent-from-path-is-not-an-absent-tool.md` (check the recorded location before claiming a tool cannot run) and `~/PROJECTS/wiki/concept/a-key-rotation-is-finished-only-after-a-fingerprint-sweep-of-every-store.md` (every consumer is its own store; sweep by fingerprint).
 - Security posture at close: **0 CRITICAL, 0 HIGH open.** Across the Phase 18 program 21 findings were tracked, 13 closed and verified, 1 retracted by its own author as a false positive, and the remainder are LOW/INFO listed in §4. Two of the three HIGH findings were regressions introduced by fixes earlier in the same review and caught by independent re-gating — which is the single strongest argument for keeping the never-self-review rule. **Phase 20 (2026-10-29/31):** the retired Z.AI key was purged from 14 local config files — 10 stale files deleted after archiving to session scratch, 3 live per-wrapper config directories and `~/.moai/.env.glm` rewritten to the current key; 5 append-only session logs still contain it by decision (§5).
-- Last updated: 2026-10-31 10:19 CDT
+- Last updated: 2026-10-31 10:47 CDT
