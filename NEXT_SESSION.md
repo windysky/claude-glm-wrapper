@@ -21,7 +21,7 @@ source_session_id: eb9d3761-ec17-4bca-98a9-92b80313ce41
 Preconditions:
 1) `git status --short` → empty (nothing uncommitted)
 2) `git merge-base --is-ancestor 1fdd906 HEAD; echo $?` → `0`; `git rev-list --count --left-right origin/main...HEAD` → `0 0` once pushed
-3) `grep -c 'claude-glm\[A-Za-z0-9._-\]\*' install.sh install.ps1` → `0` for both, and `grep -c managedWrappers install.ps1` → at least `1`
+3) `grep -vE '^[[:space:]]*#' install.sh install.ps1 | grep -c 'claude-glm\[A-Za-z0-9'` → `0` (comments are excluded on purpose: they quote the old pattern), and `grep -c managedWrappers install.ps1` → at least `1`
 4) `gh repo view windysky/claude-glm-wrapper --json visibility -q .visibility` → `PUBLIC` (unless the user changed it)
 
 Run: If anything is modified, show `git diff --stat` and wait for the user's go-ahead before committing; if nothing is modified, report that nothing is pending.
