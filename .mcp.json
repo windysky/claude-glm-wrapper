@@ -15,15 +15,6 @@
         "mcp-server"
       ],
       "command": "moai"
-    },
-    "sequential-thinking": {
-      "$comment": "Step-by-step reasoning for complex problems",
-      "args": [
-        "-l",
-        "-c",
-        "exec npx -y @modelcontextprotocol/server-sequential-thinking"
-      ],
-      "command": "/bin/bash"
     }
   },
   "staggeredStartup": {
